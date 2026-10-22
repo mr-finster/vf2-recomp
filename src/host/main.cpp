@@ -298,6 +298,7 @@ struct pad_state
 {
 	bool back_was = false, back_combo = false, start_was = false;
 	bool menu_was = false, touch_was = false, sticks_was = false;   // the menu's other buttons (edges)
+	bool start_quiet = false;   // Start held as the menu closed (it closed it): not the game's till let go
 	int coin_frames = 0, start_delay = -1, start_frames = 0;
 };
 
@@ -339,9 +340,10 @@ hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const play
 		const bool kstart = key(ctl[p].key[C_START]);
 		if (kstart && !key_start_was[p]) press_start();
 		key_start_was[p] = kstart;
-		// Start held reaches the game too, as the cabinet's button: a fighter chosen with Start held
-		// is Dural (version 2.1's code). Only a 6-frame press went through before.
-		bool start_held = kstart;
+		// Start held reaches the game too, the arcade way, as the cabinet's button: a fighter chosen with
+		// Start held is Dural (version 2.1's code). The PC way, a 6-frame press, as before v0.1.12: on a
+		// pad Start confirms and closes the menu, and holding it turned a pick into Dural by accident
+		bool start_held = kstart, start_now = kstart;
 		// Coin (a cabinet's coin slot, bound in the menu): a coin for this player, the arcade way
 		// (the PC way is free play: the game takes no coins)
 		const bool kcoin = key(ctl[p].key[C_COIN]);
@@ -392,6 +394,7 @@ hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const play
 					if (player_controls::pad_down(g, ctl[p].pad[a])) b |= BITS[a];   // (not Start nor Coin)
 				if (start && !st.start_was) press_start();
 				start_held |= start;
+				start_now |= start;
 			}
 			// View tapped on its own: whichever of Menu and Coin it's set as
 			if (!back && st.back_was && !st.back_combo) {
@@ -402,10 +405,15 @@ hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const play
 			st.back_was = back;
 			st.start_was = back ? btn(SDL_GAMEPAD_BUTTON_START) : start;
 		}
+		if (st.start_quiet) {   // (the Start that closed the menu: nothing, till it's let go)
+			if (!start_now) st.start_quiet = false;
+			start_held = false;
+			st.start_delay = -1;
+		}
 		if (st.coin_frames > 0) { in[0] |= coin_bit; st.coin_frames--; }
 		if (st.start_delay >= 0 && st.start_delay-- == 0) st.start_frames = 6;
 		if (st.start_frames > 0) { in[0] |= start_bit; st.start_frames--; }
-		if (start_held) in[0] |= start_bit;
+		if (start_held && !g_pc_mode) in[0] |= start_bit;
 	}
 	static bool down_was, start_was, in_test;
 	static int service_frames, test_ago = 1 << 20, test_mode_frames;
@@ -2796,6 +2804,7 @@ int main(int argc, char **argv)
 			pstate[0].back_was = pstate[1].back_was = true;
 			pstate[0].back_combo = pstate[1].back_combo = true;
 			pstate[0].start_was = pstate[1].start_was = true;
+			pstate[0].start_quiet = pstate[1].start_quiet = true;   // (a Start key or button held as it closed)
 			for (pad_state &s : pstate) s.menu_was = s.touch_was = s.sticks_was = true;
 			restart_clock();
 		}

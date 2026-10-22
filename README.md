@@ -89,8 +89,10 @@ for either player, in any mode.
 They take Akira's place, so Akira can't be picked while one is on; the computer's own fighters, Dural at the end of
 arcade mode included, are unchanged.
 
-The arcade's own Dural code works too: on Version 2.1 (the default), hold Start while you pick any fighter. Holding Up
-while you pick gives that fighter's other costume, the one player 2 wears in a mirror match.
+The arcade's own Dural code works too, the arcade way (Menu > Game > Play style): on Version 2.1 (the default), hold
+Start while you pick any fighter. The PC way, Start is a tap, so a pick confirmed or a menu closed with Start never
+turns into Dural by accident; Cheats > Secret character gives him there. Holding Up while you pick gives that
+fighter's other costume, the one player 2 wears in a mirror match.
 
 ### Who they are
 
