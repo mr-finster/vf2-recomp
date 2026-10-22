@@ -538,7 +538,7 @@ public:
 		NSError *err = nil;
 		MTLCompileOptions *co = [MTLCompileOptions new];
 		// no fast math: the CPU's float arithmetic as it is (IEEE division, no reassociation)
-		if (@available(macOS 15.0, *)) co.mathMode = MTLMathModeSafe;
+		if (@available(macOS 15.0, iOS 18.0, *)) co.mathMode = MTLMathModeSafe;
 		else {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -840,7 +840,11 @@ private:
 				[ce setBytes:&rows length:4 atIndex:10];
 				const NSUInteger tg = std::min<NSUInteger>(64, m_k_spans.maxTotalThreadsPerThreadgroup);
 				[ce dispatchThreadgroups:MTLSizeMake((rows + tg - 1) / tg, 1, 1) threadsPerThreadgroup:MTLSizeMake(tg, 1, 1)];
-				[ce memoryBarrierWithScope:MTLBarrierScopeBuffers];
+				// A separate pass lets Metal's tracked resources synchronize spans
+				// with shading. The iOS simulator rejects in-encoder memory barriers;
+				// separate passes also work on devices without that capability.
+				[ce endEncoding];
+				ce = [cb computeCommandEncoder];
 			}
 			const uint32_t k2[2] = { W, H };
 			[ce setComputePipelineState:m_k_shade];

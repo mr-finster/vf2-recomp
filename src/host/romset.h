@@ -42,4 +42,8 @@ struct result
 
 result load(const std::string &zip);
 
+// Copy to a staging file, validate that copy, then atomically install it. A failed
+// import leaves an existing destination untouched. No ZIP entries are extracted.
+result import_file(const std::string &source, const std::string &destination);
+
 } // namespace romset

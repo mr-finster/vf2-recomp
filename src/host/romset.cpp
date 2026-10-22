@@ -2,6 +2,15 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <atomic>
+#include <chrono>
+#include <fstream>
+#include <memory>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 #include <zlib.h>
 
 namespace romset {
@@ -187,6 +196,65 @@ result load(const std::string &path)
 	}
 	res.ok = bad == 0;
 	return res;
+}
+
+result import_file(const std::string &source, const std::string &destination)
+{
+	namespace fs = std::filesystem;
+	const auto failure = [](const std::string &message) { result r; r.error = message; return r; };
+	constexpr uintmax_t max_size = 256u << 20;
+	std::error_code ec;
+	const auto size = fs::file_size(source, ec);
+	if (ec || size < 22 || size > max_size) return failure("Choose a ZIP file between 22 bytes and 256 MB.");
+	const fs::path target(destination);
+	const fs::path parent = target.has_parent_path() ? target.parent_path() : fs::path(".");
+	fs::create_directories(parent, ec);
+	if (ec) return failure("Couldn't create the ROM folder: " + ec.message());
+	static std::atomic<unsigned> serial{0};
+	fs::path staging;
+	for (int attempt = 0; attempt < 10; ++attempt) {
+		staging = parent / (".vf2-import-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+			+ "-" + std::to_string(serial.fetch_add(1)));
+		if (fs::create_directory(staging, ec)) break;
+		if (ec) return failure("Couldn't prepare the import: " + ec.message());
+		staging.clear();
+	}
+	if (staging.empty()) return failure("Couldn't prepare a temporary ROM file.");
+	struct cleanup {
+		fs::path path;
+		~cleanup() { std::error_code ignored; fs::remove_all(path, ignored); }
+	} clean{staging};
+	const auto temporary = staging / "vf2.zip";
+	std::ifstream input(source, std::ios::binary);
+	std::unique_ptr<FILE, decltype(&fclose)> output(fopen(temporary.string().c_str(), "wb"), fclose);
+	if (!input || !output) return failure("Couldn't open the ROM file for copying.");
+	char buffer[64 * 1024];
+	uintmax_t copied = 0;
+	while (input) {
+		input.read(buffer, sizeof buffer);
+		const auto count = input.gcount();
+		copied += static_cast<uintmax_t>(count);
+		if (copied > max_size) return failure("The ZIP exceeds 256 MB.");
+		if (fwrite(buffer, 1, size_t(count), output.get()) != size_t(count))
+			return failure("Couldn't copy the ROM file. Check free storage.");
+	}
+	if (!input.eof() || input.bad() || copied != size)
+		return failure("The ROM file couldn't be copied completely. Try again after the file finishes downloading.");
+	bool synced = fflush(output.get()) == 0;
+#ifdef _WIN32
+	if (synced) synced = _commit(_fileno(output.get())) == 0;
+#else
+	if (synced) synced = fsync(fileno(output.get())) == 0;
+#endif
+	const bool closed = fclose(output.release()) == 0;
+	if (!synced || !closed) return failure("Couldn't save the ROM file to disk. Check free storage.");
+	result loaded = load(temporary.string());
+	if (!loaded.ok) return loaded;
+	// Same filesystem: readers see the old complete ZIP or the new complete ZIP.
+	// On a platform where replacing an existing path is unsupported, fail safely.
+	fs::rename(temporary, target, ec);
+	if (ec) return failure("Couldn't save the ROM file: " + ec.message());
+	return loaded;
 }
 
 } // namespace romset

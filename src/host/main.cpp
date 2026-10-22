@@ -150,12 +150,19 @@
 #include "../gpu/gpu3d.h"
 #include "menu.h"
 #include "controls.h"
+#include "../../apple/touch_controls.h"
+#ifdef VF2_NATIVE_CONTROLS
+#include "../../apple/native_controls.h"
+#endif
+#ifdef VF2_IOS
+#include "../../apple/ios_roms.h"
+#endif
 #include "sysinfo.h"
 #include <SDL3/SDL.h>
 #ifdef __APPLE__
 #include <pthread.h>
 #endif
-#ifdef _WIN32
+#if defined(_WIN32) || defined(VF2_IOS)
 #include <SDL3/SDL_main.h>   // WinMain, and argv as UTF-8
 #endif
 #include <algorithm>
@@ -166,6 +173,7 @@
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <thread>
 #include <mutex>
@@ -313,7 +321,7 @@ bool g_left_test_menu = false;   // set when it closes (the PC way then restarts
 
 // The pressed bits of IN0, IN1 and IN2 for the next frame, from the keyboard and the pads, and the
 // hotkeys pressed on a pad
-hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const player_controls ctl[2], uint8_t in[3])
+hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const player_controls ctl[2], uint8_t in[3], touch_controls *overlay)
 {
 	static const uint8_t BITS[C_COUNT] = {
 		PL_UP, PL_DOWN, PL_LEFT, PL_RIGHT, PL_GUARD, PL_PUNCH, PL_KICK,
@@ -330,6 +338,13 @@ hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const play
 		// Start is the cabinet's start button: in the arcade way it starts only with a credit (coins
 		// come from the Coin binding or the 5 and 6 keys)
 		auto press_start = [&] { st.start_delay = 0; };
+		if (p == 0 && overlay) {
+			static const uint8_t bits[] = { PL_UP, PL_DOWN, PL_LEFT, PL_RIGHT, PL_GUARD, PL_PUNCH, PL_KICK };
+			for (int a = touch_controls::UP; a <= touch_controls::KICK; ++a)
+				if (overlay->held(a)) in[1] |= bits[a];
+			if (overlay->take_start()) press_start();
+			if (overlay->take_menu()) hk = hotkey::menu;
+		}
 		// a key set as Menu opens it too (Esc always does)
 		const bool kmenu = key(ctl[p].key[C_MENU]);
 		if (kmenu && !key_menu_was[p]) hk = hotkey::menu;
@@ -341,7 +356,7 @@ hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const play
 		key_start_was[p] = kstart;
 		// Start held reaches the game too, as the cabinet's button: a fighter chosen with Start held
 		// is Dural (version 2.1's code). Only a 6-frame press went through before.
-		bool start_held = kstart;
+		bool start_held = kstart || (p == 0 && overlay && overlay->held(touch_controls::START));
 		// Coin (a cabinet's coin slot, bound in the menu): a coin for this player, the arcade way
 		// (the PC way is free play: the game takes no coins)
 		const bool kcoin = key(ctl[p].key[C_COIN]);
@@ -519,6 +534,7 @@ struct settings
 {
 	int scale = 0, aspect = 0, volume = 100, music = 50, effects = 100, aa = 1, filter = 0, ring = 0;
 	int pipelined_at = 0;
+	int on_screen = 1;   // 0 off, 1 when no controller is connected, 2 always
 	int secret = 0;   // Cheats > Secret character: the fighter in Akira's place (model2a::set_secret_character), 0 none
 	// settings.ini's version: 2 from v0.1.2 (none before). Its upgrades, once, as it's read:
 	//   2: the old default music volume, 20, to the new one, 50 (the music's stereo reverb mended:
@@ -553,6 +569,7 @@ struct settings
 		};
 		auto flag = [&](const char *k, bool &v) { int i = v; num(k, i, 0, 1); v = i; };
 		num("scale", scale, 0, MAX_SCALE);
+		num("on_screen_controls", on_screen, 0, 2);
 		num("picture_shape", aspect, 0, N_ASPECTS - 1);
 		num("volume", volume, 0, 100);
 		num("antialiasing", aa, 0, 3);   // 1 off, 0 Low (the 3D's edges smoothed: older builds read 0 as off), 2 and 3 drawn larger
@@ -623,6 +640,7 @@ struct settings
 				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin);
 		fprintf(f, "renderer_3d = %d\ngpu_quality = %d\nauto_3d = %s\n", renderer3d, gpu_quality, auto3d.c_str());
 		fprintf(f, "secret_character = %d\n", secret);
+		fprintf(f, "on_screen_controls = %d\n", on_screen);
 		if (graphics) fprintf(f, "graphics = %d\n", graphics);
 		if (!gpu3d_failed.empty()) fprintf(f, "gpu_3d_failed = %s\n", gpu3d_failed.c_str());
 		if (!roms_folder.empty()) fprintf(f, "roms_folder = %s\n", roms_folder.c_str());
@@ -706,15 +724,9 @@ bool first_launch(const std::string &data, const std::string &folder, romset::re
 		}
 		if (chosen.files.empty()) return false;
 		const std::string f = chosen.files[0];
-		romset::result r = romset::load(f);
+		romset::result r = romset::import_file(f, (dest / "vf2.zip").string());
 		if (!r.ok) {
 			note = fs::path(f).filename().string() + ": " + r.error + "\n\nChoose MAME's \"vf2\" set (vf2.zip).\n\n" + where;
-			continue;
-		}
-		fs::create_directories(dest, ec);
-		if (!fs::equivalent(f, dest / "vf2.zip", ec)) fs::copy_file(f, dest / "vf2.zip", fs::copy_options::overwrite_existing, ec);
-		if (ec) {
-			note = "Couldn't copy it into " + dest.string() + ": " + ec.message() + "\n\nChoose your vf2.zip.";
 			continue;
 		}
 		out = std::move(r);
@@ -743,6 +755,16 @@ int main(int argc, char **argv)
 	std::string arg_roms;   // --roms <folder>: where the player's vf2.zip is (over VF2_ROMS and settings.ini's roms_folder)
 	for (int i = 1; i < argc; i++) {
 		const std::string a = argv[i];
+#ifdef __APPLE__
+		// Xcode's document-versioning diagnostic is an AppKit preference, not a ROM path.
+		if (a == "-NSDocumentRevisionsDebugMode") {
+			if (i + 1 < argc) {
+				const std::string value = argv[i + 1];
+				if (value == "YES" || value == "NO" || value == "true" || value == "false" || value == "1" || value == "0") ++i;
+			}
+			continue;
+		}
+#endif
 		if (a == "--arcade") arg_arcade = true;
 		else if (a == "--roms" && i + 1 < argc) arg_roms = argv[++i];
 		else if (a.rfind("--roms=", 0) == 0) arg_roms = a.substr(7);
@@ -781,7 +803,11 @@ int main(int argc, char **argv)
 
 	auto fail = [](const std::string &what) {
 		fprintf(stderr, "%s\n", what.c_str());
+#ifdef VF2_IOS
+		if (!getenv("VF2_HIDDEN")) ios_fatal_error(what);
+#else
 		if (!getenv("VF2_HIDDEN")) message_box(SDL_MESSAGEBOX_ERROR, "Virtua Fighter 2", what);   // (a test run: stderr and log.txt only)
+#endif
 		return 1;
 	};
 
@@ -828,6 +854,13 @@ int main(int argc, char **argv)
 		fprintf(stderr, "run from macOS's hidden copy of the app (App Translocation): a portable.txt beside it isn't seen until the app is moved with the Finder\n");
 	const std::string settings_path = data + "/settings.ini";
 	settings cfg;
+#ifdef VF2_IOS
+	// Conservative defaults for the interpreter; the player can raise these in Display.
+	cfg.fullscreen = true;
+	cfg.scale = 1;
+	cfg.aa = 1;
+	cfg.smooth = false;
+#endif
 	bool cfg_dirty = false;      // saved (as the menu closes, and at exit) only when the player changed something
 	// Steam sets SteamDeck=1 on the Deck: fullscreen, its 16:10, and 2x (1,190 x 768), whatever
 	// screen it's docked to: with the i960 recompiled, a Deck's fight at 2x is about 16 ms of its
@@ -856,6 +889,11 @@ int main(int argc, char **argv)
 	const bool fullscreen = cfg.fullscreen;
 
 	romset::result roms;
+#ifdef VF2_IOS
+	if (zip.empty() && !hidden) {
+		if (!ios_load_roms(roms)) return fail("Couldn't open the ROM importer.");
+	} else
+#endif
 	if (players) {
 		// the player's ROM folder: the command line's, else VF2_ROMS, else settings.ini's
 		std::string roms_folder, from;
@@ -875,7 +913,11 @@ int main(int argc, char **argv)
 		const i960rec::native_stats &st = m.native_stats();
 		fprintf(stderr, "recompiled %zu functions (%zu instructions) to %zu KB of native code in %.0f ms\n", st.functions, st.instructions, st.code_bytes / 1024, st.ms);
 	} else if (!arg_interp && !getenv("VF2_INTERP"))
+#ifdef VF2_NO_JIT
+		fprintf(stderr, "iOS: using the i960 interpreter (no JIT)\n");
+#else
 		fprintf(stderr, "couldn't recompile the game (no executable memory?): running it on the slower interpreter instead\n");
+#endif
 	m.set_sound(sound);
 	m.set_byte_link(true);   // the sound board's link a byte at a time (the same bytes, a lighter load)
 	m.set_volumes(cfg.music / 100.0f, cfg.effects / 100.0f);
@@ -939,7 +981,12 @@ int main(int argc, char **argv)
 	auto boot = [&] {
 		if (m.assignment(model2a::game_assignment::difficulty) < 0) {
 			m.reset();
-			for (int i = 0; i < 120 && m.assignment(model2a::game_assignment::difficulty) < 0; i++) m.run_frame();
+			for (int i = 0; i < 120 && m.assignment(model2a::game_assignment::difficulty) < 0; i++) {
+#ifdef VF2_IOS
+				ios_pump_loading();
+#endif
+				m.run_frame();
+			}
 			// A new player's game starts on Version 2.1 (the factory's is the original game, NORMAL):
 			// only here, the board's first run, when the game has just written its settings; a
 			// player's own choice after that (the menu's Version, the test mode) is kept. (The
@@ -971,6 +1018,9 @@ int main(int argc, char **argv)
 		game_frame = 0;
 		if (!skip_boot()) return;
 		while (!m.past_boot() && game_frame < BOOT_FRAMES) {
+#ifdef VF2_IOS
+			ios_pump_loading();
+#endif
 			m.run_frame();
 			m.m_audio_out.clear();
 			game_frame++;
@@ -1002,7 +1052,11 @@ int main(int argc, char **argv)
 	}
 	// hidden until it has the game's first picture to show
 	SDL_Window *win = SDL_CreateWindow("Virtua Fighter 2", win_w, win_h,
+#ifdef VF2_IOS
+		SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIDDEN);
+#else
 		SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_HIDDEN);
+#endif
 	if (!win) return fail(std::string("Couldn't open the window: ") + SDL_GetError());
 	SDL_HideCursor();
 	int focus_checks = 600;   // about 5 s: going fullscreen on a Mac moves to a new Space, which takes a while
@@ -1132,8 +1186,12 @@ int main(int argc, char **argv)
 	auto window_aspect = [&] {
 		int w = 0, h = 0;
 		SDL_GetWindowSizeInPixels(win, &w, &h);
+		// UIKit already orients the hidden window for landscape, while its desktop
+		// display mode may still be portrait. Only desktop windows need this fallback.
+#ifndef VF2_IOS
 		if ((SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN) && (SDL_GetWindowFlags(win) & SDL_WINDOW_HIDDEN))   // (it takes the screen's size once shown)
 			if (const SDL_DisplayMode *dm = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay())) { w = dm->w; h = dm->h; }
+#endif
 		return h > 0 ? std::clamp(float(w) / float(h), 4.0f / 3.0f, 32.0f / 9.0f) : 16.0f / 9.0f;
 	};
 	auto apply_aspect = [&] {   // true if the picture's shape changed
@@ -2211,9 +2269,55 @@ int main(int argc, char **argv)
 	};
 	auto on_off = [](bool b) { return std::string(b ? "On" : "Off"); };
 	auto wrap = [](int v, int n) { return (v % n + n) % n; };
+	touch_controls touch;
+#ifdef VF2_IOS
+	bool touch_present = true;
+	fprintf(stderr, "touch controls: mode %d, controller %s\n", cfg.on_screen,
+		pads[0] ? SDL_GetGamepadName(pads[0]) : "none");
+#else
+	bool touch_present = false;
+#endif
+	auto touch_shown = [&] {
+		return cfg.on_screen == 2 || (cfg.on_screen == 1 && touch_present && !pads[0]);
+	};
+	auto touch_menu_action = [&](int pressed) {
+		if (!menu.is_open() || pressed < touch_controls::UP || pressed > touch_controls::MENU) return;
+		using nav = game_menu::navigation;
+		static constexpr nav actions[] = {
+			nav::up, nav::down, nav::left, nav::right, nav::back,
+			nav::select, nav::clear, nav::resume, nav::back
+		};
+		menu.navigate(actions[pressed]);
+		touch.take_start();
+		touch.take_menu();
+		if (!menu.is_open()) touch.release();
+	};
+	bool native_touch = false;
+#ifdef VF2_NATIVE_CONTROLS
+	native_touch = !hidden && native_controls_attach(win, touch, touch_menu_action);
+#endif
+	bool touch_mouse_on_overlay = false;
+	auto overlay_mouse_event = [&](const SDL_Event &e) {
+		// SDL sends a mouse event before the corresponding finger event. Keep
+		// direct taps on menu rows, but swallow the entire gesture on a control.
+		if (e.type == SDL_EVENT_MOUSE_MOTION && e.motion.which == SDL_TOUCH_MOUSEID)
+			return touch_mouse_on_overlay || (!e.motion.state && touch_shown() &&
+				touch_controls::contains_window_point(ren, e.motion.x, e.motion.y, menu.is_open()));
+		if ((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN || e.type == SDL_EVENT_MOUSE_BUTTON_UP) && e.button.which == SDL_TOUCH_MOUSEID) {
+			if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+				touch_mouse_on_overlay = touch_shown() && touch_controls::contains_window_point(ren, e.button.x, e.button.y, menu.is_open());
+			const bool used = touch_mouse_on_overlay;
+			if (e.type == SDL_EVENT_MOUSE_BUTTON_UP) touch_mouse_on_overlay = false;
+			return used;
+		}
+		return false;
+	};
 	auto back_item = [&] { return menu_item{ "Back", "Back to the previous page.", {}, {}, [&] { menu.pop(); } }; };
 	auto display_page = [&] {
 		menu_page p{ "Display", "", {} };
+		p.items.push_back({ "On-screen controls", "Touch controls for player 1. Auto hides them when a controller is connected.",
+			[&] { return cfg.on_screen == 0 ? std::string("Off") : cfg.on_screen == 2 ? std::string("On") : std::string("Auto"); },
+			[&](int d) { cfg.on_screen = wrap(cfg.on_screen + d, 3); cfg_dirty = true; touch.release(); } });
 		p.items.push_back({ "Render scale",
 			"How sharp the 3D is. 1x is the original arcade resolution; higher is sharper but needs a faster computer. If yours can't keep up, the game lowers it for you. (F5)",
 			[&] { return std::to_string(scale) + "x"; },
@@ -2553,18 +2657,46 @@ int main(int argc, char **argv)
 							[&] { menu.push(arcade_page()); } });
 		p.items.push_back({ "Controls", "Each player's controller, keys and buttons.", {}, {}, [&] { menu.push(controls_page()); } });
 		p.items.push_back({ "Cheats", "Play as Dural, or as MUE or KOJAC, unused fighters left in the game. Changing it restarts the game.", {}, {}, [&] { menu.push(cheats_page()); } });
+#ifndef VF2_IOS
 		p.items.push_back({ "Quit", "Saves and closes the game.", {}, {}, [&] { running = false; } });
+#endif
 		return p;
 	};
 	// the menu pauses the game and its sound: however it opened (Esc, the pad's View, the frames'
 	// hotkey) or closed, the sound device follows at once (its queue doesn't drain meanwhile)
 	bool sound_paused = false;
+	bool suspended = false;
 	auto sync_menu_sound = [&] {
-		if (!audio || menu.is_open() == sound_paused) return;
-		sound_paused = menu.is_open();
+		const bool pause_sound = suspended || menu.is_open();
+		if (!audio || pause_sound == sound_paused) return;
+		sound_paused = pause_sound;
 		if (sound_paused) SDL_PauseAudioStreamDevice(audio); else SDL_ResumeAudioStreamDevice(audio);
 	};
-	auto open_menu = [&] { if (menu.ready() && !menu.is_open()) menu.open(main_page()); sync_menu_sound(); };
+	auto open_menu = [&] { touch.release(); if (menu.ready() && !menu.is_open()) menu.open(main_page()); sync_menu_sound(); };
+	// Lifecycle events must stop audio and finish saves before UIKit suspends us.
+	std::function<void(SDL_Event *)> lifecycle = [&](SDL_Event *event) {
+		if (event->type == SDL_EVENT_WILL_ENTER_BACKGROUND || event->type == SDL_EVENT_TERMINATING) {
+			suspended = true;
+			touch.release();
+			emu_job.wait();
+			finish_async(false);
+			m.render_wait();
+			sync_menu_sound();
+			if (audio) SDL_ClearAudioStream(audio);
+			saver.finish();
+			save_nvram(true);
+			if (cfg_dirty && (quit_after < 0 || test_saves) && save_settings()) cfg_dirty = false;
+		} else if (event->type == SDL_EVENT_DID_ENTER_FOREGROUND) {
+			suspended = false;
+			restart_clock();
+			sync_menu_sound();
+		}
+	};
+	auto lifecycle_watch = [](void *context, SDL_Event *event) -> bool {
+		(*static_cast<std::function<void(SDL_Event *)> *>(context))(event);
+		return true;
+	};
+	SDL_AddEventWatch(lifecycle_watch, &lifecycle);
 	pad_state pstate[2];
 	int shot = 0;   // F12's screenshots: the next number to try
 
@@ -2746,9 +2878,24 @@ int main(int argc, char **argv)
 			else if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat && menu.is_open() && !menu.capturing()
 					 && (e.key.scancode == SDL_SCANCODE_F11 || (e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT))))
 				set_fullscreen(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN));
+			else if (overlay_mouse_event(e)) continue;
 			else if (menu.handle_event(e)) continue;
-			else if (e.type == SDL_EVENT_GAMEPAD_ADDED || e.type == SDL_EVENT_GAMEPAD_REMOVED) { open_pads(); menu.refresh(); }
-			else if (e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED && !aspect_i && apply_aspect()) reshape();
+			else if (e.type == SDL_EVENT_FINGER_DOWN || e.type == SDL_EVENT_FINGER_MOTION ||
+			         e.type == SDL_EVENT_FINGER_UP || e.type == SDL_EVENT_FINGER_CANCELED) {
+				touch_present = true;
+				if (touch_shown() && !native_touch) {
+					const int pressed = touch.finger(ren, win, e.tfinger,
+					    e.type == SDL_EVENT_FINGER_DOWN || e.type == SDL_EVENT_FINGER_MOTION, menu.is_open());
+					touch_menu_action(pressed);
+				}
+			}
+			else if (e.type == SDL_EVENT_GAMEPAD_ADDED || e.type == SDL_EVENT_GAMEPAD_REMOVED) {
+				open_pads(); menu.refresh();
+				if (!touch_shown()) touch.release();
+			}
+			// Showing a fullscreen window can finalize its size without a new pixel-size event.
+			else if ((e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED || e.type == SDL_EVENT_WINDOW_SHOWN)
+			         && e.window.windowID == SDL_GetWindowID(win) && !aspect_i && apply_aspect()) reshape();
 			else if (e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN || e.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN) {
 				menu.refresh();
 				if (SDL_GetKeyboardFocus() != win) SDL_RaiseWindow(win);   // (the move to a new Space can lose it)
@@ -2780,6 +2927,7 @@ int main(int argc, char **argv)
 		}
 		sync_menu_sound();
 		if (menu.is_open() != menu_was_open && !menu.is_open()) {
+			touch.release();
 			log_state("the menu closed");
 			// settings changed in the menu are saved as it closes (not only at quit: a crash or a
 			// force quit would lose them); test runs save nothing
@@ -2799,6 +2947,7 @@ int main(int argc, char **argv)
 			for (pad_state &s : pstate) s.menu_was = s.touch_was = s.sticks_was = true;
 			restart_clock();
 		}
+		if (suspended) { restart_clock(); SDL_Delay(20); continue; }
 		const bool stopped = paused || menu.is_open();
 		int due = 0;
 		bool draw_into_texture = false;   // the newest frame, drawn straight into the texture after the frames
@@ -2890,7 +3039,7 @@ int main(int argc, char **argv)
 			uint8_t ports[input_script::N_PORTS];
 			script.apply(game_frame, ports);
 			uint8_t live[3];
-			const hotkey hk = read_inputs(m, pads, pstate, cfg.ctl, live);
+			const hotkey hk = read_inputs(m, pads, pstate, cfg.ctl, live, touch_shown() ? &touch : nullptr);
 			m.m_in0 = ports[input_script::IN0] & ~live[0];
 			m.m_in1 = ports[input_script::IN1] & ~live[1];
 			m.m_in2 = ports[input_script::IN2] & ~live[2];
@@ -3198,7 +3347,12 @@ int main(int argc, char **argv)
 		SDL_RenderClear(ren);
 		SDL_RenderTexture(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, nullptr);
 		draw_filter();
+		menu.set_touch_controls(touch_shown());
 		menu.render();
+		if (touch_shown() && !native_touch) touch.draw(ren, menu.is_open());
+#ifdef VF2_NATIVE_CONTROLS
+		if (native_touch) native_controls_update(touch_shown(), menu.is_open());
+#endif
 		pace.blit += SDL_GetTicksNS() - tb;
 		if (!running && gpu_pic.check_every) gpu_pic.report();
 		if (!running && g3.check_every)
@@ -3290,6 +3444,9 @@ int main(int argc, char **argv)
 			shown = true;
 			if (!hidden) {
 				SDL_ShowWindow(win);
+#ifdef VF2_IOS
+				ios_finish_loading();
+#endif
 				SDL_RaiseWindow(win);
 				SDL_RenderPresent(ren);   // (again, now that it's on screen)
 			}
@@ -3545,6 +3702,7 @@ int main(int argc, char **argv)
 			if (SDL_GetTicksNS() >= next_nvram) { next_nvram = SDL_GetTicksNS() + 60000000000ull; save_nvram(false); }
 		}
 	}
+	SDL_RemoveEventWatch(lifecycle_watch, &lifecycle);
 	finish_async(false);
 	saver.finish();   // (an autosave still being written, done before the last save: the same files)
 	save_nvram(true);
@@ -3552,6 +3710,12 @@ int main(int argc, char **argv)
 	for (auto &[id, j] : vpads) { if (j) SDL_CloseJoystick(j); SDL_DetachVirtualJoystick(id); }
 	g3_free();
 	g3.dev.reset();   // (the GPU's 3D before the renderer whose device it may share)
+#ifdef VF2_NATIVE_CONTROLS
+	native_controls_detach();
+#endif
 	SDL_Quit();
+#ifdef VF2_IOS
+	if (!hidden && quit_after < 0) ios_fatal_error("The game has stopped.");
+#endif
 	return 0;
 }

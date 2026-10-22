@@ -199,7 +199,9 @@ model2a::model2a(romset::result &&roms)
 	m_sched[CPU_Z80].set_rate(32000000 / 4);
 	// the i960's program recompiled to native code now (src/rec), unless VF2_INTERP is set (MAME's
 	// interpreter: the reference, cycle for cycle the same)
+#ifndef VF2_NO_JIT
 	if (!getenv("VF2_INTERP")) use_native();
+#endif
 }
 
 // device_execute_interface::clock_changed

@@ -173,7 +173,7 @@ std::string os_name()
 #elif defined(__APPLE__)
 	char buf[64] = "";
 	size_t size = sizeof buf;
-	if (sysctlbyname("kern.osproductversion", buf, &size, nullptr, 0) == 0) snprintf(out, sizeof out, "macOS %s", buf);
+	if (sysctlbyname("kern.osproductversion", buf, &size, nullptr, 0) == 0) snprintf(out, sizeof out, "%s %s", SDL_GetPlatform(), buf);
 #elif defined(__linux__)
 	struct utsname u;
 	if (uname(&u) == 0) snprintf(out, sizeof out, "%s %s", u.sysname, u.release);

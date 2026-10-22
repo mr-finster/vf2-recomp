@@ -50,6 +50,10 @@ public:
 
 	// Takes the event if the menu is open; true when it was used.
 	bool handle_event(const SDL_Event &e);
+	// Overlay actions are navigation, never keyboard/gamepad bindings during capture.
+	enum class navigation { up, down, left, right, back, select, clear, resume };
+	void navigate(navigation action);
+	void set_touch_controls(bool shown);
 	// Draws the menu over what has been rendered so far (in window pixels).
 	void render();
 	// The renderer lost its textures (a device reset): RmlUi's let go, made again as they're drawn.

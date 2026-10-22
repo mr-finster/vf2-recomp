@@ -124,6 +124,15 @@ div { display: block; }
 
 .key { color: #dfe7fb; }
 
+/* Leave the lower part of the screen for the touch pad. Long pages scroll to
+   their selected row; the buttons themselves carry the navigation labels. */
+.touch #panel { top: 112dp; }
+.touch #title { height: 38dp; line-height: 38dp; font-size: 36dp; }
+.touch #crumb { height: 20dp; line-height: 20dp; }
+.touch #rows { max-height: 160dp; }
+.touch #note { height: 40dp; }
+.touch #hint { display: none; }
+
 /* the version and date, small, under the hint */
 #ver {
 	margin-top: 4dp;

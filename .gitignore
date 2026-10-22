@@ -5,3 +5,7 @@ build/
 *.zip
 *.bin
 .DS_Store
+xcuserdata/
+*.xcuserstate
+__pycache__/
+*.py[cod]

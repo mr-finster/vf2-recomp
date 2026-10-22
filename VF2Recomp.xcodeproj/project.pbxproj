@@ -1,0 +1,5808 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		CC5D242D023A9271190EA7C6 = {
+			isa = "PBXGroup";
+			children = ("F173BC489BF865BE84C33475", "6AB87BDD7349A09E2AE65F85", "67B7A33E884A8E82ADA37A20", "AE6ADACDDE846FF6AA0A8B4A", "42C59AF8A4BAE559BC5A5D5D", "99B2612622859F92D7197CBF", "6F7199ED7B63CDA338A0FB82");
+			sourceTree = "<group>";
+		};
+		184B519F8E1416CCE38CFFD7 = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = "YES";
+				GCC_C_LANGUAGE_STANDARD = "gnu11";
+				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
+				ENABLE_HARDENED_RUNTIME = "NO";
+				ENABLE_APP_SANDBOX = "NO";
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				COPY_PHASE_STRIP = "NO";
+				VF2_DEPS_DIR = "$(PROJECT_TEMP_DIR)/Dependencies/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/$(ARCHS)";
+				GCC_OPTIMIZATION_LEVEL = "2";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				ONLY_ACTIVE_ARCH = "YES";
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "DEBUG=1");
+			};
+		};
+		A824290273A346217D9BE6F4 = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = "YES";
+				GCC_C_LANGUAGE_STANDARD = "gnu11";
+				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
+				ENABLE_HARDENED_RUNTIME = "NO";
+				ENABLE_APP_SANDBOX = "NO";
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				COPY_PHASE_STRIP = "NO";
+				VF2_DEPS_DIR = "$(PROJECT_TEMP_DIR)/Dependencies/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/$(ARCHS)";
+				GCC_OPTIMIZATION_LEVEL = "3";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ONLY_ACTIVE_ARCH = "NO";
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "NDEBUG=1");
+			};
+		};
+		1922B098E983995960BE56B0 = {
+			isa = "XCConfigurationList";
+			buildConfigurations = ("184B519F8E1416CCE38CFFD7", "A824290273A346217D9BE6F4");
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		6F7199ED7B63CDA338A0FB82 = {
+			isa = "PBXGroup";
+			name = "Products";
+			children = ("D874DC1707B398C8AE095DE4", "755BF9D3BA48935C6C37E233");
+			sourceTree = "<group>";
+		};
+		99B2612622859F92D7197CBF = {
+			isa = "PBXGroup";
+			name = "Frameworks";
+			children = ("F092A2AEBE0B8E309C3F5287", "C3D62F3F956C655AF221454C", "72400CA91D01ABDB3C2E16E0", "CE49AD5C89D48A9C32E70529", "6FB915AF7914A0F7788E5595", "23557C6ABA05F8825F0D9AE6", "C166693EA3715CCB7351B000", "AA14C4CFC2532A538E01C6B5", "19400D1AF25B208FF6CD04FA", "0C4E0CE3C462967A7A1A2F0F", "5837AA9387BBA9062CED3776", "5A9BA946FCEEE68CBC354788", "24D4E598323083B1553F1C22", "7A66E2056149DA7B28BD01F7", "02E696E22FAB5A0695381AF0", "8FE48B4F891EA6616A64BBEB", "CFF66AE6849B879A0800DCD1", "2B10EE30CA1D553A7D9F101F", "634AA77584B90EA8A724CB9E", "C6A01E8172660E25D0D49230");
+			sourceTree = "<group>";
+		};
+		91B2D0C4EC0B8AB9CAA69E8D = {
+			isa = "PBXShellScriptBuildPhase";
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ();
+			outputPaths = ("$(VF2_DEPS_DIR)/_deps/sdl3-build/libSDL3.a", "$(VF2_DEPS_DIR)/_deps/freetype-build/libfreetype.a", "$(VF2_DEPS_DIR)/version.h", "$(VF2_DEPS_DIR)/LICENSES.txt");
+			runOnlyForDeploymentPostprocessing = 0;
+			alwaysOutOfDate = 1;
+			name = "Prepare SDL and FreeType";
+			shellPath = "/bin/bash";
+			shellScript = "exec /bin/bash \"$SRCROOT/apple/build-xcode-dependencies.sh\"\n";
+		};
+		DA739B3BF48A3A9A5F8D4130 = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				SDKROOT = "iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				IPHONEOS_DEPLOYMENT_TARGET = "16.0";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTS_MACCATALYST = "NO";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = "NO";
+				SKIP_INSTALL = "YES";
+				GCC_OPTIMIZATION_LEVEL = "2";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				ONLY_ACTIVE_ARCH = "YES";
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "DEBUG=1");
+			};
+		};
+		33D91399707AAF6BB8D195FF = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				SDKROOT = "iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				IPHONEOS_DEPLOYMENT_TARGET = "16.0";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTS_MACCATALYST = "NO";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = "NO";
+				SKIP_INSTALL = "YES";
+				GCC_OPTIMIZATION_LEVEL = "3";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ONLY_ACTIVE_ARCH = "NO";
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "NDEBUG=1");
+			};
+		};
+		45CFEDFCC4AF448086AEE746 = {
+			isa = "XCConfigurationList";
+			buildConfigurations = ("DA739B3BF48A3A9A5F8D4130", "33D91399707AAF6BB8D195FF");
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		A39CF521C9631EEF4E2C6E08 = {
+			isa = "PBXAggregateTarget";
+			name = "VF2 iOS Dependencies";
+			productName = "VF2 iOS Dependencies";
+			buildConfigurationList = "45CFEDFCC4AF448086AEE746";
+			buildPhases = ("91B2D0C4EC0B8AB9CAA69E8D");
+			dependencies = ();
+		};
+		6A5623F08655DEC2DB08B77A = {
+			isa = "PBXTargetDependency";
+			target = "A39CF521C9631EEF4E2C6E08";
+		};
+		6155A2A12374BC9A8B95A1F6 = {
+			isa = "PBXFileReference";
+			path = "apple/native_controls.mm";
+			name = "native_controls.mm";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.objcpp";
+		};
+		F173BC489BF865BE84C33475 = {
+			isa = "PBXGroup";
+			name = "apple";
+			children = ("6155A2A12374BC9A8B95A1F6", "90477C9CFD8340698C26D4CE", "71F83CCD36E21A77D6F2BC7A", "F710E59DE53FDB4053F42EF1", "CC4CBDCD101E4A7C5A2DD991", "1C2D5A3C291BAD3746F3AEEF", "F27322A7CF7DC042F0BFD0DF", "1C7D2753525381BF7EE4AFE6", "4823B6CF216BE3CBB96B46DA", "7C7619B8B79D4B3262736B4E", "69FA21FD836AD5CB4182F825", "0553E972182B547A71A27387", "79DB98FB643ED1403C9F6D32", "17EDD96FF9DC5D91C48DF596", "52AE18F96C76D52163F3822D", "2EF5BA50AA3B1307CFA12254", "88953FDF6F8D71561F6401D6", "A7536BAF5971106FA30198CD", "2A87FD657057C73901B98389", "CDECFF91C82478DC1013FB6B", "6B1F88578A84FB61BEDD067C", "FB206CEF770C50D8908F2BE7", "DE63CA359AF0F1DEEA63BE08");
+			sourceTree = "<group>";
+		};
+		3F240EFEF033E46654A09680 = {
+			isa = "PBXBuildFile";
+			fileRef = "6155A2A12374BC9A8B95A1F6";
+		};
+		A71BC8ECD02583E830565563 = {
+			isa = "PBXFileReference";
+			path = "src/host/main.cpp";
+			name = "main.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		6AB87BDD7349A09E2AE65F85 = {
+			isa = "PBXGroup";
+			name = "src";
+			children = ("5A48251E3AB293CEB3C0F46E", "F0147B9E8304A92165877E2D", "A1489BA64CC5CE69E269ACAC", "50C8C77A54279012505F2AB8", "9F4A74206B1CE42EE4F15450");
+			sourceTree = "<group>";
+		};
+		5A48251E3AB293CEB3C0F46E = {
+			isa = "PBXGroup";
+			name = "host";
+			children = ("A71BC8ECD02583E830565563", "BA103C59B154F4C1A8F172A0", "2A1C949533B34F09ECB17D3F", "1145287588A909748420DB52", "3E10C5E282D6C4F870BF5635", "CEAD11476188470C440544A6", "148534FE0087BC21D0EBD91D", "F8CD1398E10EC4AD499F0417", "A4393A89A3C7B36799E9AF5D", "EE7D12358CB4F363C831A246", "5B9E43CABEA87C1E3B7692E9", "A9E49C1020EF31A5EBE63E50", "9E4CA7FC1BCCFE4F640415D0", "F7F0608A3B2B1D7292B42717", "A7CC353A3987DBF9DB99714E", "8ECBD26D53375FE3FBD3063F", "5017538102C7D014FAA87361");
+			sourceTree = "<group>";
+		};
+		DF042D4B45C8F58D4A8C9156 = {
+			isa = "PBXBuildFile";
+			fileRef = "A71BC8ECD02583E830565563";
+		};
+		BA103C59B154F4C1A8F172A0 = {
+			isa = "PBXFileReference";
+			path = "src/host/menu.cpp";
+			name = "menu.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8E496138E7E4EBEDF441E404 = {
+			isa = "PBXBuildFile";
+			fileRef = "BA103C59B154F4C1A8F172A0";
+		};
+		2A1C949533B34F09ECB17D3F = {
+			isa = "PBXFileReference";
+			path = "src/host/sysinfo.cpp";
+			name = "sysinfo.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		11472B62E925766E5A4CD1E3 = {
+			isa = "PBXBuildFile";
+			fileRef = "2A1C949533B34F09ECB17D3F";
+		};
+		1145287588A909748420DB52 = {
+			isa = "PBXFileReference";
+			path = "src/host/d3d11_map.cpp";
+			name = "d3d11_map.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		BDADCA1828DEE059DC3FA97A = {
+			isa = "PBXBuildFile";
+			fileRef = "1145287588A909748420DB52";
+		};
+		3E10C5E282D6C4F870BF5635 = {
+			isa = "PBXFileReference";
+			path = "src/host/stb_image_impl.cpp";
+			name = "stb_image_impl.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4882DDE8CB444B3F2B5D78F9 = {
+			isa = "PBXBuildFile";
+			fileRef = "3E10C5E282D6C4F870BF5635";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CEAD11476188470C440544A6 = {
+			isa = "PBXFileReference";
+			path = "src/host/romset.cpp";
+			name = "romset.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E5BC79BE1769564EC382C775 = {
+			isa = "PBXBuildFile";
+			fileRef = "CEAD11476188470C440544A6";
+		};
+		148534FE0087BC21D0EBD91D = {
+			isa = "PBXFileReference";
+			path = "src/host/input_script.cpp";
+			name = "input_script.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		64E9B67467131F9A9394C68E = {
+			isa = "PBXBuildFile";
+			fileRef = "148534FE0087BC21D0EBD91D";
+		};
+		225F04600F2DCCCABAC0BFB6 = {
+			isa = "PBXFileReference";
+			path = "src/machine/model2a.cpp";
+			name = "model2a.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F0147B9E8304A92165877E2D = {
+			isa = "PBXGroup";
+			name = "machine";
+			children = ("225F04600F2DCCCABAC0BFB6", "457F32D66DCEEC0317E7F5F8", "1D00A0AD568DE941ED44BF9D", "F94CE954FDB329AF97B90539", "5A608F6F8164EA499E6FF109", "5C1DBF494C3BB5699730FC29", "2E3B99CE37212FB0944C9655", "50D0E1C5E912A92FFC859EBA", "A2BEEA2C2C87F7BE1A5C4150", "3D4AE5B5EF4134B9090FB435", "6AF1BC879765E20666A09961", "01361859D7A9A559A552177D", "87FAF7612BAD080E3570492F", "AFA1E6A810D9B3481D3CC527");
+			sourceTree = "<group>";
+		};
+		1512DAE9460CBCB4F02B76AA = {
+			isa = "PBXBuildFile";
+			fileRef = "225F04600F2DCCCABAC0BFB6";
+		};
+		457F32D66DCEEC0317E7F5F8 = {
+			isa = "PBXFileReference";
+			path = "src/machine/model2_video.cpp";
+			name = "model2_video.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A05907B929E1BF2E576C6149 = {
+			isa = "PBXBuildFile";
+			fileRef = "457F32D66DCEEC0317E7F5F8";
+		};
+		1D00A0AD568DE941ED44BF9D = {
+			isa = "PBXFileReference";
+			path = "src/machine/model2_smooth.cpp";
+			name = "model2_smooth.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		C8CD863A4FB46FD16027DAB0 = {
+			isa = "PBXBuildFile";
+			fileRef = "1D00A0AD568DE941ED44BF9D";
+		};
+		F94CE954FDB329AF97B90539 = {
+			isa = "PBXFileReference";
+			path = "src/machine/scsp.cpp";
+			name = "scsp.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		2F6A40F881BFA038335DBA0F = {
+			isa = "PBXBuildFile";
+			fileRef = "F94CE954FDB329AF97B90539";
+		};
+		5A608F6F8164EA499E6FF109 = {
+			isa = "PBXFileReference";
+			path = "src/machine/scspdsp.cpp";
+			name = "scspdsp.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		01E7BFA9CE4BB98852E61893 = {
+			isa = "PBXBuildFile";
+			fileRef = "5A608F6F8164EA499E6FF109";
+		};
+		1AB6AC78C2EB5ED0936748A2 = {
+			isa = "PBXFileReference";
+			path = "third_party/mame/i960/i960.cpp";
+			name = "i960.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		67B7A33E884A8E82ADA37A20 = {
+			isa = "PBXGroup";
+			name = "third_party";
+			children = ("79F63B93858AA361B3D11400", "1D6611CBE30F898B1AC90923", "15B6063FC3D25CF6D556BDC0");
+			sourceTree = "<group>";
+		};
+		79F63B93858AA361B3D11400 = {
+			isa = "PBXGroup";
+			name = "mame";
+			children = ("2F4691932D2F6C021F27737A", "B5F015269E0CC3DB6070E9BD");
+			sourceTree = "<group>";
+		};
+		2F4691932D2F6C021F27737A = {
+			isa = "PBXGroup";
+			name = "i960";
+			children = ("1AB6AC78C2EB5ED0936748A2", "1F2D99D3A475C42BCE343534");
+			sourceTree = "<group>";
+		};
+		2C8F5827A54D1EB8E68CD5D9 = {
+			isa = "PBXBuildFile";
+			fileRef = "1AB6AC78C2EB5ED0936748A2";
+		};
+		1F2D99D3A475C42BCE343534 = {
+			isa = "PBXFileReference";
+			path = "third_party/mame/i960/i960dis.cpp";
+			name = "i960dis.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		407B9235A6609AD7D66E0BE9 = {
+			isa = "PBXBuildFile";
+			fileRef = "1F2D99D3A475C42BCE343534";
+		};
+		3D763BD5FF349DBC0893BF19 = {
+			isa = "PBXFileReference";
+			path = "src/core/mame_shim.cpp";
+			name = "mame_shim.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A1489BA64CC5CE69E269ACAC = {
+			isa = "PBXGroup";
+			name = "core";
+			children = ("3D763BD5FF349DBC0893BF19", "F385448321AEFE8144E42CC4", "EF1D941036A3B6E1B7335661", "8AAE654534AFB0CEE2FB8030", "5D270DAE0616C9AFB5323A28", "D3CC95FD1F4CBD641F1B9991", "06FA1306D69C18AE39DDA0D3", "314027C4DD131FAF47A0AE58");
+			sourceTree = "<group>";
+		};
+		53720EB0497C3C098CB4B40E = {
+			isa = "PBXBuildFile";
+			fileRef = "3D763BD5FF349DBC0893BF19";
+		};
+		F385448321AEFE8144E42CC4 = {
+			isa = "PBXFileReference";
+			path = "src/core/mb86233.cpp";
+			name = "mb86233.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D868A188B1634E809BA4CA2A = {
+			isa = "PBXBuildFile";
+			fileRef = "F385448321AEFE8144E42CC4";
+		};
+		EF1D941036A3B6E1B7335661 = {
+			isa = "PBXFileReference";
+			path = "src/core/i960_device.cpp";
+			name = "i960_device.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		71BD5EBCC8FE405E1C61B66F = {
+			isa = "PBXBuildFile";
+			fileRef = "EF1D941036A3B6E1B7335661";
+		};
+		CF634A22311E1DBF2815B174 = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_rec.cpp";
+			name = "i960_rec.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		50C8C77A54279012505F2AB8 = {
+			isa = "PBXGroup";
+			name = "rec";
+			children = ("CF634A22311E1DBF2815B174", "5954D52ED7D576C762351E3A", "E5A1EAA3B0DE70ABF497E626", "A8A15A9855B8481F0266A56C", "CADB5C04B559DB1E7441BB54", "70124C756EC67E975FA2B556", "878B34C8C9DD863C97F9B651", "18DEC7EBF0B7FC75071F9629", "B67D8B8044DB04CAB414B2ED", "0F247F87C7E9C528951A1F95", "24D0DDE10DB105A8F3FF0D28");
+			sourceTree = "<group>";
+		};
+		529C61055FCFAEF64300C967 = {
+			isa = "PBXBuildFile";
+			fileRef = "CF634A22311E1DBF2815B174";
+		};
+		5954D52ED7D576C762351E3A = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_analyse.cpp";
+			name = "i960_analyse.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A4227873DD9C9C0D703259E7 = {
+			isa = "PBXBuildFile";
+			fileRef = "5954D52ED7D576C762351E3A";
+		};
+		E5A1EAA3B0DE70ABF497E626 = {
+			isa = "PBXFileReference";
+			path = "src/rec/vf2_map.cpp";
+			name = "vf2_map.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		96B68A86447D46159499B8E7 = {
+			isa = "PBXBuildFile";
+			fileRef = "E5A1EAA3B0DE70ABF497E626";
+		};
+		A8A15A9855B8481F0266A56C = {
+			isa = "PBXFileReference";
+			path = "src/rec/gen_none.cpp";
+			name = "gen_none.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		619E2250FC2F5DAD0A9F0DB0 = {
+			isa = "PBXBuildFile";
+			fileRef = "A8A15A9855B8481F0266A56C";
+		};
+		E63D157A84B8BD450137695A = {
+			isa = "PBXFileReference";
+			path = "third_party/mame/m68000/m68000.cpp";
+			name = "m68000.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		B5F015269E0CC3DB6070E9BD = {
+			isa = "PBXGroup";
+			name = "m68000";
+			children = ("E63D157A84B8BD450137695A", "8072799ECF2997448D0CFCEE", "5030AED641AF6C9EF7A3C7D2", "B23BB0D6F9507FD6B6F05A88");
+			sourceTree = "<group>";
+		};
+		E8274C3DC50BF5BD6BE5F6ED = {
+			isa = "PBXBuildFile";
+			fileRef = "E63D157A84B8BD450137695A";
+		};
+		8072799ECF2997448D0CFCEE = {
+			isa = "PBXFileReference";
+			path = "third_party/mame/m68000/m68000-decode.cpp";
+			name = "m68000-decode.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		DF23F343E3749A6D2CE5D0FB = {
+			isa = "PBXBuildFile";
+			fileRef = "8072799ECF2997448D0CFCEE";
+		};
+		5030AED641AF6C9EF7A3C7D2 = {
+			isa = "PBXFileReference";
+			path = "third_party/mame/m68000/m68000-sdf.cpp";
+			name = "m68000-sdf.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		689D503B2499DEB80C7C1FD5 = {
+			isa = "PBXBuildFile";
+			fileRef = "5030AED641AF6C9EF7A3C7D2";
+		};
+		B23BB0D6F9507FD6B6F05A88 = {
+			isa = "PBXFileReference";
+			path = "third_party/mame/m68000/m68000-sdp.cpp";
+			name = "m68000-sdp.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		CB8466D6270D6BB001BBB907 = {
+			isa = "PBXBuildFile";
+			fileRef = "B23BB0D6F9507FD6B6F05A88";
+		};
+		6380DF46E3D109D4FD25E590 = {
+			isa = "PBXFileReference";
+			path = "src/gpu/gpu3d_metal.mm";
+			name = "gpu3d_metal.mm";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.objcpp";
+		};
+		9F4A74206B1CE42EE4F15450 = {
+			isa = "PBXGroup";
+			name = "gpu";
+			children = ("6380DF46E3D109D4FD25E590", "822A00B67E0FA514A04165E2", "B6A72FEE620DFB985578AE7C");
+			sourceTree = "<group>";
+		};
+		68E2EB6E4DB8FFEAC0C418B8 = {
+			isa = "PBXBuildFile";
+			fileRef = "6380DF46E3D109D4FD25E590";
+		};
+		52588D773DCB043A6ECE225B = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/BaseXMLParser.cpp";
+			name = "BaseXMLParser.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1D6611CBE30F898B1AC90923 = {
+			isa = "PBXGroup";
+			name = "rmlui";
+			children = ("E759B788035AA09EC6A146A2", "FBE1C4B9DF78444C840D9E08");
+			sourceTree = "<group>";
+		};
+		E759B788035AA09EC6A146A2 = {
+			isa = "PBXGroup";
+			name = "Source";
+			children = ("1CBE8802F2862425F83E05AF");
+			sourceTree = "<group>";
+		};
+		1CBE8802F2862425F83E05AF = {
+			isa = "PBXGroup";
+			name = "Core";
+			children = ("52588D773DCB043A6ECE225B", "376BFBD97B279C7C9BD41A3E", "9746CC05EFE2394683C9C757", "0240D6A93549CC2FB69B4615", "9EFA46C2E56845C779899FD2", "4BCDF82AF056B6DEE306F79E", "5BB99D2C64F30DFE3D90DAAD", "1D795C7F412F98DE25198704", "0B9E65058AA06A1C870C8B6D", "E38A4ACEC293C011FFD3402A", "0EC068478A3E47FA505FD3D6", "0C75FAD712FAF9D5DBAA87ED", "AA3D10867E8F5D4FF82824CC", "4E4419D1A460960BA115ED6C", "0E2413A1D73BB73945297B7E", "8BBB96EADDC4A87305000757", "383FF00BDF729978450C1D9E", "C22275ACF9DA8560FCA618B0", "E145DF7D56C5588D1FC3F3DC", "F0C97065431C5AC2194EB379", "E52B98CE5D356A0785C4CE08", "BE71DB2BE7400D6F8DCA2AC4", "AEE1094E53E011FE94154C48", "88A2E7099F39E68EDFB9E9F4", "09FA2A347286AC739FBF86A1", "5F80D66A71E98F6455999BF5", "0FA771CA14DDB8B266ED029F", "B36760BE2477EDC7956FD010", "818CAA0A70CC7F199899CF6E", "C0FF687B2EEFAE0A0A444268", "867A3F560E3AAC2D2A40AE57", "D51942092E2FC112C354A815", "840EB23F3A30D3D1C9B1FB2D", "4D2E0E12961E10B733DBA23F", "0C786C712D0FA3BF65A5CBF6", "F8C3C6BAE808695B4B4A0E01", "65D3D87D8211CDD10A4C284A", "CB4EF7789C6DA0E63A43A7DC", "4294B8D0E190E2202D9AB4FE", "26A791DBF3C9B8B374DC3DC7", "A421503B84256D3CFDD0BD6A", "989DDC9814217A7B680CB8C9", "C8DE6B07113868727D361759", "A0F17A7F045FDD38D8C6A6B9", "C48F72BD4FE259D0FEB6026A", "AED6A1D4B91D7ECE094B581A", "BD8C8BC450809FDA7037EC64", "B5A187EF76EFA6847B83FFA8", "21ADDF5FE05D6AF957966978", "959F65211BCB61DC5F652533", "5B99790AD6D6C0915C742BAE", "4294D7CA5D2218F51B742875", "FEEF3583020496BCE04EE6DF", "750958313FF9E5F5F34D9758", "A06945C8C308728231CBB3C5", "E60765ADD4645333815F7A97", "275777B1D5B5BD91FF44B1FA", "7831FFD03225FCAD17FF4521", "2A29D5FAFE2421E88F8BAB9A", "5ACCA8141BFC595188EBC0D5", "CC8571B69B947812691E6C38", "832604CBF0B73EF24376EC62", "924C55AA3571F86FF8BF16D7", "966CB27BC3F06D6FBB3154FA", "7906750ED5BE88D7F29A43CE", "EC2F375C173D7BCA0278D28D", "F51D081E262D07B4A0E779B5", "EC196371DE5033E688AF099E", "79ABB394E707EA2A1FC71E73", "BA6CD5612476E31FEDF65432", "98E8BB7B8CD1C6F0F382076C", "BBF206E8BCEE7D8F744A60C4", "20D8DDA7E13DBC1860F13855", "DBE13ADADD1140C10A3BA7DF", "969F6DC69DDA01A06C223BED", "987A80DB63423EE10297205D", "AA0581027A0DE4749D516A01", "4F8D9EC7D563C280DFEC520C", "E170F9081CBF7E224A7600CE", "46FEA37BB5E9B47552D42239", "423E5A6DDE99BFC951292CC0", "6500CB80F37AB334AB9034E8", "B44244FB61CF34654E41DA52", "13560B658515ED0038D1EDD6", "8854E1066ABDD0BD10B309B9", "2E9DFC7EDDD51BF93931EB5A", "D97803023155D32718EA6ECA", "8A1C68541297900837901966", "F44EF43573147E092EFE2157", "86E98F24320981513E3CFEF6", "D69544018551858DB82507F8", "7C9F91FCB19409381298A487", "171621D5EB35A1938A11D5C7", "4B759E5A42FE9571DA65A2BF", "181D73EE2C178B1A81674AD5", "EE5DDC3DD125BB076D85C82B", "422C2A3465BF5C092986D2AB", "CFD60FDC9A07E31714569C5C", "62E85720FF19BAE64900A613", "A5857E0F66ABC5DC7570F808", "86C3B821F28439FE3B84FD39", "E6411CFF2017B5DD8EFE1094", "4244479C9A5EB6EBBB2FD557", "9FD0386E7FFCF9E6481D7E57", "C8ED7406F8807B14B0DD63BE", "ADE19C30D3BF116CE9B9761F", "FDAD03B24EA91D52D97C5A10", "20EA7CBC845F25DEDC17EE8F", "0516E3018331CBA74FDAC6CE", "0F13ED0B03994F848C292B7A", "18E18D93005883DCE812D911", "FC54C517600C43814B17C3D8", "EC06BF87FB4E20E8FA6C59A6", "D24A2A531E4E48BE33D0171F", "06F9137F91DA13BB8F35932B", "07318AAEAFFAD070331C03D8", "0998A87F3EB676E0413870DB", "F7970E7F50B51286FEAE2A78", "DA457F8C68FC346897CA7A25", "C379629EA30FD1ED41CF4975", "CA18E93396636E4E8FA0B5E0", "658B300A6A3F7D0BF4B270CA", "159AF5632131AFA77BF72687", "FB6015D1EAD7C20A3F518CF6", "F25B9BD05633B1C759B30C16", "8B3192B24A019618C91BF53C", "7227B9FE777560590332BBB6", "7ED49FA399481BE1892C9836", "995A884705AA4850AC3835F5", "FAF663F8C5CB8CA843924F46", "843F9B120825ED1245B39849", "6F58FB7C357D0D7725BCF925", "B1B89F7CD2CB4E1D73B684FB", "EC7547C74173B44A2D1F1E14", "F96CCB6FCF4CECC52FBA3476", "03981CF0159E6BD060DDC979", "0C3BDF82232B614F204A81E5", "01EE1245164FDF3E3515FF10", "E195FF2B5043B3162E962E3D", "910970350B0D1F8F1DF937F2", "5C5838D964A7940758C7C338", "220E6FD738D912119CA437E7", "C911424462DE8215F094F64D", "82822D9309A95D57620F2459");
+			sourceTree = "<group>";
+		};
+		68D59D188B660F87FCE8ABCA = {
+			isa = "PBXBuildFile";
+			fileRef = "52588D773DCB043A6ECE225B";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		376BFBD97B279C7C9BD41A3E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Box.cpp";
+			name = "Box.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F288A57964132418ACA97CC1 = {
+			isa = "PBXBuildFile";
+			fileRef = "376BFBD97B279C7C9BD41A3E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9746CC05EFE2394683C9C757 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/BoxShadowCache.cpp";
+			name = "BoxShadowCache.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5F4ED68567579822E589DEA9 = {
+			isa = "PBXBuildFile";
+			fileRef = "9746CC05EFE2394683C9C757";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0240D6A93549CC2FB69B4615 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/CallbackTexture.cpp";
+			name = "CallbackTexture.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		FDE167862C1C9CC8BCE8AE4C = {
+			isa = "PBXBuildFile";
+			fileRef = "0240D6A93549CC2FB69B4615";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9EFA46C2E56845C779899FD2 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Clock.cpp";
+			name = "Clock.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E6DA9FCFD1F4BABAB4E16217 = {
+			isa = "PBXBuildFile";
+			fileRef = "9EFA46C2E56845C779899FD2";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4BCDF82AF056B6DEE306F79E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/CompiledFilterShader.cpp";
+			name = "CompiledFilterShader.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		444D2730B7D9326CE9F332A0 = {
+			isa = "PBXBuildFile";
+			fileRef = "4BCDF82AF056B6DEE306F79E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5BB99D2C64F30DFE3D90DAAD = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ComputeProperty.cpp";
+			name = "ComputeProperty.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		93BD17BAAE25AEA95903A0C2 = {
+			isa = "PBXBuildFile";
+			fileRef = "5BB99D2C64F30DFE3D90DAAD";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1D795C7F412F98DE25198704 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ComputedValues.cpp";
+			name = "ComputedValues.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		203CE4586952BAC4D3E94010 = {
+			isa = "PBXBuildFile";
+			fileRef = "1D795C7F412F98DE25198704";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0B9E65058AA06A1C870C8B6D = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Context.cpp";
+			name = "Context.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		241CEAA7F876DE925D7F19D6 = {
+			isa = "PBXBuildFile";
+			fileRef = "0B9E65058AA06A1C870C8B6D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E38A4ACEC293C011FFD3402A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ContextInstancer.cpp";
+			name = "ContextInstancer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		35BB7397809FF715C118C20A = {
+			isa = "PBXBuildFile";
+			fileRef = "E38A4ACEC293C011FFD3402A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0EC068478A3E47FA505FD3D6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ContextInstancerDefault.cpp";
+			name = "ContextInstancerDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4EC02DF3E6C919060080AF43 = {
+			isa = "PBXBuildFile";
+			fileRef = "0EC068478A3E47FA505FD3D6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0C75FAD712FAF9D5DBAA87ED = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ConvolutionFilter.cpp";
+			name = "ConvolutionFilter.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		AB488978FE91D6C1B071F409 = {
+			isa = "PBXBuildFile";
+			fileRef = "0C75FAD712FAF9D5DBAA87ED";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AA3D10867E8F5D4FF82824CC = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Core.cpp";
+			name = "Core.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		EAC668B86FE95C4DCA858166 = {
+			isa = "PBXBuildFile";
+			fileRef = "AA3D10867E8F5D4FF82824CC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4E4419D1A460960BA115ED6C = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataController.cpp";
+			name = "DataController.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		AEC0417092821FD875BD97CE = {
+			isa = "PBXBuildFile";
+			fileRef = "4E4419D1A460960BA115ED6C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0E2413A1D73BB73945297B7E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataControllerDefault.cpp";
+			name = "DataControllerDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		03CE053AAF5914422857584E = {
+			isa = "PBXBuildFile";
+			fileRef = "0E2413A1D73BB73945297B7E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8BBB96EADDC4A87305000757 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataExpression.cpp";
+			name = "DataExpression.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D768B4FFD30EDB39A228B47F = {
+			isa = "PBXBuildFile";
+			fileRef = "8BBB96EADDC4A87305000757";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		383FF00BDF729978450C1D9E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataModel.cpp";
+			name = "DataModel.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8F67CA8C3FBA5A95C41E47AA = {
+			isa = "PBXBuildFile";
+			fileRef = "383FF00BDF729978450C1D9E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C22275ACF9DA8560FCA618B0 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataModelHandle.cpp";
+			name = "DataModelHandle.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		C48A7CC2E9A47D315EFFF1F9 = {
+			isa = "PBXBuildFile";
+			fileRef = "C22275ACF9DA8560FCA618B0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E145DF7D56C5588D1FC3F3DC = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataTypeRegister.cpp";
+			name = "DataTypeRegister.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4C13FAD305F8F5EF0484F7CB = {
+			isa = "PBXBuildFile";
+			fileRef = "E145DF7D56C5588D1FC3F3DC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F0C97065431C5AC2194EB379 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataVariable.cpp";
+			name = "DataVariable.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D4BDD94BA5CE140553183336 = {
+			isa = "PBXBuildFile";
+			fileRef = "F0C97065431C5AC2194EB379";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E52B98CE5D356A0785C4CE08 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataView.cpp";
+			name = "DataView.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D0EFCE8FD6D335E695990CCE = {
+			isa = "PBXBuildFile";
+			fileRef = "E52B98CE5D356A0785C4CE08";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BE71DB2BE7400D6F8DCA2AC4 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DataViewDefault.cpp";
+			name = "DataViewDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4E56A05D7E16667F312190FA = {
+			isa = "PBXBuildFile";
+			fileRef = "BE71DB2BE7400D6F8DCA2AC4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AEE1094E53E011FE94154C48 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Decorator.cpp";
+			name = "Decorator.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4CA99AF73D0A4E8258DD935E = {
+			isa = "PBXBuildFile";
+			fileRef = "AEE1094E53E011FE94154C48";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		88A2E7099F39E68EDFB9E9F4 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorGradient.cpp";
+			name = "DecoratorGradient.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F5EF97C3BFDD998E8F203174 = {
+			isa = "PBXBuildFile";
+			fileRef = "88A2E7099F39E68EDFB9E9F4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		09FA2A347286AC739FBF86A1 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorNinePatch.cpp";
+			name = "DecoratorNinePatch.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F58FB44A704D7E0D1B2D5634 = {
+			isa = "PBXBuildFile";
+			fileRef = "09FA2A347286AC739FBF86A1";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5F80D66A71E98F6455999BF5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorShader.cpp";
+			name = "DecoratorShader.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		72BC7DF6D20F306A6DC360E4 = {
+			isa = "PBXBuildFile";
+			fileRef = "5F80D66A71E98F6455999BF5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0FA771CA14DDB8B266ED029F = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorText.cpp";
+			name = "DecoratorText.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F0490674ED245FDEDCEBA996 = {
+			isa = "PBXBuildFile";
+			fileRef = "0FA771CA14DDB8B266ED029F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B36760BE2477EDC7956FD010 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorTiled.cpp";
+			name = "DecoratorTiled.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1A823192329C8051A8CEDAB0 = {
+			isa = "PBXBuildFile";
+			fileRef = "B36760BE2477EDC7956FD010";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		818CAA0A70CC7F199899CF6E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorTiledBox.cpp";
+			name = "DecoratorTiledBox.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		416C2AB265974666A84F4662 = {
+			isa = "PBXBuildFile";
+			fileRef = "818CAA0A70CC7F199899CF6E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C0FF687B2EEFAE0A0A444268 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorTiledHorizontal.cpp";
+			name = "DecoratorTiledHorizontal.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		C67E41D9DBC1206D714D6FF9 = {
+			isa = "PBXBuildFile";
+			fileRef = "C0FF687B2EEFAE0A0A444268";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		867A3F560E3AAC2D2A40AE57 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorTiledImage.cpp";
+			name = "DecoratorTiledImage.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5833B0E65A81D710F5B51671 = {
+			isa = "PBXBuildFile";
+			fileRef = "867A3F560E3AAC2D2A40AE57";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D51942092E2FC112C354A815 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorTiledVertical.cpp";
+			name = "DecoratorTiledVertical.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		45AC75995FA07D3A355F2BED = {
+			isa = "PBXBuildFile";
+			fileRef = "D51942092E2FC112C354A815";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		840EB23F3A30D3D1C9B1FB2D = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DecoratorUtilities.cpp";
+			name = "DecoratorUtilities.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1AFDBD9EEF54FD7B608E8A96 = {
+			isa = "PBXBuildFile";
+			fileRef = "840EB23F3A30D3D1C9B1FB2D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4D2E0E12961E10B733DBA23F = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/DocumentHeader.cpp";
+			name = "DocumentHeader.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D261F5265D6905082C9DDFE9 = {
+			isa = "PBXBuildFile";
+			fileRef = "4D2E0E12961E10B733DBA23F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0C786C712D0FA3BF65A5CBF6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/EffectSpecification.cpp";
+			name = "EffectSpecification.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		6C8D874F3A05859FF62E710A = {
+			isa = "PBXBuildFile";
+			fileRef = "0C786C712D0FA3BF65A5CBF6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F8C3C6BAE808695B4B4A0E01 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Element.cpp";
+			name = "Element.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		066D87C1E1AC75AA04FCABE3 = {
+			isa = "PBXBuildFile";
+			fileRef = "F8C3C6BAE808695B4B4A0E01";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		65D3D87D8211CDD10A4C284A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementAnimation.cpp";
+			name = "ElementAnimation.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8A7F3CF2EB84095021C3BD8F = {
+			isa = "PBXBuildFile";
+			fileRef = "65D3D87D8211CDD10A4C284A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CB4EF7789C6DA0E63A43A7DC = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementBackgroundBorder.cpp";
+			name = "ElementBackgroundBorder.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5B6FC123C0DB6C09C96AA3A7 = {
+			isa = "PBXBuildFile";
+			fileRef = "CB4EF7789C6DA0E63A43A7DC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4294B8D0E190E2202D9AB4FE = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementDefinition.cpp";
+			name = "ElementDefinition.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		865FAC995E0130FA7C60EFF4 = {
+			isa = "PBXBuildFile";
+			fileRef = "4294B8D0E190E2202D9AB4FE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		26A791DBF3C9B8B374DC3DC7 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementDocument.cpp";
+			name = "ElementDocument.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		993A8B86BE45D362AD01F95B = {
+			isa = "PBXBuildFile";
+			fileRef = "26A791DBF3C9B8B374DC3DC7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A421503B84256D3CFDD0BD6A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementEffects.cpp";
+			name = "ElementEffects.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		BCBBAF4E5EF1F5D258FB4B38 = {
+			isa = "PBXBuildFile";
+			fileRef = "A421503B84256D3CFDD0BD6A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		989DDC9814217A7B680CB8C9 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementHandle.cpp";
+			name = "ElementHandle.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		59DD4DCC18F1CB30B52A4FCF = {
+			isa = "PBXBuildFile";
+			fileRef = "989DDC9814217A7B680CB8C9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C8DE6B07113868727D361759 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementInstancer.cpp";
+			name = "ElementInstancer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		2C38A060877C3174DDEFFF27 = {
+			isa = "PBXBuildFile";
+			fileRef = "C8DE6B07113868727D361759";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A0F17A7F045FDD38D8C6A6B9 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementMeta.cpp";
+			name = "ElementMeta.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		7D3C6ADC179CF1B9B7B2ED9F = {
+			isa = "PBXBuildFile";
+			fileRef = "A0F17A7F045FDD38D8C6A6B9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C48F72BD4FE259D0FEB6026A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementScroll.cpp";
+			name = "ElementScroll.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		84075216AED20A5268B27609 = {
+			isa = "PBXBuildFile";
+			fileRef = "C48F72BD4FE259D0FEB6026A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AED6A1D4B91D7ECE094B581A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementStyle.cpp";
+			name = "ElementStyle.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E6864E5BB9392706D9346FA0 = {
+			isa = "PBXBuildFile";
+			fileRef = "AED6A1D4B91D7ECE094B581A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BD8C8BC450809FDA7037EC64 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementText.cpp";
+			name = "ElementText.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		51C8A13AD322A70774584F21 = {
+			isa = "PBXBuildFile";
+			fileRef = "BD8C8BC450809FDA7037EC64";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B5A187EF76EFA6847B83FFA8 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ElementUtilities.cpp";
+			name = "ElementUtilities.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		BAB62F33E9151E261058BB35 = {
+			isa = "PBXBuildFile";
+			fileRef = "B5A187EF76EFA6847B83FFA8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		21ADDF5FE05D6AF957966978 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Event.cpp";
+			name = "Event.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4A884816CFC2260E030A9F02 = {
+			isa = "PBXBuildFile";
+			fileRef = "21ADDF5FE05D6AF957966978";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		959F65211BCB61DC5F652533 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/EventDispatcher.cpp";
+			name = "EventDispatcher.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		EB88765A481E45A11E4C433C = {
+			isa = "PBXBuildFile";
+			fileRef = "959F65211BCB61DC5F652533";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5B99790AD6D6C0915C742BAE = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/EventInstancer.cpp";
+			name = "EventInstancer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E5D4CEBC38EC6A7D26CA111F = {
+			isa = "PBXBuildFile";
+			fileRef = "5B99790AD6D6C0915C742BAE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4294D7CA5D2218F51B742875 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/EventInstancerDefault.cpp";
+			name = "EventInstancerDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4B27B42FB5787E0E4E910C17 = {
+			isa = "PBXBuildFile";
+			fileRef = "4294D7CA5D2218F51B742875";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FEEF3583020496BCE04EE6DF = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/EventListenerInstancer.cpp";
+			name = "EventListenerInstancer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A1FC58E89A0D7710AFBDB536 = {
+			isa = "PBXBuildFile";
+			fileRef = "FEEF3583020496BCE04EE6DF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		750958313FF9E5F5F34D9758 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/EventSpecification.cpp";
+			name = "EventSpecification.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		17B89F448DA16BD668E5B606 = {
+			isa = "PBXBuildFile";
+			fileRef = "750958313FF9E5F5F34D9758";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A06945C8C308728231CBB3C5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Factory.cpp";
+			name = "Factory.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1573D8F06F658D1E24CF1274 = {
+			isa = "PBXBuildFile";
+			fileRef = "A06945C8C308728231CBB3C5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E60765ADD4645333815F7A97 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FileInterface.cpp";
+			name = "FileInterface.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		39DF21EE29A87F0D38CAF145 = {
+			isa = "PBXBuildFile";
+			fileRef = "E60765ADD4645333815F7A97";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		275777B1D5B5BD91FF44B1FA = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FileInterfaceDefault.cpp";
+			name = "FileInterfaceDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		0A818D2478BB7E08477BD592 = {
+			isa = "PBXBuildFile";
+			fileRef = "275777B1D5B5BD91FF44B1FA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7831FFD03225FCAD17FF4521 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Filter.cpp";
+			name = "Filter.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F2B9ABB38FF0223990048FF3 = {
+			isa = "PBXBuildFile";
+			fileRef = "7831FFD03225FCAD17FF4521";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2A29D5FAFE2421E88F8BAB9A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FilterBasic.cpp";
+			name = "FilterBasic.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A29482850C3DDC34A91E2CB1 = {
+			isa = "PBXBuildFile";
+			fileRef = "2A29D5FAFE2421E88F8BAB9A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5ACCA8141BFC595188EBC0D5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FilterBlur.cpp";
+			name = "FilterBlur.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1A7F2787A27BF69E72440BA7 = {
+			isa = "PBXBuildFile";
+			fileRef = "5ACCA8141BFC595188EBC0D5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CC8571B69B947812691E6C38 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FilterDropShadow.cpp";
+			name = "FilterDropShadow.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		2BF62754D3DC78A3C214B918 = {
+			isa = "PBXBuildFile";
+			fileRef = "CC8571B69B947812691E6C38";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		832604CBF0B73EF24376EC62 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEffect.cpp";
+			name = "FontEffect.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		27BB744F122C2F4E4FF9475E = {
+			isa = "PBXBuildFile";
+			fileRef = "832604CBF0B73EF24376EC62";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		924C55AA3571F86FF8BF16D7 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEffectBlur.cpp";
+			name = "FontEffectBlur.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		26BF285E232094BEA13D8436 = {
+			isa = "PBXBuildFile";
+			fileRef = "924C55AA3571F86FF8BF16D7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		966CB27BC3F06D6FBB3154FA = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEffectGlow.cpp";
+			name = "FontEffectGlow.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E18351EC4DDDF7C4D1A22D3D = {
+			isa = "PBXBuildFile";
+			fileRef = "966CB27BC3F06D6FBB3154FA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7906750ED5BE88D7F29A43CE = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEffectInstancer.cpp";
+			name = "FontEffectInstancer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		DA8B3BDA00CBD09A5F2179FD = {
+			isa = "PBXBuildFile";
+			fileRef = "7906750ED5BE88D7F29A43CE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EC2F375C173D7BCA0278D28D = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEffectOutline.cpp";
+			name = "FontEffectOutline.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		195766F1CF3D989A5B6474E2 = {
+			isa = "PBXBuildFile";
+			fileRef = "EC2F375C173D7BCA0278D28D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F51D081E262D07B4A0E779B5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEffectShadow.cpp";
+			name = "FontEffectShadow.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8AE67AEBD4C55E27D6DE2510 = {
+			isa = "PBXBuildFile";
+			fileRef = "F51D081E262D07B4A0E779B5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EC196371DE5033E688AF099E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineInterface.cpp";
+			name = "FontEngineInterface.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		7AF847DD5BD18FE684B08347 = {
+			isa = "PBXBuildFile";
+			fileRef = "EC196371DE5033E688AF099E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		79ABB394E707EA2A1FC71E73 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Geometry.cpp";
+			name = "Geometry.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		65A1FF28F69E6C69885BEDA2 = {
+			isa = "PBXBuildFile";
+			fileRef = "79ABB394E707EA2A1FC71E73";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BA6CD5612476E31FEDF65432 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/GeometryBackgroundBorder.cpp";
+			name = "GeometryBackgroundBorder.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F17B72AFDF580B5BD958776A = {
+			isa = "PBXBuildFile";
+			fileRef = "BA6CD5612476E31FEDF65432";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		98E8BB7B8CD1C6F0F382076C = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/GeometryBoxShadow.cpp";
+			name = "GeometryBoxShadow.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		70A7EBD8E368B91A29532FA1 = {
+			isa = "PBXBuildFile";
+			fileRef = "98E8BB7B8CD1C6F0F382076C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BBF206E8BCEE7D8F744A60C4 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Log.cpp";
+			name = "Log.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		B138E5D98719FB87BB97A169 = {
+			isa = "PBXBuildFile";
+			fileRef = "BBF206E8BCEE7D8F744A60C4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		20D8DDA7E13DBC1860F13855 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/LogDefault.cpp";
+			name = "LogDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		41A679D5BD213E6360E5D548 = {
+			isa = "PBXBuildFile";
+			fileRef = "20D8DDA7E13DBC1860F13855";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DBE13ADADD1140C10A3BA7DF = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Math.cpp";
+			name = "Math.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		7A35822C380EC4E57D6C667B = {
+			isa = "PBXBuildFile";
+			fileRef = "DBE13ADADD1140C10A3BA7DF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		969F6DC69DDA01A06C223BED = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Memory.cpp";
+			name = "Memory.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		76A70B70335189F8A8C64F17 = {
+			isa = "PBXBuildFile";
+			fileRef = "969F6DC69DDA01A06C223BED";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		987A80DB63423EE10297205D = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/MeshUtilities.cpp";
+			name = "MeshUtilities.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		51DBDB13130C503C752D1CD6 = {
+			isa = "PBXBuildFile";
+			fileRef = "987A80DB63423EE10297205D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AA0581027A0DE4749D516A01 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ObserverPtr.cpp";
+			name = "ObserverPtr.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D32BEDBC34AD2F47405088E6 = {
+			isa = "PBXBuildFile";
+			fileRef = "AA0581027A0DE4749D516A01";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4F8D9EC7D563C280DFEC520C = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Plugin.cpp";
+			name = "Plugin.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		6BAFFCA73CECED2FA26A1ACC = {
+			isa = "PBXBuildFile";
+			fileRef = "4F8D9EC7D563C280DFEC520C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E170F9081CBF7E224A7600CE = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PluginRegistry.cpp";
+			name = "PluginRegistry.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		0EE3303707FFF1603D10C054 = {
+			isa = "PBXBuildFile";
+			fileRef = "E170F9081CBF7E224A7600CE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		46FEA37BB5E9B47552D42239 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Profiling.cpp";
+			name = "Profiling.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		282688DE010F299A89FAD722 = {
+			isa = "PBXBuildFile";
+			fileRef = "46FEA37BB5E9B47552D42239";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		423E5A6DDE99BFC951292CC0 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertiesIteratorView.cpp";
+			name = "PropertiesIteratorView.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8DE24D66A884BE24F2661F10 = {
+			isa = "PBXBuildFile";
+			fileRef = "423E5A6DDE99BFC951292CC0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		6500CB80F37AB334AB9034E8 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Property.cpp";
+			name = "Property.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		974D31A1EA4EA7A52247910E = {
+			isa = "PBXBuildFile";
+			fileRef = "6500CB80F37AB334AB9034E8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B44244FB61CF34654E41DA52 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyDefinition.cpp";
+			name = "PropertyDefinition.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D8D8DCB8E710491BEBF19387 = {
+			isa = "PBXBuildFile";
+			fileRef = "B44244FB61CF34654E41DA52";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		13560B658515ED0038D1EDD6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyDictionary.cpp";
+			name = "PropertyDictionary.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		6CC6A895F4070754DB8BA215 = {
+			isa = "PBXBuildFile";
+			fileRef = "13560B658515ED0038D1EDD6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8854E1066ABDD0BD10B309B9 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserAnimation.cpp";
+			name = "PropertyParserAnimation.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		B4BCDB11903B145126FDA496 = {
+			isa = "PBXBuildFile";
+			fileRef = "8854E1066ABDD0BD10B309B9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2E9DFC7EDDD51BF93931EB5A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserBoxShadow.cpp";
+			name = "PropertyParserBoxShadow.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8396D8F6A44AB6B3DCA686E9 = {
+			isa = "PBXBuildFile";
+			fileRef = "2E9DFC7EDDD51BF93931EB5A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D97803023155D32718EA6ECA = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserColorStopList.cpp";
+			name = "PropertyParserColorStopList.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8DB419186248870BDCD09CEB = {
+			isa = "PBXBuildFile";
+			fileRef = "D97803023155D32718EA6ECA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8A1C68541297900837901966 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserColour.cpp";
+			name = "PropertyParserColour.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A31C40EF7B7ACF0B380579A7 = {
+			isa = "PBXBuildFile";
+			fileRef = "8A1C68541297900837901966";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F44EF43573147E092EFE2157 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserDecorator.cpp";
+			name = "PropertyParserDecorator.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		AD317B897DB4CA045E3886BE = {
+			isa = "PBXBuildFile";
+			fileRef = "F44EF43573147E092EFE2157";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		86E98F24320981513E3CFEF6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserFilter.cpp";
+			name = "PropertyParserFilter.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		12C196F5D6C9B650C9F76BF1 = {
+			isa = "PBXBuildFile";
+			fileRef = "86E98F24320981513E3CFEF6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D69544018551858DB82507F8 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserFontEffect.cpp";
+			name = "PropertyParserFontEffect.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		BAA75497857BA3699A599F18 = {
+			isa = "PBXBuildFile";
+			fileRef = "D69544018551858DB82507F8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7C9F91FCB19409381298A487 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserKeyword.cpp";
+			name = "PropertyParserKeyword.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		91656D497DDF54E9165DB59E = {
+			isa = "PBXBuildFile";
+			fileRef = "7C9F91FCB19409381298A487";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		171621D5EB35A1938A11D5C7 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserNumber.cpp";
+			name = "PropertyParserNumber.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		06E3A5C9BF3F3413EC0D4555 = {
+			isa = "PBXBuildFile";
+			fileRef = "171621D5EB35A1938A11D5C7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4B759E5A42FE9571DA65A2BF = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserRatio.cpp";
+			name = "PropertyParserRatio.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		35AAE6BAAC6B0F38D4C38FA5 = {
+			isa = "PBXBuildFile";
+			fileRef = "4B759E5A42FE9571DA65A2BF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		181D73EE2C178B1A81674AD5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserString.cpp";
+			name = "PropertyParserString.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		C467E26F85BF893E254E84EE = {
+			isa = "PBXBuildFile";
+			fileRef = "181D73EE2C178B1A81674AD5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EE5DDC3DD125BB076D85C82B = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertyParserTransform.cpp";
+			name = "PropertyParserTransform.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		98D7DC9DA048DB255B4D6606 = {
+			isa = "PBXBuildFile";
+			fileRef = "EE5DDC3DD125BB076D85C82B";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		422C2A3465BF5C092986D2AB = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/PropertySpecification.cpp";
+			name = "PropertySpecification.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		AF1DC2FFCCD71A2B86285FD0 = {
+			isa = "PBXBuildFile";
+			fileRef = "422C2A3465BF5C092986D2AB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CFD60FDC9A07E31714569C5C = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/RenderInterface.cpp";
+			name = "RenderInterface.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		0E4B5F79ACCFB9D4879A0987 = {
+			isa = "PBXBuildFile";
+			fileRef = "CFD60FDC9A07E31714569C5C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		62E85720FF19BAE64900A613 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/RenderInterfaceCompatibility.cpp";
+			name = "RenderInterfaceCompatibility.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8B505C7CC478CBCAD3B52D17 = {
+			isa = "PBXBuildFile";
+			fileRef = "62E85720FF19BAE64900A613";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A5857E0F66ABC5DC7570F808 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/RenderManager.cpp";
+			name = "RenderManager.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		192B479915654C833BE0385C = {
+			isa = "PBXBuildFile";
+			fileRef = "A5857E0F66ABC5DC7570F808";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		86C3B821F28439FE3B84FD39 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/RenderManagerAccess.cpp";
+			name = "RenderManagerAccess.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		CB4320A88C86059B4A1BA0B1 = {
+			isa = "PBXBuildFile";
+			fileRef = "86C3B821F28439FE3B84FD39";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E6411CFF2017B5DD8EFE1094 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ScriptInterface.cpp";
+			name = "ScriptInterface.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F329D7C943114B973080D5E5 = {
+			isa = "PBXBuildFile";
+			fileRef = "E6411CFF2017B5DD8EFE1094";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4244479C9A5EB6EBBB2FD557 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/ScrollController.cpp";
+			name = "ScrollController.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E4B6A37390469B198ECB50DC = {
+			isa = "PBXBuildFile";
+			fileRef = "4244479C9A5EB6EBBB2FD557";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9FD0386E7FFCF9E6481D7E57 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Spritesheet.cpp";
+			name = "Spritesheet.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		07817DB73E322C607AD1908E = {
+			isa = "PBXBuildFile";
+			fileRef = "9FD0386E7FFCF9E6481D7E57";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C8ED7406F8807B14B0DD63BE = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Stream.cpp";
+			name = "Stream.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		893AD31ABB49FA7E0ED47732 = {
+			isa = "PBXBuildFile";
+			fileRef = "C8ED7406F8807B14B0DD63BE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		ADE19C30D3BF116CE9B9761F = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StreamFile.cpp";
+			name = "StreamFile.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		80C60FD15510321D5DF4DEEB = {
+			isa = "PBXBuildFile";
+			fileRef = "ADE19C30D3BF116CE9B9761F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FDAD03B24EA91D52D97C5A10 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StreamMemory.cpp";
+			name = "StreamMemory.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		72594984434ED53B767B48C9 = {
+			isa = "PBXBuildFile";
+			fileRef = "FDAD03B24EA91D52D97C5A10";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		20EA7CBC845F25DEDC17EE8F = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StringUtilities.cpp";
+			name = "StringUtilities.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		023A02812ED00D987CB30026 = {
+			isa = "PBXBuildFile";
+			fileRef = "20EA7CBC845F25DEDC17EE8F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0516E3018331CBA74FDAC6CE = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StyleSheet.cpp";
+			name = "StyleSheet.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		497D29D348F530446C952728 = {
+			isa = "PBXBuildFile";
+			fileRef = "0516E3018331CBA74FDAC6CE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0F13ED0B03994F848C292B7A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StyleSheetContainer.cpp";
+			name = "StyleSheetContainer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8C883F23EFE8220E7ED32DAA = {
+			isa = "PBXBuildFile";
+			fileRef = "0F13ED0B03994F848C292B7A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		18E18D93005883DCE812D911 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StyleSheetFactory.cpp";
+			name = "StyleSheetFactory.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		28C15FD08EF7717E1E147D26 = {
+			isa = "PBXBuildFile";
+			fileRef = "18E18D93005883DCE812D911";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FC54C517600C43814B17C3D8 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StyleSheetNode.cpp";
+			name = "StyleSheetNode.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D9C31A5BA8872951E44A9945 = {
+			isa = "PBXBuildFile";
+			fileRef = "FC54C517600C43814B17C3D8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EC06BF87FB4E20E8FA6C59A6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StyleSheetParser.cpp";
+			name = "StyleSheetParser.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E082AE4D0E39A22554A96408 = {
+			isa = "PBXBuildFile";
+			fileRef = "EC06BF87FB4E20E8FA6C59A6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D24A2A531E4E48BE33D0171F = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StyleSheetSelector.cpp";
+			name = "StyleSheetSelector.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		52BCDDE6467CA390A754DE1D = {
+			isa = "PBXBuildFile";
+			fileRef = "D24A2A531E4E48BE33D0171F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		06F9137F91DA13BB8F35932B = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/StyleSheetSpecification.cpp";
+			name = "StyleSheetSpecification.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		FF078E3274A1B86C2DA27D26 = {
+			isa = "PBXBuildFile";
+			fileRef = "06F9137F91DA13BB8F35932B";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		07318AAEAFFAD070331C03D8 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/SystemInterface.cpp";
+			name = "SystemInterface.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4765CA817A7788D5FB9D7D44 = {
+			isa = "PBXBuildFile";
+			fileRef = "07318AAEAFFAD070331C03D8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0998A87F3EB676E0413870DB = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Template.cpp";
+			name = "Template.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		50EDDCE9E448E7DBBBDE8EC3 = {
+			isa = "PBXBuildFile";
+			fileRef = "0998A87F3EB676E0413870DB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F7970E7F50B51286FEAE2A78 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TemplateCache.cpp";
+			name = "TemplateCache.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		C2D421F2A185E9E2C3B5919E = {
+			isa = "PBXBuildFile";
+			fileRef = "F7970E7F50B51286FEAE2A78";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DA457F8C68FC346897CA7A25 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Texture.cpp";
+			name = "Texture.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8CBBD53FD5F680F5FB8C3B09 = {
+			isa = "PBXBuildFile";
+			fileRef = "DA457F8C68FC346897CA7A25";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C379629EA30FD1ED41CF4975 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TextureDatabase.cpp";
+			name = "TextureDatabase.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A4901BBEA1354756916D41D2 = {
+			isa = "PBXBuildFile";
+			fileRef = "C379629EA30FD1ED41CF4975";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CA18E93396636E4E8FA0B5E0 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TextureLayout.cpp";
+			name = "TextureLayout.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		183D567E224FDDBD3B62CDEE = {
+			isa = "PBXBuildFile";
+			fileRef = "CA18E93396636E4E8FA0B5E0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		658B300A6A3F7D0BF4B270CA = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TextureLayoutRectangle.cpp";
+			name = "TextureLayoutRectangle.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		FB8332DFDFDAF7038A131FF3 = {
+			isa = "PBXBuildFile";
+			fileRef = "658B300A6A3F7D0BF4B270CA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		159AF5632131AFA77BF72687 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TextureLayoutRow.cpp";
+			name = "TextureLayoutRow.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1F56CF1CF5F2B0A41F0A50C7 = {
+			isa = "PBXBuildFile";
+			fileRef = "159AF5632131AFA77BF72687";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FB6015D1EAD7C20A3F518CF6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TextureLayoutTexture.cpp";
+			name = "TextureLayoutTexture.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		3B20B77FC7115824C2521DD9 = {
+			isa = "PBXBuildFile";
+			fileRef = "FB6015D1EAD7C20A3F518CF6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F25B9BD05633B1C759B30C16 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Traits.cpp";
+			name = "Traits.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		CC3EFA746E9B516B2645104D = {
+			isa = "PBXBuildFile";
+			fileRef = "F25B9BD05633B1C759B30C16";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8B3192B24A019618C91BF53C = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Transform.cpp";
+			name = "Transform.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		24D998EEE068EB82DE989523 = {
+			isa = "PBXBuildFile";
+			fileRef = "8B3192B24A019618C91BF53C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7227B9FE777560590332BBB6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TransformPrimitive.cpp";
+			name = "TransformPrimitive.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		67A36F9084988A697529247A = {
+			isa = "PBXBuildFile";
+			fileRef = "7227B9FE777560590332BBB6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7ED49FA399481BE1892C9836 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TransformState.cpp";
+			name = "TransformState.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		BCB2B0BA7224B6F2D753BB44 = {
+			isa = "PBXBuildFile";
+			fileRef = "7ED49FA399481BE1892C9836";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		995A884705AA4850AC3835F5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TransformUtilities.cpp";
+			name = "TransformUtilities.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		EB50E018B237D031AD184002 = {
+			isa = "PBXBuildFile";
+			fileRef = "995A884705AA4850AC3835F5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FAF663F8C5CB8CA843924F46 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Tween.cpp";
+			name = "Tween.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A58D2922D3C5050BB2D53485 = {
+			isa = "PBXBuildFile";
+			fileRef = "FAF663F8C5CB8CA843924F46";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		843F9B120825ED1245B39849 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/TypeConverter.cpp";
+			name = "TypeConverter.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		2E6DBE68063147943F78AB88 = {
+			isa = "PBXBuildFile";
+			fileRef = "843F9B120825ED1245B39849";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		6F58FB7C357D0D7725BCF925 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/URL.cpp";
+			name = "URL.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4B7F476616A6811B01DD0C7D = {
+			isa = "PBXBuildFile";
+			fileRef = "6F58FB7C357D0D7725BCF925";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B1B89F7CD2CB4E1D73B684FB = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Variant.cpp";
+			name = "Variant.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		6004BA8A7EDE454B654AF1C5 = {
+			isa = "PBXBuildFile";
+			fileRef = "B1B89F7CD2CB4E1D73B684FB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EC7547C74173B44A2D1F1E14 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/WidgetScroll.cpp";
+			name = "WidgetScroll.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		29EB2C91CDF36575DAA4DDF9 = {
+			isa = "PBXBuildFile";
+			fileRef = "EC7547C74173B44A2D1F1E14";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F96CCB6FCF4CECC52FBA3476 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/XMLNodeHandler.cpp";
+			name = "XMLNodeHandler.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5D9D3E00170BCCE91449133D = {
+			isa = "PBXBuildFile";
+			fileRef = "F96CCB6FCF4CECC52FBA3476";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		03981CF0159E6BD060DDC979 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/XMLNodeHandlerBody.cpp";
+			name = "XMLNodeHandlerBody.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		309C915620EF0D25F9EB096B = {
+			isa = "PBXBuildFile";
+			fileRef = "03981CF0159E6BD060DDC979";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0C3BDF82232B614F204A81E5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/XMLNodeHandlerDefault.cpp";
+			name = "XMLNodeHandlerDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		298059393A5CF0700D6D05C8 = {
+			isa = "PBXBuildFile";
+			fileRef = "0C3BDF82232B614F204A81E5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		01EE1245164FDF3E3515FF10 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/XMLNodeHandlerHead.cpp";
+			name = "XMLNodeHandlerHead.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5A8CF4E362376A7D2E25C4B4 = {
+			isa = "PBXBuildFile";
+			fileRef = "01EE1245164FDF3E3515FF10";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E195FF2B5043B3162E962E3D = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/XMLNodeHandlerTemplate.cpp";
+			name = "XMLNodeHandlerTemplate.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		236E75E19E50DF2995AA320A = {
+			isa = "PBXBuildFile";
+			fileRef = "E195FF2B5043B3162E962E3D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		910970350B0D1F8F1DF937F2 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/XMLParseTools.cpp";
+			name = "XMLParseTools.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		277D7FF24CD6585A06F5E844 = {
+			isa = "PBXBuildFile";
+			fileRef = "910970350B0D1F8F1DF937F2";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5C5838D964A7940758C7C338 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/XMLParser.cpp";
+			name = "XMLParser.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		D2CC9C2ED74752443783A736 = {
+			isa = "PBXBuildFile";
+			fileRef = "5C5838D964A7940758C7C338";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FEA604DAA136439DD0505CEF = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementForm.cpp";
+			name = "ElementForm.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		220E6FD738D912119CA437E7 = {
+			isa = "PBXGroup";
+			name = "Elements";
+			children = ("FEA604DAA136439DD0505CEF", "B5BB779660F1E9089574F936", "7ED096468EB808ECAF4A19D9", "A5D1731AD8B60F8E452AB9FF", "498C685AF6A48309D3C83121", "F2338A42B3248DB682DC8809", "2EB7432C560E42FBD8E05449", "740874EFA95F4D98EC18F6B3", "FA4FF89AE1F33F42B0C681D4", "2280B21249C512B21AE724A9", "2952C289C9B290EFD410E4CB", "F2A36733086DB9732DD00657", "1A3750B1F29F819109FCACE6", "BF4E709624467CA74B65CA13", "CE13592CE061A8BE1245EF42", "93DB9594B664440A97BB86E0", "25755DE7AEACB4FB41D82363", "55DE426B9B9C7DAB90D65287", "AE4A1A1187B10BAC566F44B5", "135D94B5D1E721E00774D63D", "71133B07FFB21EBC17120922", "77804786533C02D05134B5DA", "2415AB8BAFF950CC067E3B81", "B40E203BE55AEDBC6E87FB8F", "0B9D25DF128D182F1EEB3C54", "B7FAACC18BA5F3D86C203609");
+			sourceTree = "<group>";
+		};
+		03C304B31A2B21ACE19A0B34 = {
+			isa = "PBXBuildFile";
+			fileRef = "FEA604DAA136439DD0505CEF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B5BB779660F1E9089574F936 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementFormControl.cpp";
+			name = "ElementFormControl.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F98E03B7AA51448FAD25232D = {
+			isa = "PBXBuildFile";
+			fileRef = "B5BB779660F1E9089574F936";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7ED096468EB808ECAF4A19D9 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementFormControlInput.cpp";
+			name = "ElementFormControlInput.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A76FD65D3DDC15F248F002EB = {
+			isa = "PBXBuildFile";
+			fileRef = "7ED096468EB808ECAF4A19D9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A5D1731AD8B60F8E452AB9FF = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementFormControlSelect.cpp";
+			name = "ElementFormControlSelect.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		C73D77CF187F68803EFD0E0A = {
+			isa = "PBXBuildFile";
+			fileRef = "A5D1731AD8B60F8E452AB9FF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		498C685AF6A48309D3C83121 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementFormControlTextArea.cpp";
+			name = "ElementFormControlTextArea.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F54597749960942EAD44EDEC = {
+			isa = "PBXBuildFile";
+			fileRef = "498C685AF6A48309D3C83121";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F2338A42B3248DB682DC8809 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementImage.cpp";
+			name = "ElementImage.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		CE74519FB1D62FF6A41166C2 = {
+			isa = "PBXBuildFile";
+			fileRef = "F2338A42B3248DB682DC8809";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2EB7432C560E42FBD8E05449 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementLabel.cpp";
+			name = "ElementLabel.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		9F6BF14C19782A8BFC2796D8 = {
+			isa = "PBXBuildFile";
+			fileRef = "2EB7432C560E42FBD8E05449";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		740874EFA95F4D98EC18F6B3 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementProgress.cpp";
+			name = "ElementProgress.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		0948CCB62C0A58CCE4EA1010 = {
+			isa = "PBXBuildFile";
+			fileRef = "740874EFA95F4D98EC18F6B3";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FA4FF89AE1F33F42B0C681D4 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementTabSet.cpp";
+			name = "ElementTabSet.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		88C0E56802203C61E742F916 = {
+			isa = "PBXBuildFile";
+			fileRef = "FA4FF89AE1F33F42B0C681D4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2280B21249C512B21AE724A9 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/ElementTextSelection.cpp";
+			name = "ElementTextSelection.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		A24FDE5002A1C7BA0944AD85 = {
+			isa = "PBXBuildFile";
+			fileRef = "2280B21249C512B21AE724A9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2952C289C9B290EFD410E4CB = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/InputType.cpp";
+			name = "InputType.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		06AA816B0D4B8AE745C69182 = {
+			isa = "PBXBuildFile";
+			fileRef = "2952C289C9B290EFD410E4CB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F2A36733086DB9732DD00657 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/InputTypeButton.cpp";
+			name = "InputTypeButton.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		8DCFAC193576B0101788AF8E = {
+			isa = "PBXBuildFile";
+			fileRef = "F2A36733086DB9732DD00657";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1A3750B1F29F819109FCACE6 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/InputTypeCheckbox.cpp";
+			name = "InputTypeCheckbox.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		96B8122C593F1A31250361CD = {
+			isa = "PBXBuildFile";
+			fileRef = "1A3750B1F29F819109FCACE6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BF4E709624467CA74B65CA13 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/InputTypeRadio.cpp";
+			name = "InputTypeRadio.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F2D873CD6A342EFEDB4CAC87 = {
+			isa = "PBXBuildFile";
+			fileRef = "BF4E709624467CA74B65CA13";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CE13592CE061A8BE1245EF42 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/InputTypeRange.cpp";
+			name = "InputTypeRange.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		591A8151037EE42D473AA16B = {
+			isa = "PBXBuildFile";
+			fileRef = "CE13592CE061A8BE1245EF42";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		93DB9594B664440A97BB86E0 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/InputTypeSubmit.cpp";
+			name = "InputTypeSubmit.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		2B82FD99221E9D82ECD8D562 = {
+			isa = "PBXBuildFile";
+			fileRef = "93DB9594B664440A97BB86E0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		25755DE7AEACB4FB41D82363 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/InputTypeText.cpp";
+			name = "InputTypeText.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		23C58E56F8927F33DA12697A = {
+			isa = "PBXBuildFile";
+			fileRef = "25755DE7AEACB4FB41D82363";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		55DE426B9B9C7DAB90D65287 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/WidgetDropDown.cpp";
+			name = "WidgetDropDown.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		18026368553D25D9D7F827E7 = {
+			isa = "PBXBuildFile";
+			fileRef = "55DE426B9B9C7DAB90D65287";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AE4A1A1187B10BAC566F44B5 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/WidgetSlider.cpp";
+			name = "WidgetSlider.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1D00913B8A508150F85280E8 = {
+			isa = "PBXBuildFile";
+			fileRef = "AE4A1A1187B10BAC566F44B5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		135D94B5D1E721E00774D63D = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/WidgetTextInput.cpp";
+			name = "WidgetTextInput.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		33FF4F9B970BDAF405F95572 = {
+			isa = "PBXBuildFile";
+			fileRef = "135D94B5D1E721E00774D63D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		71133B07FFB21EBC17120922 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/WidgetTextInputMultiLine.cpp";
+			name = "WidgetTextInputMultiLine.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5F72A31FF6C157FE4965FD18 = {
+			isa = "PBXBuildFile";
+			fileRef = "71133B07FFB21EBC17120922";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		77804786533C02D05134B5DA = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/WidgetTextInputSingleLine.cpp";
+			name = "WidgetTextInputSingleLine.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5AFD83ECB46FAD939E47F4E1 = {
+			isa = "PBXBuildFile";
+			fileRef = "77804786533C02D05134B5DA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2415AB8BAFF950CC067E3B81 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/WidgetTextInputSingleLinePassword.cpp";
+			name = "WidgetTextInputSingleLinePassword.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		7121036762D8AC2C318854C6 = {
+			isa = "PBXBuildFile";
+			fileRef = "2415AB8BAFF950CC067E3B81";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B40E203BE55AEDBC6E87FB8F = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/XMLNodeHandlerSelect.cpp";
+			name = "XMLNodeHandlerSelect.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		48A6C11B94EAF0DD34DC04B4 = {
+			isa = "PBXBuildFile";
+			fileRef = "B40E203BE55AEDBC6E87FB8F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0B9D25DF128D182F1EEB3C54 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/XMLNodeHandlerTabSet.cpp";
+			name = "XMLNodeHandlerTabSet.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4E0FA445A8F164AD84FB22A0 = {
+			isa = "PBXBuildFile";
+			fileRef = "0B9D25DF128D182F1EEB3C54";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B7FAACC18BA5F3D86C203609 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Elements/XMLNodeHandlerTextArea.cpp";
+			name = "XMLNodeHandlerTextArea.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		88CB9F4E9DB3887E3271CB4D = {
+			isa = "PBXBuildFile";
+			fileRef = "B7FAACC18BA5F3D86C203609";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		42A61FE5FBE669CB3E79EF2D = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineDefault/FontEngineInterfaceDefault.cpp";
+			name = "FontEngineInterfaceDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		C911424462DE8215F094F64D = {
+			isa = "PBXGroup";
+			name = "FontEngineDefault";
+			children = ("42A61FE5FBE669CB3E79EF2D", "CCC2B09231C3FCEAA6787B30", "AEB81CB6E1030B715C37C744", "B89FEBCE467C2047B5B2CC7E", "51933A205FD9AB1C47F01B12", "50A4DEE786421C55E3BA7149", "676528D4B998B91A0592B2F2");
+			sourceTree = "<group>";
+		};
+		86A19B007040F93CE17807ED = {
+			isa = "PBXBuildFile";
+			fileRef = "42A61FE5FBE669CB3E79EF2D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CCC2B09231C3FCEAA6787B30 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineDefault/FontFace.cpp";
+			name = "FontFace.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		42893C30B42670311EDBCC5D = {
+			isa = "PBXBuildFile";
+			fileRef = "CCC2B09231C3FCEAA6787B30";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AEB81CB6E1030B715C37C744 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineDefault/FontFaceHandleDefault.cpp";
+			name = "FontFaceHandleDefault.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		B084333FE6791F7DB6478F72 = {
+			isa = "PBXBuildFile";
+			fileRef = "AEB81CB6E1030B715C37C744";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B89FEBCE467C2047B5B2CC7E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineDefault/FontFaceLayer.cpp";
+			name = "FontFaceLayer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		6475B5A499A914E6EA8B7B76 = {
+			isa = "PBXBuildFile";
+			fileRef = "B89FEBCE467C2047B5B2CC7E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		51933A205FD9AB1C47F01B12 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineDefault/FontFamily.cpp";
+			name = "FontFamily.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		460C246C32D4AE0E1CB6193C = {
+			isa = "PBXBuildFile";
+			fileRef = "51933A205FD9AB1C47F01B12";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		50A4DEE786421C55E3BA7149 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineDefault/FontProvider.cpp";
+			name = "FontProvider.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F5A2A04B5316CCD1BB51E6D8 = {
+			isa = "PBXBuildFile";
+			fileRef = "50A4DEE786421C55E3BA7149";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		676528D4B998B91A0592B2F2 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/FontEngineDefault/FreeTypeInterface.cpp";
+			name = "FreeTypeInterface.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		4BA74C812495981607D3857F = {
+			isa = "PBXBuildFile";
+			fileRef = "676528D4B998B91A0592B2F2";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		884383B689E866E77DD53FB7 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/BlockContainer.cpp";
+			name = "BlockContainer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		82822D9309A95D57620F2459 = {
+			isa = "PBXGroup";
+			name = "Layout";
+			children = ("884383B689E866E77DD53FB7", "5D50AB0B84CA1A9181C9536A", "968CDB04CB495754B8928BA8", "B9CD3FF36E4ED80BFFEA65FB", "AA3D3C73D737914EFF7A4FC7", "A2AD94D22E94A696B5391BDF", "27C91D12A6E389D3627421F3", "C232FE571778C7353B5C78CC", "96B8FD74A195CFF365EAF619", "4C81163006C6426385DA04A4", "574ACC5D6AAD7B98D7C47408", "1F9BE5202A08ED6594D479BB", "4914CA337CA90C0FF1545A0E", "4030FC4DB6D77B686C21CDB7", "08170463ED7844C87693E814", "21B758B7E3F101AEE38EEF02", "3C90321AF6155811B1494778");
+			sourceTree = "<group>";
+		};
+		C71E0AFFD8BE5B35FA54C0E9 = {
+			isa = "PBXBuildFile";
+			fileRef = "884383B689E866E77DD53FB7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5D50AB0B84CA1A9181C9536A = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/BlockFormattingContext.cpp";
+			name = "BlockFormattingContext.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		0485E53AB39C4D742BCD0022 = {
+			isa = "PBXBuildFile";
+			fileRef = "5D50AB0B84CA1A9181C9536A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		968CDB04CB495754B8928BA8 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/ContainerBox.cpp";
+			name = "ContainerBox.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		024359D8B489159ACBF27AA3 = {
+			isa = "PBXBuildFile";
+			fileRef = "968CDB04CB495754B8928BA8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B9CD3FF36E4ED80BFFEA65FB = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/FlexFormattingContext.cpp";
+			name = "FlexFormattingContext.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		7C5952DDF840F3519A70AA1E = {
+			isa = "PBXBuildFile";
+			fileRef = "B9CD3FF36E4ED80BFFEA65FB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AA3D3C73D737914EFF7A4FC7 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/FloatedBoxSpace.cpp";
+			name = "FloatedBoxSpace.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		3CE35837BFFDE3031C01F300 = {
+			isa = "PBXBuildFile";
+			fileRef = "AA3D3C73D737914EFF7A4FC7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A2AD94D22E94A696B5391BDF = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/FormattingContext.cpp";
+			name = "FormattingContext.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		CC6A835511FAF3CFF7F01CC0 = {
+			isa = "PBXBuildFile";
+			fileRef = "A2AD94D22E94A696B5391BDF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		27C91D12A6E389D3627421F3 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/InlineBox.cpp";
+			name = "InlineBox.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		BEB6EC4CDD06235E6D50C0D2 = {
+			isa = "PBXBuildFile";
+			fileRef = "27C91D12A6E389D3627421F3";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C232FE571778C7353B5C78CC = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/InlineContainer.cpp";
+			name = "InlineContainer.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		5A2D9C5BB22E34E6F69F62B2 = {
+			isa = "PBXBuildFile";
+			fileRef = "C232FE571778C7353B5C78CC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		96B8FD74A195CFF365EAF619 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/InlineLevelBox.cpp";
+			name = "InlineLevelBox.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E74409A96B148CA8124230AF = {
+			isa = "PBXBuildFile";
+			fileRef = "96B8FD74A195CFF365EAF619";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4C81163006C6426385DA04A4 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/LayoutBox.cpp";
+			name = "LayoutBox.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		95E628E7EA25C76A7C06D54B = {
+			isa = "PBXBuildFile";
+			fileRef = "4C81163006C6426385DA04A4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		574ACC5D6AAD7B98D7C47408 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/LayoutDetails.cpp";
+			name = "LayoutDetails.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		78AFC0A3E5ED136D4BA5160B = {
+			isa = "PBXBuildFile";
+			fileRef = "574ACC5D6AAD7B98D7C47408";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1F9BE5202A08ED6594D479BB = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/LayoutEngine.cpp";
+			name = "LayoutEngine.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		650F1C782331E725BE86CE4D = {
+			isa = "PBXBuildFile";
+			fileRef = "1F9BE5202A08ED6594D479BB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4914CA337CA90C0FF1545A0E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/LayoutPools.cpp";
+			name = "LayoutPools.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		F442691D4BC58287704234A8 = {
+			isa = "PBXBuildFile";
+			fileRef = "4914CA337CA90C0FF1545A0E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4030FC4DB6D77B686C21CDB7 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/LineBox.cpp";
+			name = "LineBox.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		7BF4EABC6D513B2D89B74E22 = {
+			isa = "PBXBuildFile";
+			fileRef = "4030FC4DB6D77B686C21CDB7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		08170463ED7844C87693E814 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/ReplacedFormattingContext.cpp";
+			name = "ReplacedFormattingContext.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		1F17295588681DA974D95A46 = {
+			isa = "PBXBuildFile";
+			fileRef = "08170463ED7844C87693E814";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		21B758B7E3F101AEE38EEF02 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/TableFormattingContext.cpp";
+			name = "TableFormattingContext.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		7D089D65B5DC9465E37FB1EE = {
+			isa = "PBXBuildFile";
+			fileRef = "21B758B7E3F101AEE38EEF02";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		3C90321AF6155811B1494778 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Source/Core/Layout/TableFormattingDetails.cpp";
+			name = "TableFormattingDetails.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		3527B28A22088F69139B4255 = {
+			isa = "PBXBuildFile";
+			fileRef = "3C90321AF6155811B1494778";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		180D1DF77E0BC809C9D92273 = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Backends/RmlUi_Platform_SDL.cpp";
+			name = "RmlUi_Platform_SDL.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		FBE1C4B9DF78444C840D9E08 = {
+			isa = "PBXGroup";
+			name = "Backends";
+			children = ("180D1DF77E0BC809C9D92273", "4C60534AFAFBAB33DEFF5C7E");
+			sourceTree = "<group>";
+		};
+		75BC0CAFB3E220279812F728 = {
+			isa = "PBXBuildFile";
+			fileRef = "180D1DF77E0BC809C9D92273";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4C60534AFAFBAB33DEFF5C7E = {
+			isa = "PBXFileReference";
+			path = "third_party/rmlui/Backends/RmlUi_Renderer_SDL.cpp";
+			name = "RmlUi_Renderer_SDL.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		E1C6F9BACCCFBCA7DA1BFF32 = {
+			isa = "PBXBuildFile";
+			fileRef = "4C60534AFAFBAB33DEFF5C7E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		90477C9CFD8340698C26D4CE = {
+			isa = "PBXFileReference";
+			path = "apple/ios_roms.mm";
+			name = "ios_roms.mm";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.objcpp";
+		};
+		00D50C34EE995A34BC9EB1F1 = {
+			isa = "PBXBuildFile";
+			fileRef = "90477C9CFD8340698C26D4CE";
+		};
+		71F83CCD36E21A77D6F2BC7A = {
+			isa = "PBXFileReference";
+			path = "apple/native_disabled.cpp";
+			name = "native_disabled.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		164094A03C548961F7682E8E = {
+			isa = "PBXBuildFile";
+			fileRef = "71F83CCD36E21A77D6F2BC7A";
+		};
+		31677F70D1135C5E8DD9C6D1 = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("3F240EFEF033E46654A09680", "DF042D4B45C8F58D4A8C9156", "8E496138E7E4EBEDF441E404", "11472B62E925766E5A4CD1E3", "BDADCA1828DEE059DC3FA97A", "4882DDE8CB444B3F2B5D78F9", "E5BC79BE1769564EC382C775", "64E9B67467131F9A9394C68E", "1512DAE9460CBCB4F02B76AA", "A05907B929E1BF2E576C6149", "C8CD863A4FB46FD16027DAB0", "2F6A40F881BFA038335DBA0F", "01E7BFA9CE4BB98852E61893", "2C8F5827A54D1EB8E68CD5D9", "407B9235A6609AD7D66E0BE9", "53720EB0497C3C098CB4B40E", "D868A188B1634E809BA4CA2A", "71BD5EBCC8FE405E1C61B66F", "529C61055FCFAEF64300C967", "A4227873DD9C9C0D703259E7", "96B68A86447D46159499B8E7", "619E2250FC2F5DAD0A9F0DB0", "E8274C3DC50BF5BD6BE5F6ED", "DF23F343E3749A6D2CE5D0FB", "689D503B2499DEB80C7C1FD5", "CB8466D6270D6BB001BBB907", "68E2EB6E4DB8FFEAC0C418B8", "68D59D188B660F87FCE8ABCA", "F288A57964132418ACA97CC1", "5F4ED68567579822E589DEA9", "FDE167862C1C9CC8BCE8AE4C", "E6DA9FCFD1F4BABAB4E16217", "444D2730B7D9326CE9F332A0", "93BD17BAAE25AEA95903A0C2", "203CE4586952BAC4D3E94010", "241CEAA7F876DE925D7F19D6", "35BB7397809FF715C118C20A", "4EC02DF3E6C919060080AF43", "AB488978FE91D6C1B071F409", "EAC668B86FE95C4DCA858166", "AEC0417092821FD875BD97CE", "03CE053AAF5914422857584E", "D768B4FFD30EDB39A228B47F", "8F67CA8C3FBA5A95C41E47AA", "C48A7CC2E9A47D315EFFF1F9", "4C13FAD305F8F5EF0484F7CB", "D4BDD94BA5CE140553183336", "D0EFCE8FD6D335E695990CCE", "4E56A05D7E16667F312190FA", "4CA99AF73D0A4E8258DD935E", "F5EF97C3BFDD998E8F203174", "F58FB44A704D7E0D1B2D5634", "72BC7DF6D20F306A6DC360E4", "F0490674ED245FDEDCEBA996", "1A823192329C8051A8CEDAB0", "416C2AB265974666A84F4662", "C67E41D9DBC1206D714D6FF9", "5833B0E65A81D710F5B51671", "45AC75995FA07D3A355F2BED", "1AFDBD9EEF54FD7B608E8A96", "D261F5265D6905082C9DDFE9", "6C8D874F3A05859FF62E710A", "066D87C1E1AC75AA04FCABE3", "8A7F3CF2EB84095021C3BD8F", "5B6FC123C0DB6C09C96AA3A7", "865FAC995E0130FA7C60EFF4", "993A8B86BE45D362AD01F95B", "BCBBAF4E5EF1F5D258FB4B38", "59DD4DCC18F1CB30B52A4FCF", "2C38A060877C3174DDEFFF27", "7D3C6ADC179CF1B9B7B2ED9F", "84075216AED20A5268B27609", "E6864E5BB9392706D9346FA0", "51C8A13AD322A70774584F21", "BAB62F33E9151E261058BB35", "4A884816CFC2260E030A9F02", "EB88765A481E45A11E4C433C", "E5D4CEBC38EC6A7D26CA111F", "4B27B42FB5787E0E4E910C17", "A1FC58E89A0D7710AFBDB536", "17B89F448DA16BD668E5B606", "1573D8F06F658D1E24CF1274", "39DF21EE29A87F0D38CAF145", "0A818D2478BB7E08477BD592", "F2B9ABB38FF0223990048FF3", "A29482850C3DDC34A91E2CB1", "1A7F2787A27BF69E72440BA7", "2BF62754D3DC78A3C214B918", "27BB744F122C2F4E4FF9475E", "26BF285E232094BEA13D8436", "E18351EC4DDDF7C4D1A22D3D", "DA8B3BDA00CBD09A5F2179FD", "195766F1CF3D989A5B6474E2", "8AE67AEBD4C55E27D6DE2510", "7AF847DD5BD18FE684B08347", "65A1FF28F69E6C69885BEDA2", "F17B72AFDF580B5BD958776A", "70A7EBD8E368B91A29532FA1", "B138E5D98719FB87BB97A169", "41A679D5BD213E6360E5D548", "7A35822C380EC4E57D6C667B", "76A70B70335189F8A8C64F17", "51DBDB13130C503C752D1CD6", "D32BEDBC34AD2F47405088E6", "6BAFFCA73CECED2FA26A1ACC", "0EE3303707FFF1603D10C054", "282688DE010F299A89FAD722", "8DE24D66A884BE24F2661F10", "974D31A1EA4EA7A52247910E", "D8D8DCB8E710491BEBF19387", "6CC6A895F4070754DB8BA215", "B4BCDB11903B145126FDA496", "8396D8F6A44AB6B3DCA686E9", "8DB419186248870BDCD09CEB", "A31C40EF7B7ACF0B380579A7", "AD317B897DB4CA045E3886BE", "12C196F5D6C9B650C9F76BF1", "BAA75497857BA3699A599F18", "91656D497DDF54E9165DB59E", "06E3A5C9BF3F3413EC0D4555", "35AAE6BAAC6B0F38D4C38FA5", "C467E26F85BF893E254E84EE", "98D7DC9DA048DB255B4D6606", "AF1DC2FFCCD71A2B86285FD0", "0E4B5F79ACCFB9D4879A0987", "8B505C7CC478CBCAD3B52D17", "192B479915654C833BE0385C", "CB4320A88C86059B4A1BA0B1", "F329D7C943114B973080D5E5", "E4B6A37390469B198ECB50DC", "07817DB73E322C607AD1908E", "893AD31ABB49FA7E0ED47732", "80C60FD15510321D5DF4DEEB", "72594984434ED53B767B48C9", "023A02812ED00D987CB30026", "497D29D348F530446C952728", "8C883F23EFE8220E7ED32DAA", "28C15FD08EF7717E1E147D26", "D9C31A5BA8872951E44A9945", "E082AE4D0E39A22554A96408", "52BCDDE6467CA390A754DE1D", "FF078E3274A1B86C2DA27D26", "4765CA817A7788D5FB9D7D44", "50EDDCE9E448E7DBBBDE8EC3", "C2D421F2A185E9E2C3B5919E", "8CBBD53FD5F680F5FB8C3B09", "A4901BBEA1354756916D41D2", "183D567E224FDDBD3B62CDEE", "FB8332DFDFDAF7038A131FF3", "1F56CF1CF5F2B0A41F0A50C7", "3B20B77FC7115824C2521DD9", "CC3EFA746E9B516B2645104D", "24D998EEE068EB82DE989523", "67A36F9084988A697529247A", "BCB2B0BA7224B6F2D753BB44", "EB50E018B237D031AD184002", "A58D2922D3C5050BB2D53485", "2E6DBE68063147943F78AB88", "4B7F476616A6811B01DD0C7D", "6004BA8A7EDE454B654AF1C5", "29EB2C91CDF36575DAA4DDF9", "5D9D3E00170BCCE91449133D", "309C915620EF0D25F9EB096B", "298059393A5CF0700D6D05C8", "5A8CF4E362376A7D2E25C4B4", "236E75E19E50DF2995AA320A", "277D7FF24CD6585A06F5E844", "D2CC9C2ED74752443783A736", "03C304B31A2B21ACE19A0B34", "F98E03B7AA51448FAD25232D", "A76FD65D3DDC15F248F002EB", "C73D77CF187F68803EFD0E0A", "F54597749960942EAD44EDEC", "CE74519FB1D62FF6A41166C2", "9F6BF14C19782A8BFC2796D8", "0948CCB62C0A58CCE4EA1010", "88C0E56802203C61E742F916", "A24FDE5002A1C7BA0944AD85", "06AA816B0D4B8AE745C69182", "8DCFAC193576B0101788AF8E", "96B8122C593F1A31250361CD", "F2D873CD6A342EFEDB4CAC87", "591A8151037EE42D473AA16B", "2B82FD99221E9D82ECD8D562", "23C58E56F8927F33DA12697A", "18026368553D25D9D7F827E7", "1D00913B8A508150F85280E8", "33FF4F9B970BDAF405F95572", "5F72A31FF6C157FE4965FD18", "5AFD83ECB46FAD939E47F4E1", "7121036762D8AC2C318854C6", "48A6C11B94EAF0DD34DC04B4", "4E0FA445A8F164AD84FB22A0", "88CB9F4E9DB3887E3271CB4D", "86A19B007040F93CE17807ED", "42893C30B42670311EDBCC5D", "B084333FE6791F7DB6478F72", "6475B5A499A914E6EA8B7B76", "460C246C32D4AE0E1CB6193C", "F5A2A04B5316CCD1BB51E6D8", "4BA74C812495981607D3857F", "C71E0AFFD8BE5B35FA54C0E9", "0485E53AB39C4D742BCD0022", "024359D8B489159ACBF27AA3", "7C5952DDF840F3519A70AA1E", "3CE35837BFFDE3031C01F300", "CC6A835511FAF3CFF7F01CC0", "BEB6EC4CDD06235E6D50C0D2", "5A2D9C5BB22E34E6F69F62B2", "E74409A96B148CA8124230AF", "95E628E7EA25C76A7C06D54B", "78AFC0A3E5ED136D4BA5160B", "650F1C782331E725BE86CE4D", "F442691D4BC58287704234A8", "7BF4EABC6D513B2D89B74E22", "1F17295588681DA974D95A46", "7D089D65B5DC9465E37FB1EE", "3527B28A22088F69139B4255", "75BC0CAFB3E220279812F728", "E1C6F9BACCCFBCA7DA1BFF32", "00D50C34EE995A34BC9EB1F1", "164094A03C548961F7682E8E");
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9659A726C2D44D6D4330AC2 = {
+			isa = "PBXFileReference";
+			path = "assets/ui";
+			name = "ui";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "folder";
+		};
+		AE6ADACDDE846FF6AA0A8B4A = {
+			isa = "PBXGroup";
+			name = "assets";
+			children = ("D9659A726C2D44D6D4330AC2", "42F73C0A863FF1DD77411C52", "C039DD899639925C55A36759", "13797A698694CC87708C4CAA");
+			sourceTree = "<group>";
+		};
+		EB6EA42EC589F07EB87BF2FC = {
+			isa = "PBXBuildFile";
+			fileRef = "D9659A726C2D44D6D4330AC2";
+		};
+		42F73C0A863FF1DD77411C52 = {
+			isa = "PBXFileReference";
+			path = "assets/fonts";
+			name = "fonts";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "folder";
+		};
+		08A5972F4C90858A01433A80 = {
+			isa = "PBXBuildFile";
+			fileRef = "42F73C0A863FF1DD77411C52";
+		};
+		C039DD899639925C55A36759 = {
+			isa = "PBXFileReference";
+			path = "assets/backgrounds";
+			name = "backgrounds";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "folder";
+		};
+		32E287F5DDEF6D2A9F72266E = {
+			isa = "PBXBuildFile";
+			fileRef = "C039DD899639925C55A36759";
+		};
+		3FA3DD0300DDAC1050963A11 = {
+			isa = "PBXCopyFilesBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("EB6EA42EC589F07EB87BF2FC", "08A5972F4C90858A01433A80", "32E287F5DDEF6D2A9F72266E");
+			runOnlyForDeploymentPostprocessing = 0;
+			name = "Copy game UI assets";
+			dstPath = "assets";
+			dstSubfolderSpec = 7;
+		};
+		F710E59DE53FDB4053F42EF1 = {
+			isa = "PBXFileReference";
+			name = "LICENSES (ios).txt";
+			path = "$(VF2_DEPS_DIR)/LICENSES.txt";
+			sourceTree = "<absolute>";
+			lastKnownFileType = "text";
+		};
+		69602BAE124EC9BB52653DDC = {
+			isa = "PBXBuildFile";
+			fileRef = "F710E59DE53FDB4053F42EF1";
+		};
+		CC4CBDCD101E4A7C5A2DD991 = {
+			isa = "PBXFileReference";
+			path = "apple/Assets.xcassets";
+			name = "Assets.xcassets";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "folder.assetcatalog";
+		};
+		A03A3E611D409B68C349365E = {
+			isa = "PBXBuildFile";
+			fileRef = "CC4CBDCD101E4A7C5A2DD991";
+		};
+		88B63F55B52ACBC022A3BD77 = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("69602BAE124EC9BB52653DDC", "A03A3E611D409B68C349365E");
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F092A2AEBE0B8E309C3F5287 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/Foundation.framework";
+			name = "Foundation.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		BEAE98CD3EB889B1B55F1F0A = {
+			isa = "PBXBuildFile";
+			fileRef = "F092A2AEBE0B8E309C3F5287";
+		};
+		C3D62F3F956C655AF221454C = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/Metal.framework";
+			name = "Metal.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		53E65852551003DAB6477810 = {
+			isa = "PBXBuildFile";
+			fileRef = "C3D62F3F956C655AF221454C";
+		};
+		72400CA91D01ABDB3C2E16E0 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/CoreVideo.framework";
+			name = "CoreVideo.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		EF17B9962BB7B6FA75C18CA4 = {
+			isa = "PBXBuildFile";
+			fileRef = "72400CA91D01ABDB3C2E16E0";
+		};
+		CE49AD5C89D48A9C32E70529 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/QuartzCore.framework";
+			name = "QuartzCore.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		AFEA792DB44C97D043FC82AE = {
+			isa = "PBXBuildFile";
+			fileRef = "CE49AD5C89D48A9C32E70529";
+		};
+		6FB915AF7914A0F7788E5595 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/CoreMedia.framework";
+			name = "CoreMedia.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		B7EC3F20D272ADD6DE9B30FE = {
+			isa = "PBXBuildFile";
+			fileRef = "6FB915AF7914A0F7788E5595";
+		};
+		23557C6ABA05F8825F0D9AE6 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/CoreAudio.framework";
+			name = "CoreAudio.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		E7E78C47E37F3DAC49C3D6F3 = {
+			isa = "PBXBuildFile";
+			fileRef = "23557C6ABA05F8825F0D9AE6";
+		};
+		C166693EA3715CCB7351B000 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/AudioToolbox.framework";
+			name = "AudioToolbox.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		9D96E442BF3006DCD8F270C2 = {
+			isa = "PBXBuildFile";
+			fileRef = "C166693EA3715CCB7351B000";
+		};
+		AA14C4CFC2532A538E01C6B5 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/AVFoundation.framework";
+			name = "AVFoundation.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		5511639FD422318C2B7ACF17 = {
+			isa = "PBXBuildFile";
+			fileRef = "AA14C4CFC2532A538E01C6B5";
+		};
+		19400D1AF25B208FF6CD04FA = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/GameController.framework";
+			name = "GameController.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		1E64F532EBC6113DC979872D = {
+			isa = "PBXBuildFile";
+			fileRef = "19400D1AF25B208FF6CD04FA";
+		};
+		0C4E0CE3C462967A7A1A2F0F = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/CoreHaptics.framework";
+			name = "CoreHaptics.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		958D0591D35BBB2580C84D23 = {
+			isa = "PBXBuildFile";
+			fileRef = "0C4E0CE3C462967A7A1A2F0F";
+			settings = {
+				ATTRIBUTES = ("Weak");
+			};
+		};
+		5837AA9387BBA9062CED3776 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/UniformTypeIdentifiers.framework";
+			name = "UniformTypeIdentifiers.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		5E67F4BC202743C19AD0ACDA = {
+			isa = "PBXBuildFile";
+			fileRef = "5837AA9387BBA9062CED3776";
+		};
+		5A9BA946FCEEE68CBC354788 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/UIKit.framework";
+			name = "UIKit.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		13557CE38F7AE14D60B0D2CF = {
+			isa = "PBXBuildFile";
+			fileRef = "5A9BA946FCEEE68CBC354788";
+		};
+		24D4E598323083B1553F1C22 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/CoreBluetooth.framework";
+			name = "CoreBluetooth.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		5E4025042C85380D69C56131 = {
+			isa = "PBXBuildFile";
+			fileRef = "24D4E598323083B1553F1C22";
+		};
+		7A66E2056149DA7B28BD01F7 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/CoreGraphics.framework";
+			name = "CoreGraphics.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		2E636D09E83F31A9304AE205 = {
+			isa = "PBXBuildFile";
+			fileRef = "7A66E2056149DA7B28BD01F7";
+		};
+		02E696E22FAB5A0695381AF0 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/CoreMotion.framework";
+			name = "CoreMotion.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		2FA6A0CD9179ECA6B6B2A383 = {
+			isa = "PBXBuildFile";
+			fileRef = "02E696E22FAB5A0695381AF0";
+		};
+		8FE48B4F891EA6616A64BBEB = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/OpenGLES.framework";
+			name = "OpenGLES.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		4D5E9605D5BFC214E009BECA = {
+			isa = "PBXBuildFile";
+			fileRef = "8FE48B4F891EA6616A64BBEB";
+		};
+		6A68FE23E312158A82B67236 = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("BEAE98CD3EB889B1B55F1F0A", "53E65852551003DAB6477810", "EF17B9962BB7B6FA75C18CA4", "AFEA792DB44C97D043FC82AE", "B7EC3F20D272ADD6DE9B30FE", "E7E78C47E37F3DAC49C3D6F3", "9D96E442BF3006DCD8F270C2", "5511639FD422318C2B7ACF17", "1E64F532EBC6113DC979872D", "958D0591D35BBB2580C84D23", "5E67F4BC202743C19AD0ACDA", "13557CE38F7AE14D60B0D2CF", "5E4025042C85380D69C56131", "2E636D09E83F31A9304AE205", "2FA6A0CD9179ECA6B6B2A383", "4D5E9605D5BFC214E009BECA");
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D874DC1707B398C8AE095DE4 = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.application";
+			path = "VF2 Recomp.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+			includeInIndex = 0;
+		};
+		01E38B0AD9D9CABADA1D613A = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				SDKROOT = "iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				IPHONEOS_DEPLOYMENT_TARGET = "16.0";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTS_MACCATALYST = "NO";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = "NO";
+				PRODUCT_NAME = "VF2 Recomp";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.vf2recomp.apple";
+				MARKETING_VERSION = "0.1.0";
+				CURRENT_PROJECT_VERSION = "1";
+				CODE_SIGN_STYLE = "Automatic";
+				INFOPLIST_FILE = "apple/xcode/Info-iOS.plist";
+				GENERATE_INFOPLIST_FILE = "NO";
+				SKIP_INSTALL = "NO";
+				INSTALL_PATH = "$(LOCAL_APPS_DIR)";
+				HEADER_SEARCH_PATHS = ("$(inherited)", "\"$(SRCROOT)/src/core/shim_include\"", "\"$(SRCROOT)/third_party/rmlui/Include\"", "\"$(SRCROOT)/third_party/rmlui/Backends\"", "\"$(VF2_DEPS_DIR)\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build/include-revision\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build/include\"");
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build\"");
+				OTHER_LDFLAGS = ("$(inherited)", "-lSDL3", "-lfreetype", "-lz", "-lm", "-lpthread");
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "RMLUI_STATIC_LIB", "RMLUI_FONT_ENGINE_FREETYPE", "RMLUI_SDL_VERSION_MAJOR=3", "VF2_GPU3D_METAL=1", "VF2_NATIVE_CONTROLS=1", "VF2_IOS=1", "VF2_NO_JIT=1", "DEBUG=1");
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";
+				GCC_OPTIMIZATION_LEVEL = "2";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				ONLY_ACTIVE_ARCH = "YES";
+				DEVELOPMENT_TEAM = "";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+			};
+		};
+		37CB873FB01FCE1213B2CD80 = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				SDKROOT = "iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				IPHONEOS_DEPLOYMENT_TARGET = "16.0";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SUPPORTS_MACCATALYST = "NO";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = "NO";
+				PRODUCT_NAME = "VF2 Recomp";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.vf2recomp.apple";
+				MARKETING_VERSION = "0.1.0";
+				CURRENT_PROJECT_VERSION = "1";
+				CODE_SIGN_STYLE = "Automatic";
+				INFOPLIST_FILE = "apple/xcode/Info-iOS.plist";
+				GENERATE_INFOPLIST_FILE = "NO";
+				SKIP_INSTALL = "NO";
+				INSTALL_PATH = "$(LOCAL_APPS_DIR)";
+				HEADER_SEARCH_PATHS = ("$(inherited)", "\"$(SRCROOT)/src/core/shim_include\"", "\"$(SRCROOT)/third_party/rmlui/Include\"", "\"$(SRCROOT)/third_party/rmlui/Backends\"", "\"$(VF2_DEPS_DIR)\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build/include-revision\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build/include\"");
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build\"");
+				OTHER_LDFLAGS = ("$(inherited)", "-lSDL3", "-lfreetype", "-lz", "-lm", "-lpthread");
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "RMLUI_STATIC_LIB", "RMLUI_FONT_ENGINE_FREETYPE", "RMLUI_SDL_VERSION_MAJOR=3", "VF2_GPU3D_METAL=1", "VF2_NATIVE_CONTROLS=1", "VF2_IOS=1", "VF2_NO_JIT=1", "NDEBUG=1");
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";
+				GCC_OPTIMIZATION_LEVEL = "3";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ONLY_ACTIVE_ARCH = "NO";
+				DEVELOPMENT_TEAM = "";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+			};
+		};
+		427C2AAD068E5BF3F8CD8B9E = {
+			isa = "XCConfigurationList";
+			buildConfigurations = ("01E38B0AD9D9CABADA1D613A", "37CB873FB01FCE1213B2CD80");
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		0566276132F9903036CBD62B = {
+			isa = "PBXNativeTarget";
+			name = "VF2 iOS";
+			productName = "VF2 Recomp";
+			productReference = "D874DC1707B398C8AE095DE4";
+			productType = "com.apple.product-type.application";
+			buildConfigurationList = "427C2AAD068E5BF3F8CD8B9E";
+			buildPhases = ("31677F70D1135C5E8DD9C6D1", "6A68FE23E312158A82B67236", "3FA3DD0300DDAC1050963A11", "88B63F55B52ACBC022A3BD77");
+			buildRules = ();
+			dependencies = ("6A5623F08655DEC2DB08B77A");
+		};
+		979503C5E1D2EB4E1ACE1D32 = {
+			isa = "PBXShellScriptBuildPhase";
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ();
+			outputPaths = ("$(VF2_DEPS_DIR)/_deps/sdl3-build/libSDL3.a", "$(VF2_DEPS_DIR)/_deps/freetype-build/libfreetype.a", "$(VF2_DEPS_DIR)/version.h", "$(VF2_DEPS_DIR)/LICENSES.txt");
+			runOnlyForDeploymentPostprocessing = 0;
+			alwaysOutOfDate = 1;
+			name = "Prepare SDL and FreeType";
+			shellPath = "/bin/bash";
+			shellScript = "exec /bin/bash \"$SRCROOT/apple/build-xcode-dependencies.sh\"\n";
+		};
+		373A4D3546127A1F339D4B07 = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				SDKROOT = "macosx";
+				SUPPORTED_PLATFORMS = "macosx";
+				MACOSX_DEPLOYMENT_TARGET = "15.0";
+				SKIP_INSTALL = "YES";
+				GCC_OPTIMIZATION_LEVEL = "2";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				ONLY_ACTIVE_ARCH = "YES";
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "DEBUG=1");
+			};
+		};
+		1A586EE8624B429F9F135597 = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				SDKROOT = "macosx";
+				SUPPORTED_PLATFORMS = "macosx";
+				MACOSX_DEPLOYMENT_TARGET = "15.0";
+				SKIP_INSTALL = "YES";
+				GCC_OPTIMIZATION_LEVEL = "3";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ONLY_ACTIVE_ARCH = "NO";
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "NDEBUG=1");
+			};
+		};
+		771E181467D633FF6A7F28F4 = {
+			isa = "XCConfigurationList";
+			buildConfigurations = ("373A4D3546127A1F339D4B07", "1A586EE8624B429F9F135597");
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		F7E0974048D936134429FBCA = {
+			isa = "PBXAggregateTarget";
+			name = "VF2 macOS Dependencies";
+			productName = "VF2 macOS Dependencies";
+			buildConfigurationList = "771E181467D633FF6A7F28F4";
+			buildPhases = ("979503C5E1D2EB4E1ACE1D32");
+			dependencies = ();
+		};
+		684380FC8960E1385C522092 = {
+			isa = "PBXTargetDependency";
+			target = "F7E0974048D936134429FBCA";
+		};
+		E57F1191B1B00F12645E7D8E = {
+			isa = "PBXBuildFile";
+			fileRef = "6155A2A12374BC9A8B95A1F6";
+		};
+		0584481855C5799E88FA13C3 = {
+			isa = "PBXBuildFile";
+			fileRef = "A71BC8ECD02583E830565563";
+		};
+		FB040A3BC1DE6B878D514BE4 = {
+			isa = "PBXBuildFile";
+			fileRef = "BA103C59B154F4C1A8F172A0";
+		};
+		13DCA47D6720C23ABC0DFD89 = {
+			isa = "PBXBuildFile";
+			fileRef = "2A1C949533B34F09ECB17D3F";
+		};
+		6D380D50E9D56483313EDC23 = {
+			isa = "PBXBuildFile";
+			fileRef = "1145287588A909748420DB52";
+		};
+		D9F3453F5BF45BF44710409F = {
+			isa = "PBXBuildFile";
+			fileRef = "3E10C5E282D6C4F870BF5635";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BF06127596F184DAF01DB64A = {
+			isa = "PBXBuildFile";
+			fileRef = "CEAD11476188470C440544A6";
+		};
+		F4E54378D01E67E27E16FDFC = {
+			isa = "PBXBuildFile";
+			fileRef = "148534FE0087BC21D0EBD91D";
+		};
+		3B9134796E95BDCBDAAA8DE6 = {
+			isa = "PBXBuildFile";
+			fileRef = "225F04600F2DCCCABAC0BFB6";
+		};
+		798A517A7D820A8EC7088EC0 = {
+			isa = "PBXBuildFile";
+			fileRef = "457F32D66DCEEC0317E7F5F8";
+		};
+		67E9E73229389DCE18CE8649 = {
+			isa = "PBXBuildFile";
+			fileRef = "1D00A0AD568DE941ED44BF9D";
+		};
+		E95027E0F5CD30E87B5C9354 = {
+			isa = "PBXBuildFile";
+			fileRef = "F94CE954FDB329AF97B90539";
+		};
+		91A3D7F3CBBF67CF96F8319D = {
+			isa = "PBXBuildFile";
+			fileRef = "5A608F6F8164EA499E6FF109";
+		};
+		D1587EF01D916EF45D98388E = {
+			isa = "PBXBuildFile";
+			fileRef = "1AB6AC78C2EB5ED0936748A2";
+		};
+		DD8107E38E83D8B9D585198F = {
+			isa = "PBXBuildFile";
+			fileRef = "1F2D99D3A475C42BCE343534";
+		};
+		3395A264201A3428E24B277E = {
+			isa = "PBXBuildFile";
+			fileRef = "3D763BD5FF349DBC0893BF19";
+		};
+		5D7EC3D90947B2C921D1CF1E = {
+			isa = "PBXBuildFile";
+			fileRef = "F385448321AEFE8144E42CC4";
+		};
+		6F14BCDAD137A1003DE0388E = {
+			isa = "PBXBuildFile";
+			fileRef = "EF1D941036A3B6E1B7335661";
+		};
+		BDFC10B0944EB14B5D4E924C = {
+			isa = "PBXBuildFile";
+			fileRef = "CF634A22311E1DBF2815B174";
+		};
+		F111253CEB1BF66A21547DE1 = {
+			isa = "PBXBuildFile";
+			fileRef = "5954D52ED7D576C762351E3A";
+		};
+		BDF91F253DA6B3F5E1F26B92 = {
+			isa = "PBXBuildFile";
+			fileRef = "E5A1EAA3B0DE70ABF497E626";
+		};
+		E128922E7AA9F62C15E9B206 = {
+			isa = "PBXBuildFile";
+			fileRef = "A8A15A9855B8481F0266A56C";
+		};
+		69C7BF1D81EA33481C8FD41A = {
+			isa = "PBXBuildFile";
+			fileRef = "E63D157A84B8BD450137695A";
+		};
+		6CE0D722F055240839643D65 = {
+			isa = "PBXBuildFile";
+			fileRef = "8072799ECF2997448D0CFCEE";
+		};
+		0F4CEFF5C16EEF97CF888CC8 = {
+			isa = "PBXBuildFile";
+			fileRef = "5030AED641AF6C9EF7A3C7D2";
+		};
+		B778E49DF60BFCF3DFCC92FC = {
+			isa = "PBXBuildFile";
+			fileRef = "B23BB0D6F9507FD6B6F05A88";
+		};
+		8177C6A6A03BC4243406B5F7 = {
+			isa = "PBXBuildFile";
+			fileRef = "6380DF46E3D109D4FD25E590";
+		};
+		ED99440D9A5AC39CEB9EA999 = {
+			isa = "PBXBuildFile";
+			fileRef = "52588D773DCB043A6ECE225B";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C3B6D92453E8D8E2291CCE65 = {
+			isa = "PBXBuildFile";
+			fileRef = "376BFBD97B279C7C9BD41A3E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		12F39F7AF0BA6D0980E33746 = {
+			isa = "PBXBuildFile";
+			fileRef = "9746CC05EFE2394683C9C757";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9B85647F46EF8DB5EE9BDCD6 = {
+			isa = "PBXBuildFile";
+			fileRef = "0240D6A93549CC2FB69B4615";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A3AC74FC9D81DB7594681AF3 = {
+			isa = "PBXBuildFile";
+			fileRef = "9EFA46C2E56845C779899FD2";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5F1AC8CA08287638BF875DC9 = {
+			isa = "PBXBuildFile";
+			fileRef = "4BCDF82AF056B6DEE306F79E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E9A75E95794538AEB7434E0D = {
+			isa = "PBXBuildFile";
+			fileRef = "5BB99D2C64F30DFE3D90DAAD";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		00865920B1FB6B406C6E0CE7 = {
+			isa = "PBXBuildFile";
+			fileRef = "1D795C7F412F98DE25198704";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		3C4A708D6316C184139E9478 = {
+			isa = "PBXBuildFile";
+			fileRef = "0B9E65058AA06A1C870C8B6D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A0C7D6E76EA7483517775006 = {
+			isa = "PBXBuildFile";
+			fileRef = "E38A4ACEC293C011FFD3402A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DBD6261E47A42604F9B46A51 = {
+			isa = "PBXBuildFile";
+			fileRef = "0EC068478A3E47FA505FD3D6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5F68721F9DDD4C7340BB2016 = {
+			isa = "PBXBuildFile";
+			fileRef = "0C75FAD712FAF9D5DBAA87ED";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		85D28187D80CEE1CDDBE924C = {
+			isa = "PBXBuildFile";
+			fileRef = "AA3D10867E8F5D4FF82824CC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		68DC70D1E9EAA22C94A778F4 = {
+			isa = "PBXBuildFile";
+			fileRef = "4E4419D1A460960BA115ED6C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		72CF99B29A2EA68E8DA86819 = {
+			isa = "PBXBuildFile";
+			fileRef = "0E2413A1D73BB73945297B7E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		37039215EAD5B3A0806E9A93 = {
+			isa = "PBXBuildFile";
+			fileRef = "8BBB96EADDC4A87305000757";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7CAD380400B6E445C6EAA284 = {
+			isa = "PBXBuildFile";
+			fileRef = "383FF00BDF729978450C1D9E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		21D5B44C03EE3976D1CADD4C = {
+			isa = "PBXBuildFile";
+			fileRef = "C22275ACF9DA8560FCA618B0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DC9EEC141F066E53EAD294A4 = {
+			isa = "PBXBuildFile";
+			fileRef = "E145DF7D56C5588D1FC3F3DC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BD8A16D196BF64D9C1099493 = {
+			isa = "PBXBuildFile";
+			fileRef = "F0C97065431C5AC2194EB379";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BC99D2822FB20FCEF5DA6F75 = {
+			isa = "PBXBuildFile";
+			fileRef = "E52B98CE5D356A0785C4CE08";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		736D6AEFA9F3106D046DB377 = {
+			isa = "PBXBuildFile";
+			fileRef = "BE71DB2BE7400D6F8DCA2AC4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EF876B6CB53389C525336207 = {
+			isa = "PBXBuildFile";
+			fileRef = "AEE1094E53E011FE94154C48";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8D8E32CE6A38B86DCC95F715 = {
+			isa = "PBXBuildFile";
+			fileRef = "88A2E7099F39E68EDFB9E9F4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E4FBAFB8015562720F5DEC4A = {
+			isa = "PBXBuildFile";
+			fileRef = "09FA2A347286AC739FBF86A1";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		38FBBE3F2F5700D3F64BD879 = {
+			isa = "PBXBuildFile";
+			fileRef = "5F80D66A71E98F6455999BF5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DD6D462BF7B2953C89BD17E6 = {
+			isa = "PBXBuildFile";
+			fileRef = "0FA771CA14DDB8B266ED029F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		27F0E0ADC03DBC55574817F5 = {
+			isa = "PBXBuildFile";
+			fileRef = "B36760BE2477EDC7956FD010";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		50D17FB5741DB2F41CFC9390 = {
+			isa = "PBXBuildFile";
+			fileRef = "818CAA0A70CC7F199899CF6E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F7A892993E7AFF827E96E6F1 = {
+			isa = "PBXBuildFile";
+			fileRef = "C0FF687B2EEFAE0A0A444268";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		89282BD9FC6B248363E7D035 = {
+			isa = "PBXBuildFile";
+			fileRef = "867A3F560E3AAC2D2A40AE57";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1380660E75142C873B7FD8A2 = {
+			isa = "PBXBuildFile";
+			fileRef = "D51942092E2FC112C354A815";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		44B6D9A713EEE4EEC8E018FA = {
+			isa = "PBXBuildFile";
+			fileRef = "840EB23F3A30D3D1C9B1FB2D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BA5170CC9015C449697A0A88 = {
+			isa = "PBXBuildFile";
+			fileRef = "4D2E0E12961E10B733DBA23F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		467FCCAE7EF3A757528EF65A = {
+			isa = "PBXBuildFile";
+			fileRef = "0C786C712D0FA3BF65A5CBF6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A2BCEB8980559E0AFE7C6BFB = {
+			isa = "PBXBuildFile";
+			fileRef = "F8C3C6BAE808695B4B4A0E01";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B2A9D8500D41AEC475CA7850 = {
+			isa = "PBXBuildFile";
+			fileRef = "65D3D87D8211CDD10A4C284A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E9CE1224BAD371ED29389F00 = {
+			isa = "PBXBuildFile";
+			fileRef = "CB4EF7789C6DA0E63A43A7DC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BF9C7E1BED3459975D1F5887 = {
+			isa = "PBXBuildFile";
+			fileRef = "4294B8D0E190E2202D9AB4FE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		715D2FAC3E74732BA6D853DE = {
+			isa = "PBXBuildFile";
+			fileRef = "26A791DBF3C9B8B374DC3DC7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C04153F95C68A69A2892146F = {
+			isa = "PBXBuildFile";
+			fileRef = "A421503B84256D3CFDD0BD6A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F1A98D119D9992FFDCE51F50 = {
+			isa = "PBXBuildFile";
+			fileRef = "989DDC9814217A7B680CB8C9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		45C102CA0829F708138F72FB = {
+			isa = "PBXBuildFile";
+			fileRef = "C8DE6B07113868727D361759";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FF337494B645C3FD359298E8 = {
+			isa = "PBXBuildFile";
+			fileRef = "A0F17A7F045FDD38D8C6A6B9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DAC9D84F2E9EB8C1A55F6636 = {
+			isa = "PBXBuildFile";
+			fileRef = "C48F72BD4FE259D0FEB6026A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		19365B3BCE7CB91AD8EF629F = {
+			isa = "PBXBuildFile";
+			fileRef = "AED6A1D4B91D7ECE094B581A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A64516F700F445EDA7A2B07B = {
+			isa = "PBXBuildFile";
+			fileRef = "BD8C8BC450809FDA7037EC64";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DDB322427BECD18F3CCFF9F5 = {
+			isa = "PBXBuildFile";
+			fileRef = "B5A187EF76EFA6847B83FFA8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D6BF8F7B5018BCADCBFFFB5F = {
+			isa = "PBXBuildFile";
+			fileRef = "21ADDF5FE05D6AF957966978";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7C1940C495E9F4B1DD915229 = {
+			isa = "PBXBuildFile";
+			fileRef = "959F65211BCB61DC5F652533";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1CFE0A7862CBE0547153ED3B = {
+			isa = "PBXBuildFile";
+			fileRef = "5B99790AD6D6C0915C742BAE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B5218BC343684FF8127C5F41 = {
+			isa = "PBXBuildFile";
+			fileRef = "4294D7CA5D2218F51B742875";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		66574DFDD184F7A05A30F19F = {
+			isa = "PBXBuildFile";
+			fileRef = "FEEF3583020496BCE04EE6DF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BE540FF478515BE557A5B48C = {
+			isa = "PBXBuildFile";
+			fileRef = "750958313FF9E5F5F34D9758";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		3BC230712362DE555A5FD5A0 = {
+			isa = "PBXBuildFile";
+			fileRef = "A06945C8C308728231CBB3C5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4AA197ABD0CBF2900855B84C = {
+			isa = "PBXBuildFile";
+			fileRef = "E60765ADD4645333815F7A97";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		259CD28752EBC912DDC12B32 = {
+			isa = "PBXBuildFile";
+			fileRef = "275777B1D5B5BD91FF44B1FA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E383967BD76FDC3341859B0B = {
+			isa = "PBXBuildFile";
+			fileRef = "7831FFD03225FCAD17FF4521";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DF6F5274EB45639CFC3CDD0D = {
+			isa = "PBXBuildFile";
+			fileRef = "2A29D5FAFE2421E88F8BAB9A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		119658BBD09BE3D7398DE0E0 = {
+			isa = "PBXBuildFile";
+			fileRef = "5ACCA8141BFC595188EBC0D5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0E8937FE8EC1671888001D60 = {
+			isa = "PBXBuildFile";
+			fileRef = "CC8571B69B947812691E6C38";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0786E2A296A615B867F44E21 = {
+			isa = "PBXBuildFile";
+			fileRef = "832604CBF0B73EF24376EC62";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		40B4E594F43F87118B3754A2 = {
+			isa = "PBXBuildFile";
+			fileRef = "924C55AA3571F86FF8BF16D7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		6666AD0AA98D0E109B28C19B = {
+			isa = "PBXBuildFile";
+			fileRef = "966CB27BC3F06D6FBB3154FA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F1D50B9D550FD7FA3324D26B = {
+			isa = "PBXBuildFile";
+			fileRef = "7906750ED5BE88D7F29A43CE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CC323E5561D7DCA2C52F4DD3 = {
+			isa = "PBXBuildFile";
+			fileRef = "EC2F375C173D7BCA0278D28D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DF1BD9A183F501E7D99F9A59 = {
+			isa = "PBXBuildFile";
+			fileRef = "F51D081E262D07B4A0E779B5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7893E7D27726216A82DF4009 = {
+			isa = "PBXBuildFile";
+			fileRef = "EC196371DE5033E688AF099E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9CEFD540BB50658BCA892CC8 = {
+			isa = "PBXBuildFile";
+			fileRef = "79ABB394E707EA2A1FC71E73";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2CE59425735D0EB2CC11DD95 = {
+			isa = "PBXBuildFile";
+			fileRef = "BA6CD5612476E31FEDF65432";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7C4CA3550AF467D2BB6A43EC = {
+			isa = "PBXBuildFile";
+			fileRef = "98E8BB7B8CD1C6F0F382076C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A597907C8CA7CBB7F6426341 = {
+			isa = "PBXBuildFile";
+			fileRef = "BBF206E8BCEE7D8F744A60C4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		567F5E776B539BBD1ACBAF44 = {
+			isa = "PBXBuildFile";
+			fileRef = "20D8DDA7E13DBC1860F13855";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2748A329EBDC926298B47686 = {
+			isa = "PBXBuildFile";
+			fileRef = "DBE13ADADD1140C10A3BA7DF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		47453AAC4C241476638EF900 = {
+			isa = "PBXBuildFile";
+			fileRef = "969F6DC69DDA01A06C223BED";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9F4965C14A210C9C6E0B883A = {
+			isa = "PBXBuildFile";
+			fileRef = "987A80DB63423EE10297205D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		98724A6D6E97EBE9FDBDEE84 = {
+			isa = "PBXBuildFile";
+			fileRef = "AA0581027A0DE4749D516A01";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2F480BE8DBA63861A385934B = {
+			isa = "PBXBuildFile";
+			fileRef = "4F8D9EC7D563C280DFEC520C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C5341FD3F14B94AD11C9062C = {
+			isa = "PBXBuildFile";
+			fileRef = "E170F9081CBF7E224A7600CE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1550DC025EA829264C256BB6 = {
+			isa = "PBXBuildFile";
+			fileRef = "46FEA37BB5E9B47552D42239";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		6E9003B84DE60B2A88A5C1A5 = {
+			isa = "PBXBuildFile";
+			fileRef = "423E5A6DDE99BFC951292CC0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D3E8B5DCFC02A3AD180B5992 = {
+			isa = "PBXBuildFile";
+			fileRef = "6500CB80F37AB334AB9034E8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BD9BCB77A26DB1A2CE7FFD50 = {
+			isa = "PBXBuildFile";
+			fileRef = "B44244FB61CF34654E41DA52";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CC227549B0887029A720A56E = {
+			isa = "PBXBuildFile";
+			fileRef = "13560B658515ED0038D1EDD6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0096AA3D0CB19D7F24F7458E = {
+			isa = "PBXBuildFile";
+			fileRef = "8854E1066ABDD0BD10B309B9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		3716BD18142768F9C9D293BF = {
+			isa = "PBXBuildFile";
+			fileRef = "2E9DFC7EDDD51BF93931EB5A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DA3DFF18FDBF67BA149A3D81 = {
+			isa = "PBXBuildFile";
+			fileRef = "D97803023155D32718EA6ECA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A8D6D2522AC224BE398CC482 = {
+			isa = "PBXBuildFile";
+			fileRef = "8A1C68541297900837901966";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D4A37DD87E4360D2F51893DB = {
+			isa = "PBXBuildFile";
+			fileRef = "F44EF43573147E092EFE2157";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		71B94E3C2256F9F6343543F7 = {
+			isa = "PBXBuildFile";
+			fileRef = "86E98F24320981513E3CFEF6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E2DAB50802977A42EDA70AAF = {
+			isa = "PBXBuildFile";
+			fileRef = "D69544018551858DB82507F8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2C801E3F0240CA1818C84831 = {
+			isa = "PBXBuildFile";
+			fileRef = "7C9F91FCB19409381298A487";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D5E0C12BF91A3675A229E8B8 = {
+			isa = "PBXBuildFile";
+			fileRef = "171621D5EB35A1938A11D5C7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DEC1755394DFA67BD5AEBA27 = {
+			isa = "PBXBuildFile";
+			fileRef = "4B759E5A42FE9571DA65A2BF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		6C7D00ADBA794395E09DDC60 = {
+			isa = "PBXBuildFile";
+			fileRef = "181D73EE2C178B1A81674AD5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C99FD36A2C16D16A9631A11B = {
+			isa = "PBXBuildFile";
+			fileRef = "EE5DDC3DD125BB076D85C82B";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E52FB5A3866E67074481A1EC = {
+			isa = "PBXBuildFile";
+			fileRef = "422C2A3465BF5C092986D2AB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		16F87B6CD395553575D95515 = {
+			isa = "PBXBuildFile";
+			fileRef = "CFD60FDC9A07E31714569C5C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		547A4AE96F4ED4ABEB53E01F = {
+			isa = "PBXBuildFile";
+			fileRef = "62E85720FF19BAE64900A613";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C9AC029284DD476EA9D4A356 = {
+			isa = "PBXBuildFile";
+			fileRef = "A5857E0F66ABC5DC7570F808";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		51074835C14406F572F5FF68 = {
+			isa = "PBXBuildFile";
+			fileRef = "86C3B821F28439FE3B84FD39";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2BB41073DFB6489D0DB40063 = {
+			isa = "PBXBuildFile";
+			fileRef = "E6411CFF2017B5DD8EFE1094";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		99FC47F212647E4DC390031F = {
+			isa = "PBXBuildFile";
+			fileRef = "4244479C9A5EB6EBBB2FD557";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7246533098017C69621C96D9 = {
+			isa = "PBXBuildFile";
+			fileRef = "9FD0386E7FFCF9E6481D7E57";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7F0D9337FD4F84DD319840DA = {
+			isa = "PBXBuildFile";
+			fileRef = "C8ED7406F8807B14B0DD63BE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7DFC416B096263C1F8D21BB4 = {
+			isa = "PBXBuildFile";
+			fileRef = "ADE19C30D3BF116CE9B9761F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A1C08CA798C92AC71249FED2 = {
+			isa = "PBXBuildFile";
+			fileRef = "FDAD03B24EA91D52D97C5A10";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0B4773C6B5ED9A022ABDA976 = {
+			isa = "PBXBuildFile";
+			fileRef = "20EA7CBC845F25DEDC17EE8F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5C8A7EBAC4577A7607959F63 = {
+			isa = "PBXBuildFile";
+			fileRef = "0516E3018331CBA74FDAC6CE";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DFC15C643D09CDC3D9064CA9 = {
+			isa = "PBXBuildFile";
+			fileRef = "0F13ED0B03994F848C292B7A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F6B3A4BCE22003F8A0359DE3 = {
+			isa = "PBXBuildFile";
+			fileRef = "18E18D93005883DCE812D911";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		3792FDB7ED3B61C51234ADF2 = {
+			isa = "PBXBuildFile";
+			fileRef = "FC54C517600C43814B17C3D8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1896670E6EBEEE11AC0303EC = {
+			isa = "PBXBuildFile";
+			fileRef = "EC06BF87FB4E20E8FA6C59A6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BC180AB8344112BC3C37E570 = {
+			isa = "PBXBuildFile";
+			fileRef = "D24A2A531E4E48BE33D0171F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7DFF12DC9E4D2B2B1C0E5E3D = {
+			isa = "PBXBuildFile";
+			fileRef = "06F9137F91DA13BB8F35932B";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		68F3496AF58A81D475CE5504 = {
+			isa = "PBXBuildFile";
+			fileRef = "07318AAEAFFAD070331C03D8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		290704606945686CFAC94444 = {
+			isa = "PBXBuildFile";
+			fileRef = "0998A87F3EB676E0413870DB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		03E23A5E4659336455D24156 = {
+			isa = "PBXBuildFile";
+			fileRef = "F7970E7F50B51286FEAE2A78";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EA87CBE2539876DC90D6C049 = {
+			isa = "PBXBuildFile";
+			fileRef = "DA457F8C68FC346897CA7A25";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A6F14745EC2598979CBF019A = {
+			isa = "PBXBuildFile";
+			fileRef = "C379629EA30FD1ED41CF4975";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7572EECC550A0EF1138E2BE2 = {
+			isa = "PBXBuildFile";
+			fileRef = "CA18E93396636E4E8FA0B5E0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		AB1A6DE5EA047F6AFC36FE0E = {
+			isa = "PBXBuildFile";
+			fileRef = "658B300A6A3F7D0BF4B270CA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5479362B9BB8BE14C7556DE9 = {
+			isa = "PBXBuildFile";
+			fileRef = "159AF5632131AFA77BF72687";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5A36E3BDA56ED498B1D2F8CF = {
+			isa = "PBXBuildFile";
+			fileRef = "FB6015D1EAD7C20A3F518CF6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4B3C6B85C412197957EC0BFA = {
+			isa = "PBXBuildFile";
+			fileRef = "F25B9BD05633B1C759B30C16";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8612BBB1282FA11C8F987AEF = {
+			isa = "PBXBuildFile";
+			fileRef = "8B3192B24A019618C91BF53C";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		BB44BA00480ADD4849EDA7B6 = {
+			isa = "PBXBuildFile";
+			fileRef = "7227B9FE777560590332BBB6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5D50E52FF55BD580690150B8 = {
+			isa = "PBXBuildFile";
+			fileRef = "7ED49FA399481BE1892C9836";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A8E8AE094CD347F4BCACC63D = {
+			isa = "PBXBuildFile";
+			fileRef = "995A884705AA4850AC3835F5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		15263C0A75D06264B4F79358 = {
+			isa = "PBXBuildFile";
+			fileRef = "FAF663F8C5CB8CA843924F46";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		14CAFC2CDB8290AB5061266E = {
+			isa = "PBXBuildFile";
+			fileRef = "843F9B120825ED1245B39849";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		941DFA96D46CCF8B482F9B3B = {
+			isa = "PBXBuildFile";
+			fileRef = "6F58FB7C357D0D7725BCF925";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		0C2635720C8B80FFC3FC4F4E = {
+			isa = "PBXBuildFile";
+			fileRef = "B1B89F7CD2CB4E1D73B684FB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		44E68BF6D24C50BD2039E345 = {
+			isa = "PBXBuildFile";
+			fileRef = "EC7547C74173B44A2D1F1E14";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FFB3DCE64A7ED3B90204C2EC = {
+			isa = "PBXBuildFile";
+			fileRef = "F96CCB6FCF4CECC52FBA3476";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8F60415B2CDC524F8C4B5034 = {
+			isa = "PBXBuildFile";
+			fileRef = "03981CF0159E6BD060DDC979";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		5731EBF613899D24FC301A52 = {
+			isa = "PBXBuildFile";
+			fileRef = "0C3BDF82232B614F204A81E5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D2F324BF5C11175AD449BFFE = {
+			isa = "PBXBuildFile";
+			fileRef = "01EE1245164FDF3E3515FF10";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F883D80F9B2EB630921343B6 = {
+			isa = "PBXBuildFile";
+			fileRef = "E195FF2B5043B3162E962E3D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B511442F514103682CF2091C = {
+			isa = "PBXBuildFile";
+			fileRef = "910970350B0D1F8F1DF937F2";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		57EC97017EA2FFEF2F7F6495 = {
+			isa = "PBXBuildFile";
+			fileRef = "5C5838D964A7940758C7C338";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		6EBAD556D1198C4ADB78AE0B = {
+			isa = "PBXBuildFile";
+			fileRef = "FEA604DAA136439DD0505CEF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E1CB53524F5F5754BF8994F2 = {
+			isa = "PBXBuildFile";
+			fileRef = "B5BB779660F1E9089574F936";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D46B8BCFCEB027EA1CC32E23 = {
+			isa = "PBXBuildFile";
+			fileRef = "7ED096468EB808ECAF4A19D9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2C4E182E7447D248639E9447 = {
+			isa = "PBXBuildFile";
+			fileRef = "A5D1731AD8B60F8E452AB9FF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C8ABE08A54500D6C7FEFF488 = {
+			isa = "PBXBuildFile";
+			fileRef = "498C685AF6A48309D3C83121";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		F858CF4E968A93849C69FBCB = {
+			isa = "PBXBuildFile";
+			fileRef = "F2338A42B3248DB682DC8809";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		96BDB41DE17AA6A88411AA83 = {
+			isa = "PBXBuildFile";
+			fileRef = "2EB7432C560E42FBD8E05449";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		1489298CBC4381DEA00FE567 = {
+			isa = "PBXBuildFile";
+			fileRef = "740874EFA95F4D98EC18F6B3";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		6BD772373240207128DC57C4 = {
+			isa = "PBXBuildFile";
+			fileRef = "FA4FF89AE1F33F42B0C681D4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CE906708FAE03659957CDE1D = {
+			isa = "PBXBuildFile";
+			fileRef = "2280B21249C512B21AE724A9";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A9744AB97D38E98835E58D04 = {
+			isa = "PBXBuildFile";
+			fileRef = "2952C289C9B290EFD410E4CB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C5229D8A86940AC5BCB44621 = {
+			isa = "PBXBuildFile";
+			fileRef = "F2A36733086DB9732DD00657";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		2C311442D6351A67B322FF93 = {
+			isa = "PBXBuildFile";
+			fileRef = "1A3750B1F29F819109FCACE6";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4E510AC81979AC6BA7575887 = {
+			isa = "PBXBuildFile";
+			fileRef = "BF4E709624467CA74B65CA13";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FB53710E36F3CF361E6341D1 = {
+			isa = "PBXBuildFile";
+			fileRef = "CE13592CE061A8BE1245EF42";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E6E0D541532AA6DBDAEE0774 = {
+			isa = "PBXBuildFile";
+			fileRef = "93DB9594B664440A97BB86E0";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8FFA02039710107C9A51F526 = {
+			isa = "PBXBuildFile";
+			fileRef = "25755DE7AEACB4FB41D82363";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		14A9A68D3D3C923A35451398 = {
+			isa = "PBXBuildFile";
+			fileRef = "55DE426B9B9C7DAB90D65287";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E29641194D576D626DC4F43D = {
+			isa = "PBXBuildFile";
+			fileRef = "AE4A1A1187B10BAC566F44B5";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EDFFCA13627D2C0406612413 = {
+			isa = "PBXBuildFile";
+			fileRef = "135D94B5D1E721E00774D63D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		C6AADB2D0EA80542088BD980 = {
+			isa = "PBXBuildFile";
+			fileRef = "71133B07FFB21EBC17120922";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		FA386BC323EA4B30F07311A6 = {
+			isa = "PBXBuildFile";
+			fileRef = "77804786533C02D05134B5DA";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E93F58C4C63801D37B40BD7F = {
+			isa = "PBXBuildFile";
+			fileRef = "2415AB8BAFF950CC067E3B81";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EECE2A9929778AA205B5D2B2 = {
+			isa = "PBXBuildFile";
+			fileRef = "B40E203BE55AEDBC6E87FB8F";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		75FF432DEC8A76800577E94D = {
+			isa = "PBXBuildFile";
+			fileRef = "0B9D25DF128D182F1EEB3C54";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7AF7C2B3DDFC0E85FA60C4FB = {
+			isa = "PBXBuildFile";
+			fileRef = "B7FAACC18BA5F3D86C203609";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		806D6D341DC83E4EA302BABE = {
+			isa = "PBXBuildFile";
+			fileRef = "42A61FE5FBE669CB3E79EF2D";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		43B9EF4DF12260E1D4D7855E = {
+			isa = "PBXBuildFile";
+			fileRef = "CCC2B09231C3FCEAA6787B30";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8E52DF5A7A3AD21D0CC17DAF = {
+			isa = "PBXBuildFile";
+			fileRef = "AEB81CB6E1030B715C37C744";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		14FBEF024F80C06C3B0EC781 = {
+			isa = "PBXBuildFile";
+			fileRef = "B89FEBCE467C2047B5B2CC7E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CAB5104D8AEFA04F196E2125 = {
+			isa = "PBXBuildFile";
+			fileRef = "51933A205FD9AB1C47F01B12";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CC2E815308AF73EE56F536AA = {
+			isa = "PBXBuildFile";
+			fileRef = "50A4DEE786421C55E3BA7149";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		318A79380656841FAB96DDFD = {
+			isa = "PBXBuildFile";
+			fileRef = "676528D4B998B91A0592B2F2";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9A477DDAB0F57FFC855EC335 = {
+			isa = "PBXBuildFile";
+			fileRef = "884383B689E866E77DD53FB7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		867E9D8A88ABEAB6B7440A16 = {
+			isa = "PBXBuildFile";
+			fileRef = "5D50AB0B84CA1A9181C9536A";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		566DA6074B8845B117554CC5 = {
+			isa = "PBXBuildFile";
+			fileRef = "968CDB04CB495754B8928BA8";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		E2F769732B3A8845D4A6D10F = {
+			isa = "PBXBuildFile";
+			fileRef = "B9CD3FF36E4ED80BFFEA65FB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		72FB356D62042F245F076CF7 = {
+			isa = "PBXBuildFile";
+			fileRef = "AA3D3C73D737914EFF7A4FC7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B45187E15C909CE0B11EB957 = {
+			isa = "PBXBuildFile";
+			fileRef = "A2AD94D22E94A696B5391BDF";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		D916F74DA36D7A888F35D6DE = {
+			isa = "PBXBuildFile";
+			fileRef = "27C91D12A6E389D3627421F3";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		B336BDA98B97DDD30CBD4475 = {
+			isa = "PBXBuildFile";
+			fileRef = "C232FE571778C7353B5C78CC";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		DBD250B3CCEF5D9DA42053C8 = {
+			isa = "PBXBuildFile";
+			fileRef = "96B8FD74A195CFF365EAF619";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		54151E5344DCD4E0D6C3336B = {
+			isa = "PBXBuildFile";
+			fileRef = "4C81163006C6426385DA04A4";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CB0486B992C19635CB79FDEE = {
+			isa = "PBXBuildFile";
+			fileRef = "574ACC5D6AAD7B98D7C47408";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EA21161C35273DB323144659 = {
+			isa = "PBXBuildFile";
+			fileRef = "1F9BE5202A08ED6594D479BB";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		9D048547EAE256B5273D74DB = {
+			isa = "PBXBuildFile";
+			fileRef = "4914CA337CA90C0FF1545A0E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		A612DF962EC98FB8CF74A433 = {
+			isa = "PBXBuildFile";
+			fileRef = "4030FC4DB6D77B686C21CDB7";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		8422F7FB1AF76408629C8423 = {
+			isa = "PBXBuildFile";
+			fileRef = "08170463ED7844C87693E814";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		EB9213FC307B406B86CEA5B7 = {
+			isa = "PBXBuildFile";
+			fileRef = "21B758B7E3F101AEE38EEF02";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		99D4ED6DE4E443B033AA45F1 = {
+			isa = "PBXBuildFile";
+			fileRef = "3C90321AF6155811B1494778";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		7C85AC1200FA179E42D38F16 = {
+			isa = "PBXBuildFile";
+			fileRef = "180D1DF77E0BC809C9D92273";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		4E3FC8BFDA06D3207CA15598 = {
+			isa = "PBXBuildFile";
+			fileRef = "4C60534AFAFBAB33DEFF5C7E";
+			settings = {
+				COMPILER_FLAGS = "-w";
+			};
+		};
+		CADB5C04B559DB1E7441BB54 = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_native.cpp";
+			name = "i960_native.cpp";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.cpp.cpp";
+		};
+		0C26EAD512D44A872ABCC4BD = {
+			isa = "PBXBuildFile";
+			fileRef = "CADB5C04B559DB1E7441BB54";
+		};
+		5073AAAD71BBA54C2A214B12 = {
+			isa = "PBXFileReference";
+			path = "third_party/sljit/sljitLir.c";
+			name = "sljitLir.c";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.c";
+		};
+		15B6063FC3D25CF6D556BDC0 = {
+			isa = "PBXGroup";
+			name = "sljit";
+			children = ("5073AAAD71BBA54C2A214B12");
+			sourceTree = "<group>";
+		};
+		A021DFFF923DD9AACBCC5326 = {
+			isa = "PBXBuildFile";
+			fileRef = "5073AAAD71BBA54C2A214B12";
+			settings = {
+				COMPILER_FLAGS = "-w -O2 -DSLJIT_CONFIG_AUTO=1";
+			};
+		};
+		181DAF6394327073139BF4C5 = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("E57F1191B1B00F12645E7D8E", "0584481855C5799E88FA13C3", "FB040A3BC1DE6B878D514BE4", "13DCA47D6720C23ABC0DFD89", "6D380D50E9D56483313EDC23", "D9F3453F5BF45BF44710409F", "BF06127596F184DAF01DB64A", "F4E54378D01E67E27E16FDFC", "3B9134796E95BDCBDAAA8DE6", "798A517A7D820A8EC7088EC0", "67E9E73229389DCE18CE8649", "E95027E0F5CD30E87B5C9354", "91A3D7F3CBBF67CF96F8319D", "D1587EF01D916EF45D98388E", "DD8107E38E83D8B9D585198F", "3395A264201A3428E24B277E", "5D7EC3D90947B2C921D1CF1E", "6F14BCDAD137A1003DE0388E", "BDFC10B0944EB14B5D4E924C", "F111253CEB1BF66A21547DE1", "BDF91F253DA6B3F5E1F26B92", "E128922E7AA9F62C15E9B206", "69C7BF1D81EA33481C8FD41A", "6CE0D722F055240839643D65", "0F4CEFF5C16EEF97CF888CC8", "B778E49DF60BFCF3DFCC92FC", "8177C6A6A03BC4243406B5F7", "ED99440D9A5AC39CEB9EA999", "C3B6D92453E8D8E2291CCE65", "12F39F7AF0BA6D0980E33746", "9B85647F46EF8DB5EE9BDCD6", "A3AC74FC9D81DB7594681AF3", "5F1AC8CA08287638BF875DC9", "E9A75E95794538AEB7434E0D", "00865920B1FB6B406C6E0CE7", "3C4A708D6316C184139E9478", "A0C7D6E76EA7483517775006", "DBD6261E47A42604F9B46A51", "5F68721F9DDD4C7340BB2016", "85D28187D80CEE1CDDBE924C", "68DC70D1E9EAA22C94A778F4", "72CF99B29A2EA68E8DA86819", "37039215EAD5B3A0806E9A93", "7CAD380400B6E445C6EAA284", "21D5B44C03EE3976D1CADD4C", "DC9EEC141F066E53EAD294A4", "BD8A16D196BF64D9C1099493", "BC99D2822FB20FCEF5DA6F75", "736D6AEFA9F3106D046DB377", "EF876B6CB53389C525336207", "8D8E32CE6A38B86DCC95F715", "E4FBAFB8015562720F5DEC4A", "38FBBE3F2F5700D3F64BD879", "DD6D462BF7B2953C89BD17E6", "27F0E0ADC03DBC55574817F5", "50D17FB5741DB2F41CFC9390", "F7A892993E7AFF827E96E6F1", "89282BD9FC6B248363E7D035", "1380660E75142C873B7FD8A2", "44B6D9A713EEE4EEC8E018FA", "BA5170CC9015C449697A0A88", "467FCCAE7EF3A757528EF65A", "A2BCEB8980559E0AFE7C6BFB", "B2A9D8500D41AEC475CA7850", "E9CE1224BAD371ED29389F00", "BF9C7E1BED3459975D1F5887", "715D2FAC3E74732BA6D853DE", "C04153F95C68A69A2892146F", "F1A98D119D9992FFDCE51F50", "45C102CA0829F708138F72FB", "FF337494B645C3FD359298E8", "DAC9D84F2E9EB8C1A55F6636", "19365B3BCE7CB91AD8EF629F", "A64516F700F445EDA7A2B07B", "DDB322427BECD18F3CCFF9F5", "D6BF8F7B5018BCADCBFFFB5F", "7C1940C495E9F4B1DD915229", "1CFE0A7862CBE0547153ED3B", "B5218BC343684FF8127C5F41", "66574DFDD184F7A05A30F19F", "BE540FF478515BE557A5B48C", "3BC230712362DE555A5FD5A0", "4AA197ABD0CBF2900855B84C", "259CD28752EBC912DDC12B32", "E383967BD76FDC3341859B0B", "DF6F5274EB45639CFC3CDD0D", "119658BBD09BE3D7398DE0E0", "0E8937FE8EC1671888001D60", "0786E2A296A615B867F44E21", "40B4E594F43F87118B3754A2", "6666AD0AA98D0E109B28C19B", "F1D50B9D550FD7FA3324D26B", "CC323E5561D7DCA2C52F4DD3", "DF1BD9A183F501E7D99F9A59", "7893E7D27726216A82DF4009", "9CEFD540BB50658BCA892CC8", "2CE59425735D0EB2CC11DD95", "7C4CA3550AF467D2BB6A43EC", "A597907C8CA7CBB7F6426341", "567F5E776B539BBD1ACBAF44", "2748A329EBDC926298B47686", "47453AAC4C241476638EF900", "9F4965C14A210C9C6E0B883A", "98724A6D6E97EBE9FDBDEE84", "2F480BE8DBA63861A385934B", "C5341FD3F14B94AD11C9062C", "1550DC025EA829264C256BB6", "6E9003B84DE60B2A88A5C1A5", "D3E8B5DCFC02A3AD180B5992", "BD9BCB77A26DB1A2CE7FFD50", "CC227549B0887029A720A56E", "0096AA3D0CB19D7F24F7458E", "3716BD18142768F9C9D293BF", "DA3DFF18FDBF67BA149A3D81", "A8D6D2522AC224BE398CC482", "D4A37DD87E4360D2F51893DB", "71B94E3C2256F9F6343543F7", "E2DAB50802977A42EDA70AAF", "2C801E3F0240CA1818C84831", "D5E0C12BF91A3675A229E8B8", "DEC1755394DFA67BD5AEBA27", "6C7D00ADBA794395E09DDC60", "C99FD36A2C16D16A9631A11B", "E52FB5A3866E67074481A1EC", "16F87B6CD395553575D95515", "547A4AE96F4ED4ABEB53E01F", "C9AC029284DD476EA9D4A356", "51074835C14406F572F5FF68", "2BB41073DFB6489D0DB40063", "99FC47F212647E4DC390031F", "7246533098017C69621C96D9", "7F0D9337FD4F84DD319840DA", "7DFC416B096263C1F8D21BB4", "A1C08CA798C92AC71249FED2", "0B4773C6B5ED9A022ABDA976", "5C8A7EBAC4577A7607959F63", "DFC15C643D09CDC3D9064CA9", "F6B3A4BCE22003F8A0359DE3", "3792FDB7ED3B61C51234ADF2", "1896670E6EBEEE11AC0303EC", "BC180AB8344112BC3C37E570", "7DFF12DC9E4D2B2B1C0E5E3D", "68F3496AF58A81D475CE5504", "290704606945686CFAC94444", "03E23A5E4659336455D24156", "EA87CBE2539876DC90D6C049", "A6F14745EC2598979CBF019A", "7572EECC550A0EF1138E2BE2", "AB1A6DE5EA047F6AFC36FE0E", "5479362B9BB8BE14C7556DE9", "5A36E3BDA56ED498B1D2F8CF", "4B3C6B85C412197957EC0BFA", "8612BBB1282FA11C8F987AEF", "BB44BA00480ADD4849EDA7B6", "5D50E52FF55BD580690150B8", "A8E8AE094CD347F4BCACC63D", "15263C0A75D06264B4F79358", "14CAFC2CDB8290AB5061266E", "941DFA96D46CCF8B482F9B3B", "0C2635720C8B80FFC3FC4F4E", "44E68BF6D24C50BD2039E345", "FFB3DCE64A7ED3B90204C2EC", "8F60415B2CDC524F8C4B5034", "5731EBF613899D24FC301A52", "D2F324BF5C11175AD449BFFE", "F883D80F9B2EB630921343B6", "B511442F514103682CF2091C", "57EC97017EA2FFEF2F7F6495", "6EBAD556D1198C4ADB78AE0B", "E1CB53524F5F5754BF8994F2", "D46B8BCFCEB027EA1CC32E23", "2C4E182E7447D248639E9447", "C8ABE08A54500D6C7FEFF488", "F858CF4E968A93849C69FBCB", "96BDB41DE17AA6A88411AA83", "1489298CBC4381DEA00FE567", "6BD772373240207128DC57C4", "CE906708FAE03659957CDE1D", "A9744AB97D38E98835E58D04", "C5229D8A86940AC5BCB44621", "2C311442D6351A67B322FF93", "4E510AC81979AC6BA7575887", "FB53710E36F3CF361E6341D1", "E6E0D541532AA6DBDAEE0774", "8FFA02039710107C9A51F526", "14A9A68D3D3C923A35451398", "E29641194D576D626DC4F43D", "EDFFCA13627D2C0406612413", "C6AADB2D0EA80542088BD980", "FA386BC323EA4B30F07311A6", "E93F58C4C63801D37B40BD7F", "EECE2A9929778AA205B5D2B2", "75FF432DEC8A76800577E94D", "7AF7C2B3DDFC0E85FA60C4FB", "806D6D341DC83E4EA302BABE", "43B9EF4DF12260E1D4D7855E", "8E52DF5A7A3AD21D0CC17DAF", "14FBEF024F80C06C3B0EC781", "CAB5104D8AEFA04F196E2125", "CC2E815308AF73EE56F536AA", "318A79380656841FAB96DDFD", "9A477DDAB0F57FFC855EC335", "867E9D8A88ABEAB6B7440A16", "566DA6074B8845B117554CC5", "E2F769732B3A8845D4A6D10F", "72FB356D62042F245F076CF7", "B45187E15C909CE0B11EB957", "D916F74DA36D7A888F35D6DE", "B336BDA98B97DDD30CBD4475", "DBD250B3CCEF5D9DA42053C8", "54151E5344DCD4E0D6C3336B", "CB0486B992C19635CB79FDEE", "EA21161C35273DB323144659", "9D048547EAE256B5273D74DB", "A612DF962EC98FB8CF74A433", "8422F7FB1AF76408629C8423", "EB9213FC307B406B86CEA5B7", "99D4ED6DE4E443B033AA45F1", "7C85AC1200FA179E42D38F16", "4E3FC8BFDA06D3207CA15598", "0C26EAD512D44A872ABCC4BD", "A021DFFF923DD9AACBCC5326");
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		88E1F30E87BB5DEEDAE96B9A = {
+			isa = "PBXBuildFile";
+			fileRef = "D9659A726C2D44D6D4330AC2";
+		};
+		7A40A808C08BFF19BBE49DDB = {
+			isa = "PBXBuildFile";
+			fileRef = "42F73C0A863FF1DD77411C52";
+		};
+		05C154584D7C3798DC562A96 = {
+			isa = "PBXBuildFile";
+			fileRef = "C039DD899639925C55A36759";
+		};
+		92FDDBE8BDF98FC370F432CC = {
+			isa = "PBXCopyFilesBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("88E1F30E87BB5DEEDAE96B9A", "7A40A808C08BFF19BBE49DDB", "05C154584D7C3798DC562A96");
+			runOnlyForDeploymentPostprocessing = 0;
+			name = "Copy game UI assets";
+			dstPath = "assets";
+			dstSubfolderSpec = 7;
+		};
+		1C2D5A3C291BAD3746F3AEEF = {
+			isa = "PBXFileReference";
+			name = "LICENSES (macos).txt";
+			path = "$(VF2_DEPS_DIR)/LICENSES.txt";
+			sourceTree = "<absolute>";
+			lastKnownFileType = "text";
+		};
+		6A05D4B87607DC813181221F = {
+			isa = "PBXBuildFile";
+			fileRef = "1C2D5A3C291BAD3746F3AEEF";
+		};
+		F0ADE567324E84E1FE87C680 = {
+			isa = "PBXFileReference";
+			path = "assets/icon/VF2.icns";
+			name = "VF2.icns";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "image.icns";
+		};
+		13797A698694CC87708C4CAA = {
+			isa = "PBXGroup";
+			name = "icon";
+			children = ("F0ADE567324E84E1FE87C680");
+			sourceTree = "<group>";
+		};
+		9DEF7B45CBBCBDCE90BC19AD = {
+			isa = "PBXBuildFile";
+			fileRef = "F0ADE567324E84E1FE87C680";
+		};
+		CE66DCC19CC06A3FABDD9962 = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("6A05D4B87607DC813181221F", "9DEF7B45CBBCBDCE90BC19AD");
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8CC9CC0B0151E63635DCFE77 = {
+			isa = "PBXBuildFile";
+			fileRef = "F092A2AEBE0B8E309C3F5287";
+		};
+		AD618B3FAEEB0A861BFC1D40 = {
+			isa = "PBXBuildFile";
+			fileRef = "C3D62F3F956C655AF221454C";
+		};
+		A7F33DE2FF7A242E2D73A2BC = {
+			isa = "PBXBuildFile";
+			fileRef = "72400CA91D01ABDB3C2E16E0";
+		};
+		90307C841AD83A82FAD72F42 = {
+			isa = "PBXBuildFile";
+			fileRef = "CE49AD5C89D48A9C32E70529";
+		};
+		518974C63BE6FD2E122B5011 = {
+			isa = "PBXBuildFile";
+			fileRef = "6FB915AF7914A0F7788E5595";
+		};
+		C353B5E5517DFE1248689A4E = {
+			isa = "PBXBuildFile";
+			fileRef = "23557C6ABA05F8825F0D9AE6";
+		};
+		F0F98AE1EBBBFAFEBAC5B3D2 = {
+			isa = "PBXBuildFile";
+			fileRef = "C166693EA3715CCB7351B000";
+		};
+		E1AF7B01A2178AF9CC95E729 = {
+			isa = "PBXBuildFile";
+			fileRef = "AA14C4CFC2532A538E01C6B5";
+		};
+		F7B7477E06F6F14161045FD2 = {
+			isa = "PBXBuildFile";
+			fileRef = "19400D1AF25B208FF6CD04FA";
+		};
+		412E0CF18ED7CF3124B997C9 = {
+			isa = "PBXBuildFile";
+			fileRef = "0C4E0CE3C462967A7A1A2F0F";
+			settings = {
+				ATTRIBUTES = ("Weak");
+			};
+		};
+		8AAEC87EC2F6801149F2AB4E = {
+			isa = "PBXBuildFile";
+			fileRef = "5837AA9387BBA9062CED3776";
+		};
+		CFF66AE6849B879A0800DCD1 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/Cocoa.framework";
+			name = "Cocoa.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		32A2029FD84BFD1B6011E743 = {
+			isa = "PBXBuildFile";
+			fileRef = "CFF66AE6849B879A0800DCD1";
+		};
+		2B10EE30CA1D553A7D9F101F = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/IOKit.framework";
+			name = "IOKit.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		064E687AD598FEBE48E88955 = {
+			isa = "PBXBuildFile";
+			fileRef = "2B10EE30CA1D553A7D9F101F";
+		};
+		634AA77584B90EA8A724CB9E = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/ForceFeedback.framework";
+			name = "ForceFeedback.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		1CFD7D542BA384B2CDF23645 = {
+			isa = "PBXBuildFile";
+			fileRef = "634AA77584B90EA8A724CB9E";
+		};
+		C6A01E8172660E25D0D49230 = {
+			isa = "PBXFileReference";
+			path = "System/Library/Frameworks/Carbon.framework";
+			name = "Carbon.framework";
+			sourceTree = "SDKROOT";
+			lastKnownFileType = "wrapper.framework";
+		};
+		999E7019F9E410603D6D680F = {
+			isa = "PBXBuildFile";
+			fileRef = "C6A01E8172660E25D0D49230";
+		};
+		36194EA78B43986E2E4F7928 = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = ("8CC9CC0B0151E63635DCFE77", "AD618B3FAEEB0A861BFC1D40", "A7F33DE2FF7A242E2D73A2BC", "90307C841AD83A82FAD72F42", "518974C63BE6FD2E122B5011", "C353B5E5517DFE1248689A4E", "F0F98AE1EBBBFAFEBAC5B3D2", "E1AF7B01A2178AF9CC95E729", "F7B7477E06F6F14161045FD2", "412E0CF18ED7CF3124B997C9", "8AAEC87EC2F6801149F2AB4E", "32A2029FD84BFD1B6011E743", "064E687AD598FEBE48E88955", "1CFD7D542BA384B2CDF23645", "999E7019F9E410603D6D680F");
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		755BF9D3BA48935C6C37E233 = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.application";
+			path = "VF2 Recomp.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+			includeInIndex = 0;
+		};
+		B10E9715B5C87BDCA4B4DD2E = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				SDKROOT = "macosx";
+				SUPPORTED_PLATFORMS = "macosx";
+				MACOSX_DEPLOYMENT_TARGET = "15.0";
+				PRODUCT_NAME = "VF2 Recomp";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.vf2recomp.apple";
+				MARKETING_VERSION = "0.1.0";
+				CURRENT_PROJECT_VERSION = "1";
+				CODE_SIGN_STYLE = "Automatic";
+				INFOPLIST_FILE = "apple/xcode/Info-macOS.plist";
+				GENERATE_INFOPLIST_FILE = "NO";
+				SKIP_INSTALL = "NO";
+				INSTALL_PATH = "$(LOCAL_APPS_DIR)";
+				HEADER_SEARCH_PATHS = ("$(inherited)", "\"$(SRCROOT)/src/core/shim_include\"", "\"$(SRCROOT)/third_party/rmlui/Include\"", "\"$(SRCROOT)/third_party/rmlui/Backends\"", "\"$(VF2_DEPS_DIR)\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build/include-revision\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build/include\"");
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build\"");
+				OTHER_LDFLAGS = ("$(inherited)", "-lSDL3", "-lfreetype", "-lz", "-lm", "-lpthread");
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "RMLUI_STATIC_LIB", "RMLUI_FONT_ENGINE_FREETYPE", "RMLUI_SDL_VERSION_MAJOR=3", "VF2_GPU3D_METAL=1", "VF2_NATIVE_CONTROLS=1", "DEBUG=1");
+				CODE_SIGN_IDENTITY = "-";
+				GCC_OPTIMIZATION_LEVEL = "2";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				ONLY_ACTIVE_ARCH = "YES";
+			};
+		};
+		50BEAE0F61B09AFDD029C3DD = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				SDKROOT = "macosx";
+				SUPPORTED_PLATFORMS = "macosx";
+				MACOSX_DEPLOYMENT_TARGET = "15.0";
+				PRODUCT_NAME = "VF2 Recomp";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.vf2recomp.apple";
+				MARKETING_VERSION = "0.1.0";
+				CURRENT_PROJECT_VERSION = "1";
+				CODE_SIGN_STYLE = "Automatic";
+				INFOPLIST_FILE = "apple/xcode/Info-macOS.plist";
+				GENERATE_INFOPLIST_FILE = "NO";
+				SKIP_INSTALL = "NO";
+				INSTALL_PATH = "$(LOCAL_APPS_DIR)";
+				HEADER_SEARCH_PATHS = ("$(inherited)", "\"$(SRCROOT)/src/core/shim_include\"", "\"$(SRCROOT)/third_party/rmlui/Include\"", "\"$(SRCROOT)/third_party/rmlui/Backends\"", "\"$(VF2_DEPS_DIR)\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build/include-revision\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-src/include\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build/include\"");
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "\"$(VF2_DEPS_DIR)/_deps/sdl3-build\"", "\"$(VF2_DEPS_DIR)/_deps/freetype-build\"");
+				OTHER_LDFLAGS = ("$(inherited)", "-lSDL3", "-lfreetype", "-lz", "-lm", "-lpthread");
+				GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "RMLUI_STATIC_LIB", "RMLUI_FONT_ENGINE_FREETYPE", "RMLUI_SDL_VERSION_MAJOR=3", "VF2_GPU3D_METAL=1", "VF2_NATIVE_CONTROLS=1", "NDEBUG=1");
+				CODE_SIGN_IDENTITY = "-";
+				GCC_OPTIMIZATION_LEVEL = "3";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ONLY_ACTIVE_ARCH = "NO";
+			};
+		};
+		E71B7F6469A631E08FA291ED = {
+			isa = "XCConfigurationList";
+			buildConfigurations = ("B10E9715B5C87BDCA4B4DD2E", "50BEAE0F61B09AFDD029C3DD");
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		18FEC6CEA026C46136BF1F43 = {
+			isa = "PBXNativeTarget";
+			name = "VF2 macOS";
+			productName = "VF2 Recomp";
+			productReference = "755BF9D3BA48935C6C37E233";
+			productType = "com.apple.product-type.application";
+			buildConfigurationList = "E71B7F6469A631E08FA291ED";
+			buildPhases = ("181DAF6394327073139BF4C5", "36194EA78B43986E2E4F7928", "92FDDBE8BDF98FC370F432CC", "CE66DCC19CC06A3FABDD9962");
+			buildRules = ();
+			dependencies = ("684380FC8960E1385C522092");
+		};
+		8AAE654534AFB0CEE2FB8030 = {
+			isa = "PBXFileReference";
+			path = "src/core/dasm_shim.h";
+			name = "dasm_shim.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		5D270DAE0616C9AFB5323A28 = {
+			isa = "PBXFileReference";
+			path = "src/core/i960_device.h";
+			name = "i960_device.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		D3CC95FD1F4CBD641F1B9991 = {
+			isa = "PBXFileReference";
+			path = "src/core/mame_shim.h";
+			name = "mame_shim.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		06FA1306D69C18AE39DDA0D3 = {
+			isa = "PBXFileReference";
+			path = "src/core/mb86233.h";
+			name = "mb86233.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		28401A68B2A8F3D45C6FCD80 = {
+			isa = "PBXFileReference";
+			path = "src/core/shim_include/corefloat.h";
+			name = "corefloat.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		314027C4DD131FAF47A0AE58 = {
+			isa = "PBXGroup";
+			name = "shim_include";
+			children = ("28401A68B2A8F3D45C6FCD80", "2C2591ADB23E971BBD029245");
+			sourceTree = "<group>";
+		};
+		2C2591ADB23E971BBD029245 = {
+			isa = "PBXFileReference";
+			path = "src/core/shim_include/emu.h";
+			name = "emu.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		822A00B67E0FA514A04165E2 = {
+			isa = "PBXFileReference";
+			path = "src/gpu/gpu3d.h";
+			name = "gpu3d.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		B6A72FEE620DFB985578AE7C = {
+			isa = "PBXFileReference";
+			path = "src/gpu/gpu3d_shaders.h";
+			name = "gpu3d_shaders.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		F8CD1398E10EC4AD499F0417 = {
+			isa = "PBXFileReference";
+			path = "src/host/backgrounds.h";
+			name = "backgrounds.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		A4393A89A3C7B36799E9AF5D = {
+			isa = "PBXFileReference";
+			path = "src/host/controls.h";
+			name = "controls.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		EE7D12358CB4F363C831A246 = {
+			isa = "PBXFileReference";
+			path = "src/host/d3d11_map.h";
+			name = "d3d11_map.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		5B9E43CABEA87C1E3B7692E9 = {
+			isa = "PBXFileReference";
+			path = "src/host/gpu_picture.h";
+			name = "gpu_picture.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		A9E49C1020EF31A5EBE63E50 = {
+			isa = "PBXFileReference";
+			path = "src/host/input_script.h";
+			name = "input_script.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		9E4CA7FC1BCCFE4F640415D0 = {
+			isa = "PBXFileReference";
+			path = "src/host/menu.h";
+			name = "menu.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		F7F0608A3B2B1D7292B42717 = {
+			isa = "PBXFileReference";
+			path = "src/host/png.h";
+			name = "png.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		A7CC353A3987DBF9DB99714E = {
+			isa = "PBXFileReference";
+			path = "src/host/romset.h";
+			name = "romset.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		8ECBD26D53375FE3FBD3063F = {
+			isa = "PBXFileReference";
+			path = "src/host/scene_sync.h";
+			name = "scene_sync.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		5017538102C7D014FAA87361 = {
+			isa = "PBXFileReference";
+			path = "src/host/sysinfo.h";
+			name = "sysinfo.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		5C1DBF494C3BB5699730FC29 = {
+			isa = "PBXFileReference";
+			path = "src/machine/mame_lite.h";
+			name = "mame_lite.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		2E3B99CE37212FB0944C9655 = {
+			isa = "PBXFileReference";
+			path = "src/machine/model2_video.h";
+			name = "model2_video.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		50D0E1C5E912A92FFC859EBA = {
+			isa = "PBXFileReference";
+			path = "src/machine/model2a.h";
+			name = "model2a.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		A2BEEA2C2C87F7BE1A5C4150 = {
+			isa = "PBXFileReference";
+			path = "src/machine/parallel.h";
+			name = "parallel.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		3D4AE5B5EF4134B9090FB435 = {
+			isa = "PBXFileReference";
+			path = "src/machine/poly.h";
+			name = "poly.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		6AF1BC879765E20666A09961 = {
+			isa = "PBXFileReference";
+			path = "src/machine/s24tile.h";
+			name = "s24tile.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		01361859D7A9A559A552177D = {
+			isa = "PBXFileReference";
+			path = "src/machine/scsp.h";
+			name = "scsp.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		87FAF7612BAD080E3570492F = {
+			isa = "PBXFileReference";
+			path = "src/machine/scspdsp.h";
+			name = "scspdsp.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		AFA1E6A810D9B3481D3CC527 = {
+			isa = "PBXFileReference";
+			path = "src/machine/texdump.h";
+			name = "texdump.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		70124C756EC67E975FA2B556 = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_analyse.h";
+			name = "i960_analyse.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		878B34C8C9DD863C97F9B651 = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_decode.h";
+			name = "i960_decode.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		18DEC7EBF0B7FC75071F9629 = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_gen.h";
+			name = "i960_gen.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		B67D8B8044DB04CAB414B2ED = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_native.h";
+			name = "i960_native.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		0F247F87C7E9C528951A1F95 = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_ops.h";
+			name = "i960_ops.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		24D0DDE10DB105A8F3FF0D28 = {
+			isa = "PBXFileReference";
+			path = "src/rec/i960_rec.h";
+			name = "i960_rec.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		F27322A7CF7DC042F0BFD0DF = {
+			isa = "PBXFileReference";
+			path = "apple/ios_roms.h";
+			name = "ios_roms.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		1C7D2753525381BF7EE4AFE6 = {
+			isa = "PBXFileReference";
+			path = "apple/native_controls.h";
+			name = "native_controls.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		4823B6CF216BE3CBB96B46DA = {
+			isa = "PBXFileReference";
+			path = "apple/touch_controls.h";
+			name = "touch_controls.h";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "sourcecode.c.h";
+		};
+		7C7619B8B79D4B3262736B4E = {
+			isa = "PBXFileReference";
+			path = "apple/README.md";
+			name = "README.md";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		69FA21FD836AD5CB4182F825 = {
+			isa = "PBXFileReference";
+			path = "apple/UPSTREAM.md";
+			name = "UPSTREAM.md";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		0553E972182B547A71A27387 = {
+			isa = "PBXFileReference";
+			path = "apple/build-xcode-dependencies.sh";
+			name = "build-xcode-dependencies.sh";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.script.sh";
+		};
+		79DB98FB643ED1403C9F6D32 = {
+			isa = "PBXFileReference";
+			path = "apple/generate-xcode-project.py";
+			name = "generate-xcode-project.py";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.script.python";
+		};
+		17EDD96FF9DC5D91C48DF596 = {
+			isa = "PBXFileReference";
+			path = "apple/make-ios-icon.py";
+			name = "make-ios-icon.py";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.script.python";
+		};
+		52AE18F96C76D52163F3822D = {
+			isa = "PBXFileReference";
+			path = "apple/upstream.py";
+			name = "upstream.py";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.script.python";
+		};
+		2EF5BA50AA3B1307CFA12254 = {
+			isa = "PBXFileReference";
+			path = "apple/sources.json";
+			name = "sources.json";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.json";
+		};
+		88953FDF6F8D71561F6401D6 = {
+			isa = "PBXFileReference";
+			path = "apple/upstream.json";
+			name = "upstream.json";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.json";
+		};
+		A7536BAF5971106FA30198CD = {
+			isa = "PBXFileReference";
+			path = "apple/licenses.cmake";
+			name = "licenses.cmake";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		2A87FD657057C73901B98389 = {
+			isa = "PBXFileReference";
+			path = "apple/Info-iOS.plist.in";
+			name = "Info-iOS.plist.in";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		CDECFF91C82478DC1013FB6B = {
+			isa = "PBXFileReference";
+			path = "apple/Info-macOS.plist.in";
+			name = "Info-macOS.plist.in";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		6B1F88578A84FB61BEDD067C = {
+			isa = "PBXFileReference";
+			path = "apple/version.h.in";
+			name = "version.h.in";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		736E787C288CBC9861DC7D86 = {
+			isa = "PBXFileReference";
+			path = "apple/xcode/Info-iOS.plist";
+			name = "Info-iOS.plist";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.plist.xml";
+		};
+		FB206CEF770C50D8908F2BE7 = {
+			isa = "PBXGroup";
+			name = "xcode";
+			children = ("736E787C288CBC9861DC7D86", "D3B220E5B209253DDBA2237D");
+			sourceTree = "<group>";
+		};
+		D3B220E5B209253DDBA2237D = {
+			isa = "PBXFileReference";
+			path = "apple/xcode/Info-macOS.plist";
+			name = "Info-macOS.plist";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text.plist.xml";
+		};
+		DE63CA359AF0F1DEEA63BE08 = {
+			isa = "PBXFileReference";
+			path = "apple/CMakeLists.txt";
+			name = "CMakeLists.txt";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		42C59AF8A4BAE559BC5A5D5D = {
+			isa = "PBXFileReference";
+			path = "README.md";
+			name = "README.md";
+			sourceTree = "SOURCE_ROOT";
+			lastKnownFileType = "text";
+		};
+		244210E48437B6556980A702 = {
+			isa = "PBXProject";
+			attributes = {
+				LastUpgradeCheck = "2600";
+				BuildIndependentTargetsInParallel = "YES";
+				TargetAttributes = {
+					0566276132F9903036CBD62B = {
+						ProvisioningStyle = "Automatic";
+					};
+					18FEC6CEA026C46136BF1F43 = {
+						ProvisioningStyle = "Automatic";
+					};
+				};
+			};
+			buildConfigurationList = "1922B098E983995960BE56B0";
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "en";
+			hasScannedForEncodings = 0;
+			knownRegions = ("en", "Base");
+			mainGroup = "CC5D242D023A9271190EA7C6";
+			productRefGroup = "6F7199ED7B63CDA338A0FB82";
+			projectDirPath = "";
+			projectRoot = "";
+			targets = ("A39CF521C9631EEF4E2C6E08", "0566276132F9903036CBD62B", "F7E0974048D936134429FBCA", "18FEC6CEA026C46136BF1F43");
+		};
+	};
+	rootObject = "244210E48437B6556980A702";
+}

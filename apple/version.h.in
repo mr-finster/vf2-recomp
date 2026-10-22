@@ -1,0 +1,2 @@
+#define VF2_VERSION "@VF2_VERSION@"
+#define VF2_DATE "@VF2_DATE@"

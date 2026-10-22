@@ -1,0 +1,38 @@
+{
+  "common": [
+    "apple/native_controls.mm",
+    "src/host/main.cpp",
+    "src/host/menu.cpp",
+    "src/host/sysinfo.cpp",
+    "src/host/d3d11_map.cpp",
+    "src/host/stb_image_impl.cpp",
+    "src/host/romset.cpp",
+    "src/host/input_script.cpp",
+    "src/machine/model2a.cpp",
+    "src/machine/model2_video.cpp",
+    "src/machine/model2_smooth.cpp",
+    "src/machine/scsp.cpp",
+    "src/machine/scspdsp.cpp",
+    "third_party/mame/i960/i960.cpp",
+    "third_party/mame/i960/i960dis.cpp",
+    "src/core/mame_shim.cpp",
+    "src/core/mb86233.cpp",
+    "src/core/i960_device.cpp",
+    "src/rec/i960_rec.cpp",
+    "src/rec/i960_analyse.cpp",
+    "src/rec/vf2_map.cpp",
+    "src/rec/gen_none.cpp",
+    "third_party/mame/m68000/m68000.cpp",
+    "third_party/mame/m68000/m68000-decode.cpp",
+    "third_party/mame/m68000/m68000-sdf.cpp",
+    "third_party/mame/m68000/m68000-sdp.cpp",
+    "src/gpu/gpu3d_metal.mm"
+  ],
+  "ios": [
+    "apple/ios_roms.mm",
+    "apple/native_disabled.cpp"
+  ],
+  "macos": [
+    "src/rec/i960_native.cpp"
+  ]
+}
