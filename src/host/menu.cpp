@@ -78,7 +78,22 @@ void game_menu::set_fps(const std::string &text)
 	if (!m->overlay || text == m_fps) return;
 	m_fps = text;
 	if (Rml::Element *e = m->overlay->GetElementById("fps")) e->SetInnerRML(escape(text));
-	if (text.empty() || m_open) m->overlay->Hide(); else m->overlay->Show();   // (not over the menu)
+	show_overlay();
+}
+
+void game_menu::show_overlay()
+{
+	if (!m->overlay) return;
+	if (Rml::Element *e = m->overlay->GetElementById("fps")) e->SetProperty("visibility", m_fps.empty() ? "hidden" : "visible");
+	if (m_open || (m_fps.empty() && !m_toast_until)) m->overlay->Hide(); else m->overlay->Show();   // (not over the menu)
+}
+
+void game_menu::toast(const std::string &text, double seconds)
+{
+	if (!m->overlay) return;
+	if (Rml::Element *e = m->overlay->GetElementById("toast")) e->SetInnerRML(text.empty() ? "" : "<span>" + escape(text) + "</span>");
+	m_toast_until = text.empty() ? 0 : SDL_GetTicks() + uint64_t(seconds * 1000);
+	show_overlay();
 }
 
 void game_menu::set_footer(const std::string &text)
@@ -119,8 +134,8 @@ void game_menu::open(menu_page root)
 	m_sel = first_selectable(m_stack.back());
 	build();
 	m->doc->Show();
-	if (m->overlay) m->overlay->Hide();   // the FPS: not over the menu
 	m_open = true;
+	show_overlay();   // (the FPS and a notice: not over the menu)
 	SDL_ShowCursor();
 }
 
@@ -130,7 +145,7 @@ void game_menu::close()
 	m_capture = nullptr;
 	m->doc->Hide();
 	m_open = false;
-	if (m->overlay && !m_fps.empty()) m->overlay->Show();
+	show_overlay();
 	m_stack.clear();
 	SDL_HideCursor();
 }
@@ -376,7 +391,8 @@ bool game_menu::handle_event(const SDL_Event &e)
 
 void game_menu::render()
 {
-	if (!m_open && m_fps.empty()) return;
+	if (m_toast_until && SDL_GetTicks() >= m_toast_until) toast("");
+	if (!m_open && m_fps.empty() && !m_toast_until) return;
 	// the menu is laid out in window pixels, not the game's letterboxed picture
 	int lw = 0, lh = 0;
 	SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;

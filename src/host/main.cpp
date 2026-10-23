@@ -1027,6 +1027,11 @@ int main(int argc, char **argv)
 	SDL_HideCursor();
 	int focus_checks = 600;   // about 5 s: going fullscreen on a Mac moves to a new Space, which takes a while
 	SDL_Renderer *ren = nullptr;
+	// Why the 3D is on the CPU when the setting isn't CPU: said on screen, not only in the log (a player whose GPU
+	// couldn't be used just saw a slow game). cpu_why_new: not said yet.
+	std::string cpu_why;
+	bool cpu_why_new = false;
+	auto on_cpu_because = [&](const std::string &why) { if (cpu_why.empty()) { cpu_why = why; cpu_why_new = true; } };
 #ifdef VF2_GPU3D_SDL
 	// The 3D on the GPU wanted (Auto or GPU, the setting or VF2_3D): SDL's "gpu" renderer (Direct3D
 	// 12 on Windows, Vulkan on Linux and the Deck), whose device the 3D's compute shares, its
@@ -1044,7 +1049,7 @@ int main(int argc, char **argv)
 		const std::string cards = sysinfo::gpu_names();
 		const bool known_bad = cards.find("CRT Emudriver") != std::string::npos;
 		if (known_bad && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0))
-			fprintf(stderr, "SDL's gpu renderer: not tried with CRT Emudriver (its start crashes there): SDL's usual renderer, the CPU's 3D\n");
+			{ fprintf(stderr, "SDL's gpu renderer: not tried with CRT Emudriver (its start crashes there): SDL's usual renderer, the CPU's 3D\n"); on_cpu_because("CRT Emudriver can't run the GPU renderer"); }
 		// (the marker holds the build that left it: another build's, a driver or a fix since, the GPU tried again)
 		std::string marker_build;
 		bool marker_there = false;
@@ -1055,7 +1060,7 @@ int main(int argc, char **argv)
 		}
 		const bool crashed = known_bad || (marker_there && marker_build == settings::BUILD);
 		if (crashed && !known_bad && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0))
-			fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it (%s): SDL's usual renderer, the CPU's 3D (a new build tries it again)\n", marker.c_str());
+			{ fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it (%s): SDL's usual renderer, the CPU's 3D (a new build tries it again)\n", marker.c_str()); on_cpu_because("the graphics driver closed the game the last time the GPU started"); }
 		else if (marker_there && !known_bad)
 			fprintf(stderr, "SDL's gpu renderer: %s closed while starting it: this build tries it again\n", marker_build.empty() ? "an older build" : marker_build.c_str());
 		if (!crashed && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0) && !getenv("SDL_RENDER_DRIVER")) {
@@ -1150,7 +1155,7 @@ int main(int argc, char **argv)
 				}
 			}
 			SDL_RemovePath(marker.c_str());
-			if (!ren) fprintf(stderr, "SDL's gpu renderer: %s (SDL's usual renderer, the CPU's 3D)\n", SDL_GetError());
+			if (!ren) { fprintf(stderr, "SDL's gpu renderer: %s (SDL's usual renderer, the CPU's 3D)\n", SDL_GetError()); on_cpu_because(std::string("the GPU wouldn't start (") + SDL_GetError() + "): update the graphics driver"); }
 			else fprintf(stderr, "SDL's gpu renderer started in %.0f ms\n", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
 		}
 	}
@@ -1340,12 +1345,13 @@ int main(int argc, char **argv)
 	// SDL_GPU's check of its pictures against the CPU's: how many differing pixels are rounding
 	// (some graphics cards' drivers, NVIDIA's on Direct3D 12, put pixels a hair off), the GPU kept.
 	// Judged by how wrong: colours within GPU_ROUNDING_COLOUR anywhere are rounding; beyond that,
-	// up to 1% of the picture's pixels, and up to 5% drawn on one and not the other (edges a hair
-	// apart). When the player chose the GPU (not Auto): 10% and 25%, only a picture mostly wrong
-	// (a GPU drawing nothing, or garbage) going to the CPU.
+	// up to 10% of the picture's pixels, and up to 25% drawn on one and not the other: only a
+	// picture mostly wrong (a GPU drawing nothing, or garbage) going to the CPU.
 	constexpr long long GPU_ROUNDING_PX = 64;
 	constexpr int GPU_ROUNDING_COLOUR = 8;
-	constexpr double GPU_WRONG_COLOUR = 0.01, GPU_WRONG_COVER = 0.05, GPU_WRONG_COLOUR_CHOSEN = 0.10, GPU_WRONG_COVER_CHOSEN = 0.25;
+	// Auto now as the GPU chosen: only a GPU plainly broken (drawing nothing, or garbage) goes to the CPU; a driver's
+	// rounding over a few percent of a picture never did a player any harm, and the CPU's 3D made the game slow above 1x.
+	constexpr double GPU_WRONG_COLOUR = 0.10, GPU_WRONG_COVER = 0.25;
 	static const char *R3D_NAMES[] = { "CPU", "GPU", "Auto" };
 	constexpr int G3_TARGETS = 5;   // (see gpu3d_state::tex)
 	struct gpu3d_state {
@@ -1434,6 +1440,7 @@ int main(int argc, char **argv)
 		}
 		fprintf(stderr, "the 3D on the GPU: %s (%.0f ms to start)\n", g3.dev ? g3.dev->name() : g3.next_start ? "from the next start (the CPU's 3D)" : "no GPU renderer for it here (the CPU's 3D)",
 				std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+		if (!g3.dev && !g3.next_start && g3.mode != R3D_CPU) on_cpu_because("the GPU renderer couldn't start here: update the graphics driver");
 	};
 	fprintf(stderr, "the 3D: %s%s\n", R3D_NAMES[g3.mode], g3.forced_mode ? " (VF2_3D)" : "");
 	if (g3.mode != R3D_CPU) g3_start();
@@ -1448,6 +1455,7 @@ int main(int argc, char **argv)
 	// run only; saved, one bad moment on a Deck, Vulkan its only driver, put every later start on the CPU)
 	auto g3_fail = [&](const char *why, bool keep = true) {
 		fprintf(stderr, "the 3D on the GPU: %s: on the CPU %s\n", why, keep ? "from now on" : "for this run");
+		if (g3.mode != R3D_CPU) on_cpu_because(std::string("the GPU ") + (strncmp(why, "its ", 4) ? why : why + 4));
 		g3.failed = true; g3.on = false;
 		g3_free();
 #ifdef VF2_GPU3D_SDL
@@ -1641,9 +1649,8 @@ int main(int argc, char **argv)
 			// anywhere, are a driver's rounding; only a picture plainly wrong (much of it drawn on one
 			// and not the other, as a GPU drawing nothing; or colours well off) goes to the CPU.
 			const long long px = (long long)w * h;
-			const bool chosen = g3.mode == R3D_GPU;
-			const long long ok = std::max(GPU_ROUNDING_PX, (long long)(px * (chosen ? GPU_WRONG_COLOUR_CHOSEN : GPU_WRONG_COLOUR)));
-			const long long ok_cover = std::max(GPU_ROUNDING_PX, (long long)(px * (chosen ? GPU_WRONG_COVER_CHOSEN : GPU_WRONG_COVER)));
+			const long long ok = std::max(GPU_ROUNDING_PX, (long long)(px * GPU_WRONG_COLOUR));
+			const long long ok_cover = std::max(GPU_ROUNDING_PX, (long long)(px * GPU_WRONG_COVER));
 			if (big <= ok && cover <= ok_cover) {
 				fprintf(stderr, "the 3D on the GPU: its picture of %s: %lld of %d x %d pixels differ by rounding (%lld at an edge, %lld by more than %d, colours by %d at most; up to %lld and %lld kept): keeping the GPU\n",
 						g3.checked_on, d, w, h, cover, big, GPU_ROUNDING_COLOUR, most, ok_cover, ok);
@@ -1680,6 +1687,7 @@ int main(int argc, char **argv)
 			static const bool measure = getenv("VF2_AUTO_MEASURE") != nullptr;
 			// (a GPU drawn on the CPU, llvmpipe in a container or a VM, measured as before: it's several times slower)
 			on = (!measure && !soft_render) || (was || !g3.last_check ? !(g > 1.5 * c && g > 14.0) : (g <= 1.3 * c || g < 12.0));
+			if (!on && soft_render) on_cpu_because("there's no graphics driver for this GPU (install the graphics card's driver)");
 			auto_keep(on);
 		}
 		g3.on = on;
@@ -2258,7 +2266,7 @@ int main(int argc, char **argv)
 				cfg.aa = ORDER[std::clamp(i + d, 0, 3)]; aa = cfg.aa; set_scale(player_scale);   // (a scale the governor lowered: the player's again)
 			} });
 		p.items.push_back({ "3D renderer",
-			"Which part of your computer draws the 3D. Auto uses the GPU unless it is too slow on this computer (it checks quietly, without interrupting play). CPU and GPU draw the same picture; the GPU frees the processor.",
+			"Which part of your computer draws the 3D. Auto uses the GPU whenever it draws correctly here (it checks as the game starts). CPU and GPU draw the same picture; the GPU is faster and frees the processor.",
 			[&] {
 #if !defined(VF2_GPU3D_METAL) && !defined(VF2_GPU3D_SDL)
 				return std::string("CPU (no GPU support in this build)");
@@ -2276,7 +2284,8 @@ int main(int argc, char **argv)
 				int i = 0;
 				while (i < 2 && ORDER[i] != g3.mode) i++;
 				g3.mode = cfg.renderer3d = ORDER[wrap(i + d, 3)]; cfg_dirty = true;
-				cfg.gpu3d_failed.clear();   // (the player's choice: every GPU driver tried again from the next start)
+				cfg.gpu3d_failed.clear();   // (the player's choice: every GPU driver tried again from the next start, a crashed start too)
+				SDL_RemovePath((data + "/gpu-start.crashed").c_str());
 				finish_async(false);
 				if (g3.mode != R3D_CPU) g3_start();
 				g3_decide("the player's choice", true);   // (the menu's open: nothing moves)
@@ -3219,6 +3228,11 @@ int main(int argc, char **argv)
 		// counts as shown: the screen kept its pace, and counting it as missed showed a drop to
 		// 80-odd at every scene change)
 		if (new_shown || (hold_on && !stopped && !menu.is_open())) fps_shown++;
+		// (the 3D on the CPU with the setting not CPU: why, on screen once)
+		if (cpu_why_new) {
+			cpu_why_new = false;
+			menu.toast("The 3D is on the CPU (slower): " + cpu_why + ". Choose GPU in Display > 3D renderer to try it again from the next start.", 12);
+		}
 		if (const uint64_t now = SDL_GetTicksNS(); now - fps_since >= 500000000) {
 			menu.set_fps(cfg.show_fps ? std::to_string(int(std::lround(fps_shown * 1e9 / double(now - fps_since)))) + " FPS" : "");
 			fps_shown = 0;

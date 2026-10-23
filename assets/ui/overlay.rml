@@ -13,7 +13,24 @@
 			color: #ffd23f;
 			font-effect: outline(2dp #0b1430);
 		}
+		/* a notice that comes and goes, at the bottom right (out of the menu's way and the HUD's) */
+		#toast {
+			position: absolute;
+			right: 24dp;
+			bottom: 40dp;
+			max-width: 560dp;
+		}
+		#toast span {
+			display: block;
+			padding: 8dp 20dp;
+			font-size: 22dp;
+			font-weight: 700;
+			font-style: italic;
+			text-align: right;
+			color: #0b1430;
+			decorator: horizontal-gradient(#ffd23f #ff8f1f);
+		}
 	</style>
 </head>
-<body><div id="fps"></div></body>
+<body><div id="fps"></div><div id="toast"></div></body>
 </rml>
