@@ -17,5 +17,6 @@ IMG=registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
 tools/release/licenses.sh build/deck/LICENSES.txt
 VF2_VERSION=${VF2_VERSION:-$(git describe --tags --always 2>/dev/null || echo dev)}   # (VF2_VERSION=v0.1.0 for a release)
 VF2_DATE=$(git log -1 --format=%cd --date=format:'%b %-d %Y' 2>/dev/null)
-docker run --rm --platform linux/amd64 -e VF2_VERSION="$VF2_VERSION" -e VF2_DATE="$VF2_DATE" -e DECK_FAST="$DECK_FAST" \
+VF2_COMMIT=$(git rev-parse --short HEAD 2>/dev/null)
+docker run --rm --platform linux/amd64 -e VF2_VERSION="$VF2_VERSION" -e VF2_DATE="$VF2_DATE" -e VF2_COMMIT="$VF2_COMMIT" -e DECK_FAST="$DECK_FAST" \
 	-v "$PWD":/src -w /src "$IMG" bash tools/deck/inside.sh

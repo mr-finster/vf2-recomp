@@ -62,6 +62,7 @@ private:
 	bool m_open = false;
 	std::string m_fps;
 	uint64_t m_toast_until = 0;   // (SDL_GetTicks)
+	double m_toast_wait = 0;      // (a notice's seconds, counted from the first picture drawn with the menu closed)
 	void show_overlay();          // (the overlay shown while there's an FPS or a notice and the menu's closed)
 	std::vector<menu_page> m_stack;
 	std::vector<int> m_sel_stack;

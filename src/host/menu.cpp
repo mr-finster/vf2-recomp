@@ -92,7 +92,8 @@ void game_menu::toast(const std::string &text, double seconds)
 {
 	if (!m->overlay) return;
 	if (Rml::Element *e = m->overlay->GetElementById("toast")) e->SetInnerRML(text.empty() ? "" : "<span>" + escape(text) + "</span>");
-	m_toast_until = text.empty() ? 0 : SDL_GetTicks() + uint64_t(seconds * 1000);
+	m_toast_until = 0;
+	m_toast_wait = text.empty() ? 0 : seconds;   // (counted from when it can be seen: render)
 	show_overlay();
 }
 
@@ -391,6 +392,8 @@ bool game_menu::handle_event(const SDL_Event &e)
 
 void game_menu::render()
 {
+	if (!m->ctx) return;   // (no menu: its files weren't found)
+	if (m_toast_wait > 0 && !m_open) { m_toast_until = SDL_GetTicks() + uint64_t(m_toast_wait * 1000); m_toast_wait = 0; show_overlay(); }
 	if (m_toast_until && SDL_GetTicks() >= m_toast_until) toast("");
 	if (!m_open && m_fps.empty() && !m_toast_until) return;
 	// the menu is laid out in window pixels, not the game's letterboxed picture

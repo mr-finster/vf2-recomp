@@ -22,9 +22,11 @@ all: $(BIN)/vf2 $(BIN)/vf2romset $(BIN)/vf2run $(BIN)/vf2dis $(BIN)/vf2thunks
 # environment. Rewritten only when they change, so main is rebuilt for a new version only.
 VF2_VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo dev)
 VF2_DATE ?= $(shell git log -1 --format=%cd --date=format:'%b %-d %Y' 2>/dev/null)
+# (the commit too: what a GPU failure is remembered by, src/host/main.cpp's BUILD)
+VF2_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null)
 $(OBJ)/version.h: FORCE
 	@mkdir -p $(OBJ)
-	@printf '#define VF2_VERSION "%s"\n#define VF2_DATE "%s"\n' "$(VF2_VERSION)" "$(VF2_DATE)" > $@.tmp
+	@printf '#define VF2_VERSION "%s"\n#define VF2_DATE "%s"\n#define VF2_COMMIT "%s"\n' "$(VF2_VERSION)" "$(VF2_DATE)" "$(VF2_COMMIT)" > $@.tmp
 	@cmp -s $@.tmp $@ && rm -f $@.tmp || mv $@.tmp $@
 FORCE:
 
