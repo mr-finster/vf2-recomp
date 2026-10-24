@@ -1031,13 +1031,16 @@ int main(int argc, char **argv)
 	// couldn't be used just saw a slow game). cpu_why_new: not said yet.
 	std::string cpu_why;
 	bool cpu_why_new = false;
+	bool gpu_crashed = false;   // (the last start closed while starting the GPU: the menu's row says so until a choice there)
 	// (why: what happened, in a player's words; then what to do. None with a renderer chosen by hand, SDL_RENDER_DRIVER)
 #ifdef __APPLE__
-	static const char *UPDATE = "Update macOS, then choose GPU in Display > 3D renderer to try it again.";
+	static const char *UPDATE = "Update macOS, then choose Auto in Display > 3D renderer to try it again.";
 #else
-	static const char *UPDATE = "Update the graphics driver, then choose GPU in Display > 3D renderer to try it again.";
+	static const char *UPDATE = "Update the graphics driver, then choose Auto in Display > 3D renderer to try it again.";
 #endif
-	static const char *RETRY = "Choose GPU in Display > 3D renderer to try it again from the next start.";
+	// (Auto, not GPU: any choice there clears what was remembered, and the GPU chosen by hand is checked more loosely,
+	// a GPU drawing wrongly kept)
+	static const char *RETRY = "Choose Auto in Display > 3D renderer to try it again from the next start.";
 	auto on_cpu_because = [&](const std::string &why, const char *what_to_do) {
 		if (cpu_why.empty() && !getenv("SDL_RENDER_DRIVER")) { cpu_why = why + "." + (*what_to_do ? std::string(" ") + what_to_do : ""); cpu_why_new = true; }
 	};
@@ -1069,11 +1072,11 @@ int main(int argc, char **argv)
 		}
 		const bool crashed = known_bad || (marker_there && marker_build == settings::BUILD);
 		if (crashed && !known_bad && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0))
-			{ fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it (%s): SDL's usual renderer, the CPU's 3D (a new build tries it again)\n", marker.c_str()); on_cpu_because("the graphics driver closed the game the last time the GPU started", RETRY); }
-		else if (marker_there && !known_bad && !crashed)
+			{ fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it (%s): SDL's usual renderer, the CPU's 3D (a new build tries it again)\n", marker.c_str()); gpu_crashed = true; on_cpu_because("the graphics driver closed the game the last time the GPU started", RETRY); }
+		else if (marker_there && !known_bad && !crashed && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0) && !getenv("SDL_RENDER_DRIVER"))
 			fprintf(stderr, "SDL's gpu renderer: %s closed while starting it: this build tries it again\n", marker_build.empty() ? "an older build" : marker_build.c_str());
 		if (!crashed && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0) && !getenv("SDL_RENDER_DRIVER")) {
-			if (SDL_IOStream *io = SDL_IOFromFile(marker.c_str(), "w")) { SDL_WriteIO(io, settings::BUILD, strlen(settings::BUILD)); SDL_CloseIO(io); }
+			save_blob(marker, settings::BUILD, strlen(settings::BUILD));   // (flushed to the disk: a crash that takes the machine down keeps it)
 			const auto t0 = std::chrono::steady_clock::now();
 			// (a driver whose 3D failed its check here before is passed over: Direct3D 12's for Vulkan,
 			// SDL's other on Windows (some older cards draw nothing on one and are fine on the other);
@@ -1448,7 +1451,9 @@ int main(int argc, char **argv)
 		}
 		fprintf(stderr, "the 3D on the GPU: %s (%.0f ms to start)\n", g3.dev ? g3.dev->name() : g3.next_start ? "from the next start (the CPU's 3D)" : "no GPU renderer for it here (the CPU's 3D)",
 				std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
+#if defined(VF2_GPU3D_METAL) || defined(VF2_GPU3D_SDL)
 		if (!g3.dev && !g3.next_start && g3.mode != R3D_CPU) on_cpu_because("the GPU renderer couldn't start here", UPDATE);
+#endif
 	};
 	fprintf(stderr, "the 3D: %s%s\n", R3D_NAMES[g3.mode], g3.forced_mode ? " (VF2_3D)" : "");
 	if (g3.mode != R3D_CPU) g3_start();
@@ -1466,7 +1471,7 @@ int main(int argc, char **argv)
 		// (its start's check or its textures: kept for this build, the menu tries again; a picture failing in play, a
 		// sleep or a GPU reset: for this run only)
 		if (g3.mode != R3D_CPU) {
-			if (keep) on_cpu_because(strstr(why, "aren't the CPU's") ? "the GPU drew the 3D wrongly here" : "the GPU's 3D failed here", RETRY);
+			if (keep) on_cpu_because(strstr(why, "aren't the CPU's") ? "the GPU drew the 3D wrongly here" : "the GPU's 3D failed here", UPDATE);
 			else on_cpu_because("the GPU's 3D stopped (after a sleep, or the graphics driver restarting)", "The next start tries the GPU again.");
 		}
 		g3.failed = true; g3.on = false;
@@ -2285,6 +2290,7 @@ int main(int argc, char **argv)
 #if !defined(VF2_GPU3D_METAL) && !defined(VF2_GPU3D_SDL)
 				return std::string("CPU (no GPU support in this build)");
 #endif
+				if (!g3.dev && gpu_crashed) return std::string("CPU (the GPU closed the game last time: choose to try again)");
 				if (!g3.dev && g3.next_start && g3.mode != R3D_CPU) return std::string(R3D_NAMES[g3.mode]) + " (from the next start)";
 				if (!g3.dev) return std::string(g3.mode == R3D_CPU ? "CPU" : g3.tried ? "CPU (no GPU support here)" : R3D_NAMES[g3.mode]);
 				if (g3.mode == R3D_AUTO) return std::string("Auto (") + (g3.on ? "GPU" : "CPU") + ")";
@@ -2300,6 +2306,7 @@ int main(int argc, char **argv)
 				g3.mode = cfg.renderer3d = ORDER[wrap(i + d, 3)]; cfg_dirty = true;
 				cfg.gpu3d_failed.clear();   // (the player's choice: every GPU driver tried again from the next start, a crashed start too)
 				SDL_RemovePath((data + "/gpu-start.crashed").c_str());
+				gpu_crashed = false;
 				finish_async(false);
 				if (g3.mode != R3D_CPU) g3_start();
 				g3_decide("the player's choice", true);   // (the menu's open: nothing moves)
