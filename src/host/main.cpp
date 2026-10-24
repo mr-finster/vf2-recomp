@@ -479,6 +479,17 @@ bool save_blob(const std::string &path, const void *src, size_t n)
 	return replace_file(path, tmp);
 }
 
+// The GPU's start marker: written in place and flushed (no swap: a rename's not on the disk until the folder is, and
+// a crash that takes the machine down in the driver would lose it).
+bool write_marker(const std::string &path, const char *text)
+{
+	FILE *f = fopen(path.c_str(), "wb");
+	if (!f) return false;
+	const size_t n = strlen(text);
+	const bool ok = fwrite(text, 1, n, f) == n && flush_to_disk(f);
+	return fclose(f) == 0 && ok;
+}
+
 // The saves written off the game's thread: save_blob flushes each file to the disk (a crash mid-save
 // keeps the old one), which on a hard disk waits tens of milliseconds a file, and the autosave ran
 // every few seconds in play: a hitch each time (a reporter: "on an SSD barely noticeable, on a HDD
@@ -589,7 +600,7 @@ struct settings
 			if (!gpu3d_failed.empty()) fprintf(stderr, "settings: the GPU drivers saved as failed (%s) tried again (an older build saved one failure in play for good)\n", gpu3d_failed.c_str());
 			gpu3d_failed.clear(); auto3d.clear(); upgraded = true;
 		}
-		// (and what another build learnt (another version, or the same rebuilt): forgotten, so each new build tries the
+		// (and what another build learnt (another version or commit): forgotten, so each new build tries the
 		// GPU again, a driver updated since or a fix here. Remembered for ever, one bad start or one slow measure kept a
 		// Windows player's 3D on the CPU at every start after, its cost growing with the scale: slow above 1x)
 		std::string learnt_by;
@@ -1072,11 +1083,11 @@ int main(int argc, char **argv)
 		}
 		const bool crashed = known_bad || (marker_there && marker_build == settings::BUILD);
 		if (crashed && !known_bad && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0))
-			{ fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it (%s): SDL's usual renderer, the CPU's 3D (a new build tries it again)\n", marker.c_str()); gpu_crashed = true; on_cpu_because("the graphics driver closed the game the last time the GPU started", RETRY); }
+			{ fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it (%s): SDL's usual renderer, the CPU's 3D (a new build tries it again)\n", marker.c_str()); gpu_crashed = !getenv("SDL_RENDER_DRIVER"); on_cpu_because("the graphics driver closed the game the last time the GPU started", RETRY); }
 		else if (marker_there && !known_bad && !crashed && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0) && !getenv("SDL_RENDER_DRIVER"))
 			fprintf(stderr, "SDL's gpu renderer: %s closed while starting it: this build tries it again\n", marker_build.empty() ? "an older build" : marker_build.c_str());
 		if (!crashed && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0) && !getenv("SDL_RENDER_DRIVER")) {
-			save_blob(marker, settings::BUILD, strlen(settings::BUILD));   // (flushed to the disk: a crash that takes the machine down keeps it)
+			write_marker(marker, settings::BUILD);   // (flushed to the disk: a crash that takes the machine down keeps it)
 			const auto t0 = std::chrono::steady_clock::now();
 			// (a driver whose 3D failed its check here before is passed over: Direct3D 12's for Vulkan,
 			// SDL's other on Windows (some older cards draw nothing on one and are fine on the other);
@@ -1471,7 +1482,8 @@ int main(int argc, char **argv)
 		// (its start's check or its textures: kept for this build, the menu tries again; a picture failing in play, a
 		// sleep or a GPU reset: for this run only)
 		if (g3.mode != R3D_CPU) {
-			if (keep) on_cpu_because(strstr(why, "aren't the CPU's") ? "the GPU drew the 3D wrongly here" : "the GPU's 3D failed here", UPDATE);
+			if (keep && strstr(why, "no targets that size")) on_cpu_because("the picture is too large for the GPU at this scale", "A lower Display > Render scale keeps it on the GPU.");
+			else if (keep) on_cpu_because(strstr(why, "aren't the CPU's") ? "the GPU drew the 3D wrongly here" : "the GPU's 3D failed here", UPDATE);
 			else on_cpu_because("the GPU's 3D stopped (after a sleep, or the graphics driver restarting)", "The next start tries the GPU again.");
 		}
 		g3.failed = true; g3.on = false;
@@ -2285,12 +2297,12 @@ int main(int argc, char **argv)
 				cfg.aa = ORDER[std::clamp(i + d, 0, 3)]; aa = cfg.aa; set_scale(player_scale);   // (a scale the governor lowered: the player's again)
 			} });
 		p.items.push_back({ "3D renderer",
-			"Which part of your computer draws the 3D. Auto uses the GPU whenever it draws correctly here (it checks as the game starts). CPU and GPU draw the same picture; the GPU is faster and frees the processor.",
+			"Which part of your computer draws the 3D. Auto uses the GPU whenever it draws correctly here (it checks as the game starts). CPU and GPU draw the same picture; the GPU is faster and frees the processor. If the GPU closed the game as it started, the CPU draws it until you choose again here.",
 			[&] {
 #if !defined(VF2_GPU3D_METAL) && !defined(VF2_GPU3D_SDL)
 				return std::string("CPU (no GPU support in this build)");
 #endif
-				if (!g3.dev && gpu_crashed) return std::string("CPU (the GPU closed the game last time: choose to try again)");
+				if (!g3.dev && gpu_crashed) return std::string("CPU (GPU crashed: choose to retry)");
 				if (!g3.dev && g3.next_start && g3.mode != R3D_CPU) return std::string(R3D_NAMES[g3.mode]) + " (from the next start)";
 				if (!g3.dev) return std::string(g3.mode == R3D_CPU ? "CPU" : g3.tried ? "CPU (no GPU support here)" : R3D_NAMES[g3.mode]);
 				if (g3.mode == R3D_AUTO) return std::string("Auto (") + (g3.on ? "GPU" : "CPU") + ")";
@@ -2305,6 +2317,7 @@ int main(int argc, char **argv)
 				while (i < 2 && ORDER[i] != g3.mode) i++;
 				g3.mode = cfg.renderer3d = ORDER[wrap(i + d, 3)]; cfg_dirty = true;
 				cfg.gpu3d_failed.clear();   // (the player's choice: every GPU driver tried again from the next start, a crashed start too)
+				cfg.auto3d.clear();   // (and Auto's choices made again)
 				SDL_RemovePath((data + "/gpu-start.crashed").c_str());
 				gpu_crashed = false;
 				finish_async(false);
