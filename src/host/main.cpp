@@ -1045,13 +1045,13 @@ int main(int argc, char **argv)
 	bool gpu_crashed = false;   // (the last start closed while starting the GPU: the menu's row says so until a choice there)
 	// (why: what happened, in a player's words; then what to do. None with a renderer chosen by hand, SDL_RENDER_DRIVER)
 #ifdef __APPLE__
-	static const char *UPDATE = "Update macOS, then choose Auto in Display > 3D renderer to try it again.";
+	static const char *UPDATE = "Update macOS, then change Display > 3D renderer and back to Auto to try it again from the next start.";
 #else
-	static const char *UPDATE = "Update the graphics driver, then choose Auto in Display > 3D renderer to try it again.";
+	static const char *UPDATE = "Update the graphics driver, then change Display > 3D renderer and back to Auto to try it again from the next start.";
 #endif
 	// (Auto, not GPU: any choice there clears what was remembered, and the GPU chosen by hand is checked more loosely,
 	// a GPU drawing wrongly kept)
-	static const char *RETRY = "Choose Auto in Display > 3D renderer to try it again from the next start.";
+	static const char *RETRY = "Press left or right on Display > 3D renderer to try it again from the next start.";
 	auto on_cpu_because = [&](const std::string &why, const char *what_to_do) {
 		if (cpu_why.empty() && !getenv("SDL_RENDER_DRIVER")) { cpu_why = why + "." + (*what_to_do ? std::string(" ") + what_to_do : ""); cpu_why_new = true; }
 	};
@@ -1481,24 +1481,32 @@ int main(int argc, char **argv)
 		fprintf(stderr, "the 3D on the GPU: %s: on the CPU %s\n", why, keep ? "from now on" : "for this run");
 		// (its start's check or its textures: kept for this build, the menu tries again; a picture failing in play, a
 		// sleep or a GPU reset: for this run only)
-		if (g3.mode != R3D_CPU) {
-			if (keep && strstr(why, "no targets that size")) on_cpu_because("the picture is too large for the GPU at this scale", "A lower Display > Render scale keeps it on the GPU.");
-			else if (keep) on_cpu_because(strstr(why, "aren't the CPU's") ? "the GPU drew the 3D wrongly here" : "the GPU's 3D failed here", UPDATE);
+		bool other_next = false;   // (Windows: the other driver not tried yet, so the next start tries it by itself)
+		auto say = [&] {
+			if (g3.mode == R3D_CPU) return;
+			if (keep && strstr(why, "no targets that size")) on_cpu_because("the picture is too large for the GPU at this scale", "A lower Display > Render scale keeps it on the GPU from the next start.");
+			else if (keep) on_cpu_because(strstr(why, "aren't the CPU's") ? "the GPU drew the 3D wrongly here" : "the GPU's 3D failed here",
+			                              other_next ? "The next start tries the GPU on Windows' other graphics driver." : UPDATE);
 			else on_cpu_because("the GPU's 3D stopped (after a sleep, or the graphics driver restarting)", "The next start tries the GPU again.");
-		}
+		};
 		g3.failed = true; g3.on = false;
 		g3_free();
 #ifdef VF2_GPU3D_SDL
 		// the driver it failed on, kept: the next start tries SDL's other (Direct3D 12, then Vulkan)
-		if (!keep) return;
+		if (!keep || strstr(why, "no targets that size")) { say(); return; }   // (too large for any driver: none blamed)
 		if (SDL_GPUDevice *d = static_cast<SDL_GPUDevice *>(SDL_GetPointerProperty(SDL_GetRendererProperties(ren), SDL_PROP_RENDERER_GPU_DEVICE_POINTER, nullptr)))
 			if (const char *drv = SDL_GetGPUDeviceDriver(d); drv && (" " + cfg.gpu3d_failed + " ").find(std::string(" ") + drv + " ") == std::string::npos) {
 				cfg.gpu3d_failed += (cfg.gpu3d_failed.empty() ? "" : " ") + std::string(drv);
 				cfg_dirty = true;
 				if (!strcmp(drv, "direct3d12") && cfg.gpu3d_failed.find("vulkan") == std::string::npos)
 					fprintf(stderr, "the 3D on the GPU: the next start tries Vulkan\n");
+#ifdef _WIN32
+				const char *other = !strcmp(drv, "vulkan") ? "direct3d12" : !strcmp(drv, "direct3d12") ? "vulkan" : nullptr;
+				other_next = other && (" " + cfg.gpu3d_failed + " ").find(std::string(" ") + other + " ") == std::string::npos && !getenv("SDL_GPU_DRIVER");
+#endif
 			}
 #endif
+		say();
 	};
 	// the targets, the picture's size (false: none here, the CPU's 3D)
 	auto g3_targets = [&](int w, int h) -> bool {
@@ -2312,10 +2320,14 @@ int main(int argc, char **argv)
 #if !defined(VF2_GPU3D_METAL) && !defined(VF2_GPU3D_SDL)
 				return;   // (no GPU's 3D: the setting kept as it is)
 #endif
-				static const int ORDER[] = { R3D_AUTO, R3D_CPU, R3D_GPU };
-				int i = 0;
-				while (i < 2 && ORDER[i] != g3.mode) i++;
-				g3.mode = cfg.renderer3d = ORDER[wrap(i + d, 3)]; cfg_dirty = true;
+				// (after a crashed start the first press only tries the GPU again, the setting kept: one press on to CPU
+				// would have left it there)
+				if (!gpu_crashed) {
+					static const int ORDER[] = { R3D_AUTO, R3D_CPU, R3D_GPU };
+					int i = 0;
+					while (i < 2 && ORDER[i] != g3.mode) i++;
+					g3.mode = cfg.renderer3d = ORDER[wrap(i + d, 3)]; cfg_dirty = true;
+				}
 				cfg.gpu3d_failed.clear();   // (the player's choice: every GPU driver tried again from the next start, a crashed start too)
 				cfg.auto3d.clear();   // (and Auto's choices made again)
 				SDL_RemovePath((data + "/gpu-start.crashed").c_str());
@@ -2330,7 +2342,11 @@ int main(int argc, char **argv)
 		p.items.push_back({ "Graphics driver",
 			"Which of Windows' graphics drivers the GPU uses. Auto starts on Vulkan, and on Direct3D 12 if Vulkan won't start or can't draw the game's 3D. Pick Direct3D 12 if the game runs better on it here. Takes effect the next time the game starts.",
 			[&] { return std::string(cfg.graphics ? "Direct3D 12" : "Auto (Vulkan first)"); },
-			[&](int) { cfg.graphics = !cfg.graphics; cfg_dirty = true; } });
+			[&](int) {
+				cfg.graphics = !cfg.graphics; cfg_dirty = true;
+				SDL_RemovePath((data + "/gpu-start.crashed").c_str());   // (another driver: a crashed start tried again with it)
+				gpu_crashed = false;
+			} });
 #endif
 		if (g3.dev && !strcmp(g3.dev->name(), "metal")) p.items.push_back({ "GPU quality",
 			"Exact draws the 3D on the GPU pixel for pixel as the CPU does. Fast takes shortcuts: quicker on a slow graphics card, with slight differences in texture detail and at edges.",
