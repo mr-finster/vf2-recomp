@@ -1043,17 +1043,27 @@ int main(int argc, char **argv)
 	std::string cpu_why;
 	bool cpu_why_new = false;
 	bool gpu_crashed = false;   // (the last start closed while starting the GPU: the menu's row says so until a choice there)
+	bool gpu_unavailable = false;   // (the gpu renderer won't start here, or isn't tried (CRT Emudriver): the row's not "from the next start")
 	// (why: what happened, in a player's words; then what to do. None with a renderer chosen by hand, SDL_RENDER_DRIVER)
 #ifdef __APPLE__
-	static const char *UPDATE = "Update macOS, then change Display > 3D renderer and back to Auto to try it again from the next start.";
+	static const char *UPDATE = "Updating macOS may help; the next start tries the GPU again.";
 #else
-	static const char *UPDATE = "Update the graphics driver, then change Display > 3D renderer and back to Auto to try it again from the next start.";
+	static const char *UPDATE = "Updating the graphics driver may help; the next start tries the GPU again.";
 #endif
-	// (Auto, not GPU: any choice there clears what was remembered, and the GPU chosen by hand is checked more loosely,
-	// a GPU drawing wrongly kept)
+	// (every start tries the GPU again, a failure remembered only for Windows' order of drivers: only a crashed start
+	// waits for the player)
 	static const char *RETRY = "Press left or right on Display > 3D renderer to try it again from the next start.";
 	auto on_cpu_because = [&](const std::string &why, const char *what_to_do) {
 		if (cpu_why.empty() && !getenv("SDL_RENDER_DRIVER")) { cpu_why = why + "." + (*what_to_do ? std::string(" ") + what_to_do : ""); cpu_why_new = true; }
+	};
+	// (the GPU start's marker kept through the first 15 s of play, its shaders, first pictures and checks too, a driver
+	// that closes the game there caught as well as one in its start; taken away then, or on quitting)
+	std::string marker_live;
+	uint64_t marker_until = 0;
+	auto marker_done = [&](bool now) {
+		if (marker_live.empty() || (!now && SDL_GetTicks() < marker_until)) return;
+		SDL_RemovePath(marker_live.c_str());
+		marker_live.clear();
 	};
 #ifdef VF2_GPU3D_SDL
 	// The 3D on the GPU wanted (Auto or GPU, the setting or VF2_3D): SDL's "gpu" renderer (Direct3D
@@ -1072,7 +1082,7 @@ int main(int argc, char **argv)
 		const std::string cards = sysinfo::gpu_names();
 		const bool known_bad = cards.find("CRT Emudriver") != std::string::npos;
 		if (known_bad && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0))
-			{ fprintf(stderr, "SDL's gpu renderer: not tried with CRT Emudriver (its start crashes there): SDL's usual renderer, the CPU's 3D\n"); on_cpu_because("CRT Emudriver can't run the GPU renderer", ""); }
+			{ gpu_unavailable = true; fprintf(stderr, "SDL's gpu renderer: not tried with CRT Emudriver (its start crashes there): SDL's usual renderer, the CPU's 3D\n"); on_cpu_because("CRT Emudriver can't run the GPU renderer", "Choosing CPU in Display > 3D renderer hides this message."); }
 		// (the marker holds the build that left it: another build's, a driver or a fix since, the GPU tried again)
 		std::string marker_build;
 		bool marker_there = false;
@@ -1081,8 +1091,25 @@ int main(int argc, char **argv)
 			size_t n = 0;
 			if (void *d = SDL_LoadFile(marker.c_str(), &n)) { marker_build.assign(static_cast<const char *>(d), n); SDL_free(d); }
 		}
-		const bool crashed = known_bad || (marker_there && marker_build == settings::BUILD);
-		if (crashed && !known_bad && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0))
+		bool crashed = known_bad || (marker_there && marker_build == settings::BUILD);
+		auto failed_before = [&](const char *d) { return (" " + cfg.gpu3d_failed + " ").find(std::string(" ") + d + " ") != std::string::npos; };
+#ifdef _WIN32
+		// (Windows: the driver that start was on passed over for this build and the other tried now, not the CPU: a
+		// Vulkan driver that closes the game goes to Direct3D 12 by itself, and the other way round. Both: the CPU.)
+		if (crashed && !known_bad && !getenv("SDL_GPU_DRIVER")) {
+			const bool card = !cards.empty() && !(cards.rfind("Microsoft", 0) == 0 && cards.find(", ") == std::string::npos);
+			const bool was_vk = (failed_before("direct3d12") || (card && cfg.graphics == 0)) && !failed_before("vulkan");
+			const char *drv = was_vk ? "vulkan" : "direct3d12", *other = was_vk ? "direct3d12" : "vulkan";
+			if (!failed_before(other)) {
+				fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it on %s: %s this start\n", drv, other);
+				if (!failed_before(drv)) cfg.gpu3d_failed += (cfg.gpu3d_failed.empty() ? "" : " ") + std::string(drv);
+				cfg.save(settings_path);   // (now: should the other close the game too, the next start knows both did)
+				crashed = false;
+				marker_there = false;   // (said)
+			}
+		}
+#endif
+		if (crashed && !known_bad && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0) && !getenv("SDL_RENDER_DRIVER"))
 			{ fprintf(stderr, "SDL's gpu renderer: the last start closed while starting it (%s): SDL's usual renderer, the CPU's 3D (a new build tries it again)\n", marker.c_str()); gpu_crashed = !getenv("SDL_RENDER_DRIVER"); on_cpu_because("the graphics driver closed the game the last time the GPU started", RETRY); }
 		else if (marker_there && !known_bad && !crashed && (e ? strcmp(e, "cpu") != 0 : cfg.renderer3d != 0) && !getenv("SDL_RENDER_DRIVER"))
 			fprintf(stderr, "SDL's gpu renderer: %s closed while starting it: this build tries it again\n", marker_build.empty() ? "an older build" : marker_build.c_str());
@@ -1092,7 +1119,6 @@ int main(int argc, char **argv)
 			// (a driver whose 3D failed its check here before is passed over: Direct3D 12's for Vulkan,
 			// SDL's other on Windows (some older cards draw nothing on one and are fine on the other);
 			// SDL_GPU_DRIVER, SDL's own, chooses over this)
-			auto failed_before = [&](const char *d) { return (" " + cfg.gpu3d_failed + " ").find(std::string(" ") + d + " ") != std::string::npos; };
 			// (vf2-recomp #19: an RX 9070 on Direct3D 12 took 15 s to start and ~29 ms to take each
 			// picture, 30 a second at any scale; on Vulkan 6x ran at the screen's rate. A Radeon's
 			// Vulkan first then, and since #21 and #22 (NVIDIA: ~100 ms a 3D picture on Direct3D 12,
@@ -1177,8 +1203,8 @@ int main(int argc, char **argv)
 					} else fprintf(stderr, "SDL's gpu renderer: Vulkan draws the 3D here\n");
 				}
 			}
-			SDL_RemovePath(marker.c_str());
-			if (!ren) { fprintf(stderr, "SDL's gpu renderer: %s (SDL's usual renderer, the CPU's 3D)\n", SDL_GetError()); on_cpu_because("the GPU renderer wouldn't start", UPDATE); }
+			marker_live = marker; marker_until = SDL_GetTicks() + 15000;
+			if (!ren) { fprintf(stderr, "SDL's gpu renderer: %s (SDL's usual renderer, the CPU's 3D)\n", SDL_GetError()); on_cpu_because("the GPU renderer wouldn't start", UPDATE); gpu_unavailable = true; }
 			else fprintf(stderr, "SDL's gpu renderer started in %.0f ms\n", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
 		}
 	}
@@ -1454,7 +1480,7 @@ int main(int argc, char **argv)
 		if (rn && !strcmp(rn, "gpu")) {
 			if (SDL_GPUDevice *gd = SDL_GetGPURendererDevice(ren)) g3.dev = gpu3d_create_sdlgpu(gd);
 			g3.verify = g3.dev ? 2 : 0;
-		} else if (!getenv("SDL_RENDER_DRIVER")) g3.next_start = true;
+		} else if (!getenv("SDL_RENDER_DRIVER") && !gpu_unavailable) g3.next_start = true;
 #endif
 		if (g3.dev) {
 			g3.dev->set_quality(cfg.gpu_quality || getenv("VF2_GPU3D_FAST") ? gpu3d_quality::fast : gpu3d_quality::exact);
@@ -1478,16 +1504,16 @@ int main(int argc, char **argv)
 	// and its textures: a picture failing in play (a suspend and resume, a reset) is the CPU for this
 	// run only; saved, one bad moment on a Deck, Vulkan its only driver, put every later start on the CPU)
 	auto g3_fail = [&](const char *why, bool keep = true) {
-		fprintf(stderr, "the 3D on the GPU: %s: on the CPU %s\n", why, keep ? "from now on" : "for this run");
+		fprintf(stderr, "the 3D on the GPU: %s: on the CPU for this run%s\n", why, keep ? " (the driver noted for Windows' order)" : "");
 		// (its start's check or its textures: kept for this build, the menu tries again; a picture failing in play, a
 		// sleep or a GPU reset: for this run only)
 		bool other_next = false;   // (Windows: the other driver not tried yet, so the next start tries it by itself)
 		auto say = [&] {
 			if (g3.mode == R3D_CPU) return;
-			if (keep && strstr(why, "no targets that size")) on_cpu_because("the picture is too large for the GPU at this scale", "A lower Display > Render scale keeps it on the GPU from the next start.");
+			if (keep && strstr(why, "no targets that size")) on_cpu_because("the picture is too large for the GPU at this scale", "A lower Display > Render scale puts it back on the GPU from the next start.");
 			else if (keep) on_cpu_because(strstr(why, "aren't the CPU's") ? "the GPU drew the 3D wrongly here" : "the GPU's 3D failed here",
 			                              other_next ? "The next start tries the GPU on Windows' other graphics driver." : UPDATE);
-			else on_cpu_because("the GPU's 3D stopped (after a sleep, or the graphics driver restarting)", "The next start tries the GPU again.");
+			else on_cpu_because("the GPU's 3D stopped working", "The next start tries the GPU again.");
 		};
 		g3.failed = true; g3.on = false;
 		g3_free();
@@ -1726,7 +1752,7 @@ int main(int argc, char **argv)
 			static const bool measure = getenv("VF2_AUTO_MEASURE") != nullptr;
 			// (a GPU drawn on the CPU, llvmpipe in a container or a VM, measured as before: it's several times slower)
 			on = (!measure && !soft_render) || (was || !g3.last_check ? !(g > 1.5 * c && g > 14.0) : (g <= 1.3 * c || g < 12.0));
-			if (!on && soft_render) on_cpu_because("this computer has no graphics driver for its GPU", "Install the graphics card's driver.");
+			if (!on && soft_render) on_cpu_because("this computer has no graphics driver for its GPU, so the CPU's own 3D is faster here", "Installing the graphics card's driver puts it on the GPU.");
 			auto_keep(on);
 		}
 		g3.on = on;
@@ -2330,8 +2356,10 @@ int main(int argc, char **argv)
 				}
 				cfg.gpu3d_failed.clear();   // (the player's choice: every GPU driver tried again from the next start, a crashed start too)
 				cfg.auto3d.clear();   // (and Auto's choices made again)
+				cfg_dirty = true;
 				SDL_RemovePath((data + "/gpu-start.crashed").c_str());
 				gpu_crashed = false;
+				menu.toast("");   // (its advice followed: the notice taken down)
 				finish_async(false);
 				if (g3.mode != R3D_CPU) g3_start();
 				g3_decide("the player's choice", true);   // (the menu's open: nothing moves)
@@ -2346,6 +2374,9 @@ int main(int argc, char **argv)
 				cfg.graphics = !cfg.graphics; cfg_dirty = true;
 				SDL_RemovePath((data + "/gpu-start.crashed").c_str());   // (another driver: a crashed start tried again with it)
 				gpu_crashed = false;
+				cfg.gpu3d_failed.clear();   // (and the drivers' failures forgotten: they'd choose the order over this)
+				cfg.auto3d.clear();
+				menu.toast("");
 			} });
 #endif
 		if (g3.dev && !strcmp(g3.dev->name(), "metal")) p.items.push_back({ "GPU quality",
@@ -2791,6 +2822,7 @@ int main(int argc, char **argv)
 	};
 	while (running) {
 		const int64_t pass = passes++;
+		marker_done(false);
 		const pace_window pace0 = pace;
 		bool pass_cut = false;
 		uint64_t pass_work = 0, pass_starved = 0;
@@ -3281,7 +3313,8 @@ int main(int argc, char **argv)
 		// (the 3D on the CPU with the setting not CPU: why, on screen once)
 		if (cpu_why_new) {
 			cpu_why_new = false;
-			menu.toast("The 3D is on the CPU (slower): " + cpu_why, 12);
+			menu.toast("The 3D is on the CPU: " + cpu_why, 12);
+			fprintf(stderr, "the notice: The 3D is on the CPU: %s\n", cpu_why.c_str());   // (in the log too: what the player was told)
 		}
 		if (const uint64_t now = SDL_GetTicksNS(); now - fps_since >= 500000000) {
 			menu.set_fps(cfg.show_fps ? std::to_string(int(std::lround(fps_shown * 1e9 / double(now - fps_since)))) + " FPS" : "");
@@ -3647,6 +3680,7 @@ int main(int argc, char **argv)
 	for (auto &[id, j] : vpads) { if (j) SDL_CloseJoystick(j); SDL_DetachVirtualJoystick(id); }
 	g3_free();
 	g3.dev.reset();   // (the GPU's 3D before the renderer whose device it may share)
+	marker_done(true);
 	SDL_Quit();
 	return 0;
 }
