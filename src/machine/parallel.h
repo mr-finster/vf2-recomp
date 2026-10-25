@@ -10,12 +10,29 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#if defined(__ANDROID__)
+#include <pthread.h>
+#include <unistd.h>
+#endif
 
 class row_pool
 {
 public:
 	static row_pool &get() { static row_pool p; return p; }
 	int threads() const { return int(m_workers.size()) + 1; }
+#if defined(__ANDROID__)
+	// The workers' ids as the kernel knows them, with this thread's first: the threads a frame's
+	// drawing runs on, which is what Android's performance hints (a session, ADPF) are asked over.
+	// (bionic's pthread_t is a pointer to its own thread record, not the kernel's tid: gettid() for
+	// this thread, pthread_gettid_np() for the workers. ADPF wants the tids.)
+	std::vector<long> worker_tids()
+	{
+		std::vector<long> ids;
+		ids.push_back(long(gettid()));
+		for (auto &w : m_workers) ids.push_back(long(pthread_gettid_np(w.native_handle())));
+		return ids;
+	}
+#endif
 	// called on the thread that takes each band, as it takes it (the host's log of where the
 	// drawing runs: src/host/sysinfo.h)
 	static inline void (*band_hook)() = nullptr;

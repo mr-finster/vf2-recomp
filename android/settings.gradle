@@ -1,0 +1,2 @@
+rootProject.name = 'vf2-recomp'
+include ':app'
