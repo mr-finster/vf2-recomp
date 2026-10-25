@@ -149,6 +149,7 @@
 #include "gpu_picture.h"
 #include "../gpu/gpu3d.h"
 #include "menu.h"
+#include "crt_colours.h"
 #include "online.h"
 #include "flags.h"
 #include "controls.h"
@@ -546,6 +547,7 @@ uint64_t fnv(const void *p, size_t n, uint64_t h = 1469598103934665603ull)
 struct settings
 {
 	int scale = 0, aspect = 0, volume = 100, music = 50, effects = 100, aa = 1, filter = 0, ring = 0;
+	int crt_colours = 0, brightness = 100, gamma = 100;   // the picture's colours: an arcade monitor's (crt::PRESETS), the player's brightness and gamma (%)
 	int pipelined_at = 0;
 	int secret = 0;   // Cheats > Secret character: the fighter in Akira's place (model2a::set_secret_character), 0 none
 	// settings.ini's version: 2 from v0.1.2 (none before). Its upgrades, once, as it's read:
@@ -605,6 +607,9 @@ struct settings
 		version = VERSION;
 		num("effects_volume", effects, 0, 100);
 		num("screen_filter", filter, 0, 2);
+		num("crt_colours", crt_colours, 0, crt::N_PRESETS - 1);
+		num("brightness", brightness, crt::BRIGHT_MIN, crt::BRIGHT_MAX);
+		num("gamma", gamma, crt::GAMMA_MIN, crt::GAMMA_MAX);
 		num("ring_size", ring, 0, 1600);
 		num("pipelined_at", pipelined_at, 0, MAX_SCALE);
 		num("renderer_3d", renderer3d, 0, 2);
@@ -671,6 +676,7 @@ struct settings
 				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin);
 		fprintf(f, "renderer_3d = %d\ngpu_quality = %d\nauto_3d = %s\n", renderer3d, gpu_quality, auto3d.c_str());
 		fprintf(f, "secret_character = %d\n", secret);
+		fprintf(f, "crt_colours = %d\nbrightness = %d\ngamma = %d\n", crt_colours, brightness, gamma);
 		if (graphics) fprintf(f, "graphics = %d\n", graphics);
 		if (!gpu3d_failed.empty()) fprintf(f, "gpu_3d_failed = %s\n", gpu3d_failed.c_str());
 		if (!gpu3d_failed.empty() || !auto3d.empty()) fprintf(f, "gpu_learnt_build = %s\n", BUILD);
@@ -1997,6 +2003,9 @@ int main(int argc, char **argv)
 	const char *FILTER_NAMES[] = { "Off", "Scanlines", "CRT" };
 	SDL_Texture *glass = nullptr;
 	int glass_w = 0, glass_h = 0, glass_kind = 0;
+	// CRT colours, brightness and gamma (crt_colours.h): the game's picture drawn through them as it goes to the window
+	crt::Colours crt_paint;
+	bool crt_on = false;   // (any of them set: the menu says when this renderer can't)
 	auto draw_filter = [&] {
 		SDL_FRect r;
 		if (!cfg.filter || !SDL_GetRenderLogicalPresentationRect(ren, &r)) return;
@@ -2469,6 +2478,18 @@ int main(int argc, char **argv)
 			"Scanlines adds the dark lines between the arcade monitor's rows. CRT adds those, the monitor's red, green and blue stripes, and slightly darker corners. The lines need a large window or fullscreen to show.",
 			[&] { return std::string(FILTER_NAMES[cfg.filter]); },
 			[&](int d) { cfg.filter = wrap(cfg.filter + d, 3); cfg_dirty = true; } });
+		p.items.push_back({ "CRT colours",
+			"The colours as an arcade monitor showed them, as Supermodel's CRT colours. Sega arcade is a Japanese cabinet's: bluer whites and richer colours. The others are a Sony studio monitor and the TV standards of Japan, the US and Europe. Off: the game's colours as they are.",
+			[&] { return std::string(crt::PRESETS[cfg.crt_colours].name) + (crt_on && crt_paint.failed() ? " (not with this renderer)" : ""); },
+			[&](int d) { cfg.crt_colours = wrap(cfg.crt_colours + d, crt::N_PRESETS); cfg_dirty = true; } });
+		p.items.push_back({ "Brightness",
+			"The picture's brightness, for your screen: 100% is the game's own. Brighter lifts the whole picture (the brightest parts stay white).",
+			[&] { return std::to_string(cfg.brightness) + "%" + (crt_on && crt_paint.failed() ? " (not with this renderer)" : ""); },
+			[&](int d) { cfg.brightness = std::clamp(cfg.brightness + 5 * d, crt::BRIGHT_MIN, crt::BRIGHT_MAX); cfg_dirty = true; } });
+		p.items.push_back({ "Gamma",
+			"The middle tones, for your screen: 100% is the game's own. Higher brings the dark parts up without washing out the blacks or the whites; lower makes them deeper.",
+			[&] { return std::to_string(cfg.gamma) + "%" + (crt_on && crt_paint.failed() ? " (not with this renderer)" : ""); },
+			[&](int d) { cfg.gamma = std::clamp(cfg.gamma + 5 * d, crt::GAMMA_MIN, crt::GAMMA_MAX); cfg_dirty = true; } });
 		p.items.push_back({ "Show FPS", "Shows the frame rate in the top right corner.",
 			[&] { return on_off(cfg.show_fps); },
 			[&](int) { cfg.show_fps = !cfg.show_fps; cfg_dirty = true; if (!cfg.show_fps) menu.set_fps(""); } });
@@ -3112,6 +3133,7 @@ int main(int argc, char **argv)
 	// drawn on the CPU or the GPU, one being drawn alongside), and the picture on show drawn again
 	// as it was. VF2_RESET_AT=pass,...: tests, as if the device had been reset at those passes.
 	auto textures_lost = [&](bool device) {
+		if (device) crt_paint.lost();
 		fprintf(stderr, "the renderer's %s reset: its textures made again\n", device ? "device" : "targets");
 		if (async_pending) {   // (its texture may be gone: nothing unlocked into it, the picture dropped)
 			m.render_wait();
@@ -3701,7 +3723,8 @@ int main(int argc, char **argv)
 		const uint64_t tb = SDL_GetTicksNS();
 		SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
 		SDL_RenderClear(ren);
-		SDL_RenderTexture(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, nullptr);
+		crt_on = cfg.crt_colours || cfg.brightness != 100 || cfg.gamma != 100;
+		crt_paint.draw(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, cfg.crt_colours, cfg.brightness, cfg.gamma);   // (CRT colours, brightness, gamma: the picture only)
 		draw_filter();
 		menu.render();
 		pace.blit += SDL_GetTicksNS() - tb;
