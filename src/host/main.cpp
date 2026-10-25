@@ -2706,8 +2706,18 @@ int main(int argc, char **argv)
 		std::mutex mx;
 		std::vector<uint8_t> in;
 		std::atomic<bool> quit{ false };
-		void put(const std::vector<uint8_t> &b) { std::lock_guard<std::mutex> lk(mx); in.insert(in.end(), b.begin(), b.end()); }
-		void stop() { if (th.joinable()) { quit = true; th.join(); } quit = false; }
+		std::atomic<uint64_t> frames{ 0 }, bytes_in{ 0 };   // (the log's: what it played)
+		void put(const std::vector<uint8_t> &b) { std::lock_guard<std::mutex> lk(mx); in.insert(in.end(), b.begin(), b.end()); bytes_in += b.size(); }
+		void stop()
+		{
+			if (th.joinable()) {
+				quit = true;
+				th.join();
+				fprintf(stderr, "online: the match's sound board played %llu frames, %llu bytes from the game\n", (unsigned long long)frames.load(), (unsigned long long)bytes_in.load());
+			}
+			quit = false;
+			frames = bytes_in = 0;
+		}
 	} msound;
 	auto match_sound_start = [&] {
 		msound.stop();
@@ -2736,6 +2746,7 @@ int main(int argc, char **argv)
 				b.sound_bytes(bytes.data(), bytes.size());
 				bytes.clear();
 				b.run_frame();
+				msound.frames++;
 				if (!b.m_audio_out.empty()) SDL_PutAudioStreamData(audio, b.m_audio_out.data(), int(b.m_audio_out.size() * sizeof(int16_t)));
 				b.m_audio_out.clear();
 			}

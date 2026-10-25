@@ -167,6 +167,12 @@ $(BIN)/vf2soundonly: $(call objs,tools/vf2soundonly.cpp $(MACHINE) $(HOST) $(COR
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
+# menutest: the Online pages as pictures, no ROM (a made-up one builds the board; SDL_VIDEO_DRIVER=offscreen)
+$(OBJ)/tools/menutest.o: CXXFLAGS += $(SDL_CFLAGS) $(RML_CFLAGS)
+$(BIN)/menutest: $(call objs,tools/menutest.cpp src/host/menu.cpp src/host/online.cpp src/host/vf2_netplay.cpp $(NET_SRC) $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS) $(FT_LIBS)
+
 clean:
 	rm -rf $(OBJ) $(BIN)
 
