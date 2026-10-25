@@ -24,9 +24,17 @@ VF2_VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo dev)
 VF2_DATE ?= $(shell git log -1 --format=%cd --date=format:'%b %-d %Y' 2>/dev/null)
 # (the commit too: what a GPU failure is remembered by, src/host/main.cpp's BUILD)
 VF2_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null)
+# and the lobby the room codes use (VF3's, shared: vf3-recomp/tools/lobby): its https address, this one if unset or
+# empty, "none" for none
+ifeq ($(strip $(VF_LOBBY_URL)),)
+VF_LOBBY_URL = https://vf-lobby.throbbing-lab-db6e.workers.dev
+endif
+ifeq ($(VF_LOBBY_URL),none)
+VF_LOBBY_URL :=
+endif
 $(OBJ)/version.h: FORCE
 	@mkdir -p $(OBJ)
-	@printf '#define VF2_VERSION "%s"\n#define VF2_DATE "%s"\n#define VF2_COMMIT "%s"\n' "$(VF2_VERSION)" "$(VF2_DATE)" "$(VF2_COMMIT)" > $@.tmp
+	@printf '#define VF2_VERSION "%s"\n#define VF2_DATE "%s"\n#define VF2_COMMIT "%s"\n#define VF_LOBBY_URL "%s"\n' "$(VF2_VERSION)" "$(VF2_DATE)" "$(VF2_COMMIT)" "$(VF_LOBBY_URL)" > $@.tmp
 	@cmp -s $@.tmp $@ && rm -f $@.tmp || mv $@.tmp $@
 FORCE:
 
@@ -39,6 +47,8 @@ MACHINE = src/machine/model2a.cpp src/machine/model2_video.cpp src/machine/model
 M68000 = third_party/mame/m68000/m68000.cpp third_party/mame/m68000/m68000-decode.cpp \
 	third_party/mame/m68000/m68000-sdf.cpp third_party/mame/m68000/m68000-sdp.cpp
 HOST = src/host/romset.cpp src/host/input_script.cpp
+# Netplay (src/net, VF3's, kept the same in all three): the game's Online play
+NET_SRC = src/net/session.cpp src/net/link.cpp src/net/room_link.cpp src/net/stun.cpp src/net/http.cpp
 
 
 # SLJIT (BSD-2): the native code made at start-up. C, built by the C++ compiler's driver (-x c), so
@@ -72,9 +82,9 @@ RML_SRC = $(wildcard third_party/rmlui/Source/Core/*.cpp third_party/rmlui/Sourc
 	third_party/rmlui/Backends/RmlUi_Platform_SDL.cpp third_party/rmlui/Backends/RmlUi_Renderer_SDL.cpp
 RML_CFLAGS = -DRMLUI_STATIC_LIB -DRMLUI_FONT_ENGINE_FREETYPE -DRMLUI_SDL_VERSION_MAJOR=3 -Ithird_party/rmlui/Include -Ithird_party/rmlui/Backends
 $(OBJ)/third_party/rmlui/%.o: CXXFLAGS += $(RML_CFLAGS) $(FT_CFLAGS) $(SDL_CFLAGS) -w
-$(OBJ)/src/host/main.o $(OBJ)/src/host/menu.o $(OBJ)/src/host/sysinfo.o $(OBJ)/src/host/d3d11_map.o: CXXFLAGS += $(SDL_CFLAGS) $(RML_CFLAGS)
-$(OBJ)/src/host/main.o: $(OBJ)/version.h
-$(OBJ)/src/host/main.o: CXXFLAGS += -I$(OBJ)
+$(OBJ)/src/host/main.o $(OBJ)/src/host/menu.o $(OBJ)/src/host/online.o $(OBJ)/src/host/sysinfo.o $(OBJ)/src/host/d3d11_map.o: CXXFLAGS += $(SDL_CFLAGS) $(RML_CFLAGS)
+$(OBJ)/src/host/main.o $(OBJ)/src/host/online.o: $(OBJ)/version.h
+$(OBJ)/src/host/main.o $(OBJ)/src/host/online.o: CXXFLAGS += -I$(OBJ)
 
 $(OBJ)/src/host/stb_image_impl.o: CXXFLAGS += -w
 
@@ -98,7 +108,7 @@ $(OBJ)/src/gpu/gpu3d_sdlgpu.o: CXXFLAGS += $(SDL_CFLAGS)
 $(OBJ)/src/host/main.o: CXXFLAGS += -DVF2_GPU3D_SDL=1
 endif
 
-$(BIN)/vf2: $(call objs,src/host/main.cpp src/host/menu.cpp src/host/sysinfo.cpp src/host/d3d11_map.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ) $(GPU3D_OBJ)
+$(BIN)/vf2: $(call objs,src/host/main.cpp src/host/menu.cpp src/host/online.cpp src/host/vf2_netplay.cpp $(NET_SRC) src/host/sysinfo.cpp src/host/d3d11_map.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ) $(GPU3D_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS) $(FT_LIBS) $(GPU3D_LIBS)
 
