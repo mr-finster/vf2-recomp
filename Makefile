@@ -162,6 +162,11 @@ $(BIN)/vf2detect: $(call objs,tools/vf2detect.cpp src/host/vf2_netplay.cpp src/h
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
+# vf2soundonly: online play's sound board alone (model2a::set_sound_only) against the game's own
+$(BIN)/vf2soundonly: $(call objs,tools/vf2soundonly.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+
 clean:
 	rm -rf $(OBJ) $(BIN)
 

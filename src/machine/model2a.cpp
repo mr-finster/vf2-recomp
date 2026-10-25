@@ -533,6 +533,8 @@ uint64_t model2a::tgp_now() const
 void model2a::reset()
 {
 	render_wait();
+	m_snd_queue.clear();
+	m_snd_next = 0;
 	m_cur_2d.reset();   // (what was kept for drawing pictures again belongs to the run before)
 	m_snap_epoch++;     // (states saved before: the next save copies everything)
 	m_video->smooth_reset();
@@ -1014,12 +1016,18 @@ void model2a::apply_suspend_changes()
 void model2a::timeslice()
 {
 	int head = timer_head();
+	if (m_sound_only && !m_snd_queue.empty() && m_base >= m_snd_next) {   // (a byte for the sound board, as the link's)
+		m_scsp->midi_in_byte(m_snd_queue.front());
+		m_snd_queue.pop_front();
+		m_snd_next = m_base + AS_PER_SEC / 1000000 * 320;
+	}
 	while (m_base < m_timer[head].expire) {
 		atime target = m_timer[head].expire;   // (MAME's 1/60 s quantum never comes first here)
 		if (m_suspend_changes) apply_suspend_changes();
 		for (int k = 0; k < N_CPUS; k++) {
 			const int id = m_order[k];
 			cpu_sched &c = m_sched[id];
+			if (m_sound_only && id != CPU_68K) { c.local = std::max(c.local, target); continue; }   // (a sound board alone)
 			if (!(c.suspend == 0 || c.eat) || target < c.local) continue;
 			const atime delta = target - c.local;
 			if (delta < c.period) continue;

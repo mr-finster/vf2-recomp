@@ -346,6 +346,13 @@ public:
 	// reference runs for the CPU/video regression (the default). Takes effect at reset().
 	void set_sound(bool on) { m_sound_on = on; }
 	bool sound() const { return m_sound_on; }
+	// A board for its sound alone (online play's: the match's board runs with its sound held, the same on both
+	// sides, and this one plays what it sends): only the 68000 and the SCSP run (the i960, the TGP and the Z80
+	// never do), and the bytes for the sound board come from sound_bytes, a MIDI byte's time apart (320 us), as
+	// the UART would send them. From the next reset() (with set_sound(true)).
+	void set_sound_only(bool on) { m_sound_only = on; }
+	void sound_bytes(const uint8_t *b, size_t n) { m_snd_queue.insert(m_snd_queue.end(), b, b + n); }
+	size_t sound_bytes_waiting() const { return m_snd_queue.size(); }
 	// The link to the sound board a byte at a time (for the host): each byte the UART sends reaches
 	// the sound board's MIDI input when its stop bit would be read there, and the UART's status
 	// changes when the bit-level transmitter would change it, without running the UART's 500 kHz
@@ -505,6 +512,9 @@ private:
 	u32 m_geo_write_start = 0;
 	std::unique_ptr<model2_video> m_video;
 	bool m_sound_on = false;
+	bool m_sound_only = false;
+	std::deque<uint8_t> m_snd_queue;   // (sound_only: the bytes to go to the sound board)
+	atime m_snd_next = 0;              // (and when the next may)
 	float m_volume[2] = { 1, 1 };
 	float m_level = 1, m_limit = 1;   // set_level's gain; the limiter's gain now
 	bool m_backdrop_smooth = false;
