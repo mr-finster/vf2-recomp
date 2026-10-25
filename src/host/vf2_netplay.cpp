@@ -163,11 +163,19 @@ void Adapter::advance(const uint16_t input[2], bool resim)
 	}
 }
 
+uint8_t Score::players_in(const model2a &board)
+{
+	const uint8_t v = board.workram()[PLAYING];
+	if (v == 2) return 3;
+	if (v == 1) return 2;
+	return board.game_mode() == 9 ? 1 : 0;   // (player 1 alone, in a fight; else no one yet)
+}
+
 void Score::frame(const model2a &board)
 {
 	if (!known()) return;
 	const std::vector<uint8_t> &ram = board.workram();
-	const uint8_t r[3] = { ram[ROUNDS_P1], ram[ROUNDS_P2], uint8_t(ram[PLAYING] & 3) };
+	const uint8_t r[3] = { ram[ROUNDS_P1], ram[ROUNDS_P2], players_in(board) };
 	if (memcmp(r, now, 3) != 0) { memcpy(now, r, 3); held = 0; return; }
 	if (++held != 30) return;   // (once, when it's held long enough)
 	playing = r[2];

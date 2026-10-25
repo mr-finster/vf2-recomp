@@ -147,6 +147,11 @@ $(BIN)/vf2net: $(call objs,tools/vf2net.cpp src/host/vf2_netplay.cpp src/host/st
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
+# vf2detect: the game's round counters and who's playing, from RAM (the netplay Score's places)
+$(BIN)/vf2detect: $(call objs,tools/vf2detect.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+
 clean:
 	rm -rf $(OBJ) $(BIN)
 

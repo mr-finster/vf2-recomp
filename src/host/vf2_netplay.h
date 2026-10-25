@@ -39,8 +39,10 @@ constexpr int MATCH_CULLING = 2;
 // each player's rounds won in the match on now (both back to 0 when it's over), and which players are playing (a
 // side not playing is the CPU's). A match counts only if both were playing at each round it was won (not the
 // winner's fights against the CPU after it, nor one a challenger broke into); each reading only once it's held 30
-// frames, longer than any rollback, so a guessed frame never scores. VF2's places: still to be found with the ROM
-// (tools/vf2detect.cpp); until then known() is false and it counts nothing.
+// frames, longer than any rollback, so a guessed frame never scores. VF2's places (tools/vf2detect.cpp, checked
+// against the HUD's round markers over four matches and a challenger who joined and lost): work RAM 0x4f and 0x51,
+// each player's rounds; 0x4c the players in a fight, 2 both, 1 player 2 alone, 0 player 1 alone (or no one: the
+// game mode then says, 9 a fight).
 struct Score
 {
 	int matches[2] = {}, rounds[2] = {};   // between the two players: matches won, and rounds won in them
@@ -48,8 +50,9 @@ struct Score
 	int players() const { return playing; }          // (who's in the game, as held: bit 0 player 1, bit 1 player 2)
 	uint8_t players_now() const { return now[2]; }   // (as the RAM has it this frame, not yet held: when one went out)
 	int round_ends = 0;   // (each round's end, any players': a moment no one's in control, while the game shows who won)
-	static constexpr uint32_t ROUNDS_P1 = 0, ROUNDS_P2 = 0, PLAYING = 0;   // (work RAM offsets; 0: not found yet)
+	static constexpr uint32_t ROUNDS_P1 = 0x4f, ROUNDS_P2 = 0x51, PLAYING = 0x4c;   // (work RAM offsets)
 	static constexpr bool known() { return ROUNDS_P1 && ROUNDS_P2 && PLAYING; }
+	static uint8_t players_in(const model2a &board);   // (bit 0 player 1, bit 1 player 2, from PLAYING and the game mode)
 private:
 	uint8_t seen[2] = {}, now[3] = {}, playing = 0;
 	int held = 0;
