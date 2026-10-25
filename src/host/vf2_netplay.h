@@ -25,6 +25,16 @@ constexpr uint16_t START_BUTTON = 256, COIN_BUTTON = 512;
 uint16_t pack(uint8_t in0, uint8_t player_port, int player);
 void unpack(const uint16_t input[2], model2a &board);
 
+// The online version both sides compare in the handshake (with the ROMs' hash), apart from the release's: changed
+// only with what a match depends on (the board, the recompiler, their compiler flags, this adapter, online.cpp's
+// match settings, src/net's protocol), so a release that changes only the picture or the menus still plays the one
+// before. Named after the release that brings it; VF2's first online release names it (docs/RELEASING-ALL.md).
+inline constexpr const char *NET_VERSION = "vf2-online-1";
+// The online version a build plays as: NET_VERSION for a release (its version a release's name: v0.1.16, or with a
+// word after it), else the build's own (git describe's between releases, a bare commit, "dev"): a test build, which
+// may carry a change to the game, plays only the same build
+std::string online_version(const std::string &build);
+
 // A hash of the ROMs' contents as loaded (before any patch)
 uint64_t content_hash(const model2a &board);
 // The host's starting blob: its backup RAM and EEPROM, and its secret character (0: none; Cheats' choice)

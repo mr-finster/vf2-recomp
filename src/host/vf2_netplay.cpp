@@ -1,4 +1,5 @@
 #include "vf2_netplay.h"
+#include <cctype>
 #include <algorithm>
 #include <cstring>
 
@@ -29,6 +30,30 @@ void unpack(const uint16_t input[2], model2a &b)
 	b.m_in1 = uint8_t(~input[0]);
 	b.m_in2 = uint8_t(~input[1]);
 	b.m_sw = 0xff;
+}
+
+std::string online_version(const std::string &b)
+{
+	// a release's name: v, three numbers, and maybe a word after them (-alpha, -online-preview), not git describe's
+	// -<commits>-g<commit> (a build between releases)
+	size_t i = 0;
+	auto number = [&] { const size_t at = i; while (i < b.size() && isdigit((unsigned char)b[i])) i++; return i > at; };
+	bool release = !b.empty() && b[i++] == 'v' && number() && i < b.size() && b[i++] == '.' && number() && i < b.size() && b[i++] == '.' && number();
+	if (release && i < b.size()) {
+		release = b[i] == '-' && i + 1 < b.size() && islower((unsigned char)b[i + 1]);
+		for (size_t k = i + 1; release && k < b.size(); k++)
+			release = islower((unsigned char)b[k]) || isdigit((unsigned char)b[k]) || b[k] == '-';
+		// (a name's last parts "-<n>-g<hex>": git describe's between releases)
+		const size_t g = b.rfind("-g");
+		if (release && g != std::string::npos && g > i && g + 2 < b.size()) {
+			size_t d = b.rfind('-', g - 1);
+			const std::string n = b.substr(d + 1, g - d - 1), h = b.substr(g + 2);
+			const bool num = !n.empty() && n.find_first_not_of("0123456789") == std::string::npos;
+			const bool hex = h.find_first_not_of("0123456789abcdef") == std::string::npos;
+			if (num && hex) release = false;
+		}
+	}
+	return release ? NET_VERSION : b;
 }
 
 uint64_t content_hash(const model2a &b) { return b.rom_hash(); }
@@ -106,14 +131,23 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	std::vector<uint8_t> eeprom(64 * 2);
 	memcpy(eeprom.data(), board.eeprom_cells(), eeprom.size());
 	cold(backup.data(), eeprom.data());
+	// (the boot's bytes too, from this cold start: a sound board made for the match, alone, needs its set-up; they go
+	// with the first frame's)
+	board.on_uart_tx = [this](uint8_t b) { if (collecting) pending.push_back(b); };
+	collecting = true;
+	pending.clear();
 	for (int i = 0; i < BOOT_FRAMES && !board.past_boot(); i++) {
 		board.run_frame();
 		if (booting && i % 60 == 59) booting();
 	}
-	board.on_uart_tx = [this](uint8_t b) { if (collecting) pending.push_back(b); };
-	collecting = true;
-	pending.clear();
 	frame = 0;
+	if (const char *d = getenv("VF2_DUMP_BEGIN")) {   // (tests: the state the match starts from, and its parts)
+		std::vector<uint8_t> st;
+		std::vector<m2::StateSection> sec;
+		board.save_state(st, &sec);
+		if (FILE *f = fopen(d, "wb")) { fwrite(st.data(), 1, st.size(), f); fclose(f); }
+		if (FILE *f = fopen((std::string(d) + ".txt").c_str(), "w")) { for (auto &x : sec) fprintf(f, "%s %zu\n", x.name, x.offset); fclose(f); }
+	}
 	started_secret = secret;
 	sound_sent.clear();
 	checkpoints.clear();
