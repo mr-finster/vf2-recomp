@@ -52,8 +52,8 @@ const Glyph FONT[] = {
 };
 constexpr int GW = 7, GH = 10, PITCH = 8, SPACE = 4;
 // VF2's name letters: orange, a stroke's right-hand pixel a darker orange (its shadow side), its top-left one a light
-// grey (as the game's own names are lit), 0xAARRGGBB
-constexpr uint32_t LIT = 0xFFB88200, SHADOW = 0xFFA03A00, SHINE = 0xFFB8B8B8;
+// grey (as the game's own names are lit), outlined in black, 0xAARRGGBB
+constexpr uint32_t LIT = 0xFFB88200, SHADOW = 0xFFA03A00, SHINE = 0xFFB8B8B8, OUTLINE = 0xFF000000;
 
 const Glyph *glyph(char c)
 {
@@ -168,6 +168,25 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 			for (int y = 0; y < fl->h; y++)
 				for (int k = 0; k < fl->w; k++) top.pix(ty + (GH - fl->h) / 2 + y, x + k) = fl->px[size_t(y) * size_t(fl->w) + size_t(k)];
 			x += fl->w + gap;
+		}
+		// each letter outlined in black first, as the game's own are (a pixel round every stroke's, corners too), so it
+		// reads over the checker; then the letters over the outlines
+		{
+			int ox2 = x;
+			for (char ch : names[p]) {
+				if (ch == ' ') { ox2 += SPACE; continue; }
+				if (const Glyph *g = glyph(ch))
+					for (int r = 0; r < GH; r++)
+						for (int k = 0; k < GW; k++) {
+							if (g->rows[r][k] != '#') continue;
+							for (int dy = -1; dy <= 1; dy++)
+								for (int dx = -1; dx <= 1; dx++) {
+									const int yy = ty + r + dy, xx = ox2 + k + dx;
+									if (yy >= 0 && yy < top.height() && xx >= 0 && xx < top.width()) top.pix(yy, xx) = OUTLINE;
+								}
+						}
+				ox2 += PITCH;
+			}
 		}
 		for (char ch : names[p]) {
 			if (ch == ' ') { x += SPACE; continue; }
