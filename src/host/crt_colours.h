@@ -439,6 +439,12 @@ public:
 	}
 	bool failed() const { return fail; }   // (not on this renderer: the menu says so)
 	void lost() { state = nullptr; shader = nullptr; for_ren = nullptr; set_p = -1; }   // (the renderer's device reset, or a new renderer)
+	void release()   // (before the renderer goes)
+	{
+		if (state) SDL_DestroyGPURenderState(state);
+		if (shader && for_ren) if (SDL_GPUDevice *gd = SDL_GetGPURendererDevice(for_ren)) SDL_ReleaseGPUShader(gd, shader);
+		lost();
+	}
 
 private:
 	SDL_GPURenderState *state = nullptr;

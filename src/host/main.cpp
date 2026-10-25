@@ -4086,6 +4086,7 @@ int main(int argc, char **argv)
 	save_nvram(true);
 	if (cfg_dirty && (quit_after < 0 || test_saves)) save_settings();
 	for (auto &[id, j] : vpads) { if (j) SDL_CloseJoystick(j); SDL_DetachVirtualJoystick(id); }
+	crt_paint.release();
 	g3_free();
 	g3.dev.reset();   // (the GPU's 3D before the renderer whose device it may share)
 	marker_done(true);
