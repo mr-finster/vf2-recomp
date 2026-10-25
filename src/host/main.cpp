@@ -2219,6 +2219,36 @@ int main(int argc, char **argv)
 
 	// ---- the menu (Esc, or View on a pad) ----
 	game_menu menu;
+	// the countries' flags (assets/ui/flags.png), for the HUD's: each a 12 x 9 of its 48 x 36, a box of 4 x 4 for a pixel
+	SDL_Surface *flag_atlas = nullptr;
+	if (SDL_Surface *f = SDL_LoadSurface((find_assets() + "/ui/flags.png").c_str())) {
+		flag_atlas = SDL_ConvertSurface(f, SDL_PIXELFORMAT_ABGR8888);
+		SDL_DestroySurface(f);
+	}
+	auto hud_flag = [&](const std::string &country) {
+		m2hud::Flag fl;
+		const int i = flags::index_of(country);
+		if (!flag_atlas || i < 0) return fl;
+		const int x0 = i % flags::COLS * flags::CELL_W + 1, y0 = i / flags::COLS * flags::CELL_H + 1;
+		if (x0 + flags::W > flag_atlas->w || y0 + flags::H > flag_atlas->h) return fl;
+		fl.w = flags::W / 4;
+		fl.h = flags::H / 4;
+		fl.px.resize(size_t(fl.w) * size_t(fl.h));
+		for (int y = 0; y < fl.h; y++)
+			for (int x = 0; x < fl.w; x++) {
+				unsigned sum[4] = {};
+				for (int dy = 0; dy < 4; dy++)
+					for (int dx = 0; dx < 4; dx++) {
+						const uint8_t *q = static_cast<const uint8_t *>(flag_atlas->pixels) + size_t(y0 + y * 4 + dy) * size_t(flag_atlas->pitch) + size_t(x0 + x * 4 + dx) * 4;
+						for (int c = 0; c < 3; c++) sum[c] += q[c] * q[3];   // (by their cover: a flag not a rectangle, Nepal's)
+						sum[3] += q[3];
+					}
+				const unsigned a = sum[3] / 16, d = sum[3] ? sum[3] : 1;
+				// (the 2D's pixels: 0xAARRGGBB, 0 see-through; a pixel mostly outside the flag left see-through)
+				fl.px[size_t(y) * size_t(fl.w) + size_t(x)] = a < 128 ? 0u : 0xFF000000u | (sum[0] / d) << 16 | (sum[1] / d) << 8 | (sum[2] / d);
+			}
+		return fl;
+	};
 	if (!menu.init(win, ren, find_assets()))
 		fprintf(stderr, "menu: couldn't load assets/ui (the game runs without it)\n");
 	menu.set_footer(std::string("Virtua Fighter 2 Recomp ") + VF2_VERSION + (*VF2_DATE ? std::string(" · ") + VF2_DATE : ""));
@@ -2840,6 +2870,7 @@ int main(int argc, char **argv)
 		if (match_on) fprintf(stderr, "online: the match ended at frame %llu; back to playing alone\n", (unsigned long long)game_frame);
 		match_on = false;
 		msound.stop();
+		{ const std::string none[2]; m.set_hud_names(none); }
 		if (audio) SDL_ClearAudioStream(audio);
 		menu.set_notice("");
 		menu.set_banner("");
@@ -2898,6 +2929,15 @@ int main(int argc, char **argv)
 			if (n.kind == Online::Notice::joined) {
 				match_on = true;
 				match_sound_start();
+				{   // the players' names under the energy bars (the name the other side was sent; theirs as the HUD can show it)
+					std::string names[2];
+					names[online.local_player()] = online.identity.name;
+					names[online.local_player() ^ 1] = online.opponent();
+					const m2hud::Flag f[2] = { hud_flag(online.local_player() == 0 ? online.my_country() : online.peer_country()),
+					                           hud_flag(online.local_player() == 0 ? online.peer_country() : online.my_country()) };
+					const m2hud::Flag *fl[2] = { &f[0], &f[1] };
+					m.set_hud_names(names, fl);
+				}
 				game_frame = vf2net::BOOT_FRAMES;
 				if (menu.is_open()) menu.close();
 				restart_clock();
@@ -3645,8 +3685,10 @@ int main(int argc, char **argv)
 		// counts as shown: the screen kept its pace, and counting it as missed showed a drop to
 		// 80-odd at every scene change)
 		if (new_shown || (hold_on && !stopped && !menu.is_open())) fps_shown++;
-		// (the 3D on the CPU with the setting not CPU: why, on screen once)
-		if (cpu_why_new) {
+		// (the 3D on the CPU with the setting not CPU: why, on screen once; not over online play: after it, and one up as
+		// a match is joined is taken down and said again after)
+		if (online.phase() != Online::Phase::off && !cpu_why.empty() && menu.toast_showing()) { menu.toast(""); cpu_why_new = true; }
+		if (cpu_why_new && online.phase() == Online::Phase::off) {
 			cpu_why_new = false;
 			menu.toast("The 3D is on the CPU: " + cpu_why, 12);
 			fprintf(stderr, "the notice: The 3D is on the CPU: %s\n", cpu_why.c_str());   // (in the log too: what the player was told)

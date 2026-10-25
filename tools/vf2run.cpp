@@ -218,6 +218,12 @@ int main(int argc, char **argv)
 	romset::result roms = romset::load(argv[1]);
 	if (!roms.ok) { fprintf(stderr, "%s\n", roms.error.c_str()); return 1; }
 	model2a m(std::move(roms));
+	if (const char *hn = getenv("VF2_HUD_NAMES")) {   // (tests: "P1NAME,P2NAME" under the energy bars, as netplay shows them)
+		const std::string v = hn;
+		const size_t comma = v.find(',');
+		const std::string names[2] = { v.substr(0, comma), comma == std::string::npos ? std::string() : v.substr(comma + 1) };
+		m.set_hud_names(names);
+	}
 	if (cpu_mode == CPU_INTERP) m.use_interpreter();
 	else if (cpu_mode == CPU_CPP && !m.use_generated()) { fprintf(stderr, "--cpp: this build has no recompiled C++ (vf2run-rec has: make rec)\n"); return 2; }
 	else if (cpu_mode == CPU_NATIVE) {
