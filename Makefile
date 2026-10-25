@@ -114,6 +114,29 @@ $(BIN)/vf2run: $(call objs,tools/vf2run.cpp src/host/stb_image_impl.cpp $(MACHIN
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
+# Netplay (src/net): rollback sessions and their links, nothing of the game's (the same files as VF1's and VF3's)
+NET = src/net/session.cpp src/net/link.cpp src/net/room_link.cpp src/net/stun.cpp src/net/http.cpp
+
+# nettest: the session on a simulated network with a stand-in game (no ROM)
+$(BIN)/nettest: $(call objs,$(NET) tools/nettest.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+# delaytest: Auto's input delay against simulated pings (full speed at any; raised and lowered as it should)
+$(BIN)/delaytest: $(call objs,$(NET) tools/delaytest.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+# roomtest: room links against a TURN server on 127.0.0.1:3478 (coturn: tools/roomtest.cpp)
+$(BIN)/roomtest: $(call objs,$(NET) tools/roomtest.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+
+# netfuzz: the session against a peer who sends anything, with AddressSanitizer and UBSan (its own objects)
+$(BIN)/netfuzz: $(NET) tools/netfuzz.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $^ -o $@
+
 # The rollback soak test (tools/vf2soak.cpp): two boards, one rolled back every frame, byte for byte the same
 $(BIN)/vf2soak: $(call objs,tools/vf2soak.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
