@@ -2747,6 +2747,8 @@ int main(int argc, char **argv)
 				bytes.clear();
 				b.run_frame();
 				msound.frames++;
+				static FILE *wav = [] { const char *w = getenv("VF2_MATCH_SOUND"); return w ? fopen(w, "wb") : nullptr; }();   // (tests: the raw 16-bit stereo it played)
+				if (wav && !b.m_audio_out.empty()) { fwrite(b.m_audio_out.data(), 2, b.m_audio_out.size(), wav); fflush(wav); }
 				if (!b.m_audio_out.empty()) SDL_PutAudioStreamData(audio, b.m_audio_out.data(), int(b.m_audio_out.size() * sizeof(int16_t)));
 				b.m_audio_out.clear();
 			}
