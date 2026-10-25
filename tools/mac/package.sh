@@ -24,6 +24,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<key>CFBundleExecutable</key><string>Virtua Fighter 2 Recomp</string>
 	<key>CFBundleIdentifier</key><string>recomp.vf2.unofficial</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>NSLocalNetworkUsageDescription</key><string>Online play: to host a match or join one on your network.</string>
 	<key>CFBundleIconFile</key><string>VF2</string>
 	<key>CFBundleShortVersionString</key><string>$VERSION</string>
 	<key>CFBundleVersion</key><string>$VERSION</string>
