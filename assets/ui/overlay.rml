@@ -1,9 +1,13 @@
 <rml>
 <head>
 	<title>Overlay</title>
+	<link type="text/rcss" href="flags.rcss"/>
 	<style>
-		/* drawn over the game: the frames per second, small, at the top right (Display > Show FPS) */
+		/* drawn over the game, the menu open or not: the frames per second (Display > Show FPS), online play's
+		   connection, a notice that comes and goes (someone joined), and one that stays while it's true (the
+		   connection interrupted) */
 		body { width: 100%; height: 100%; font-family: "Barlow Condensed"; pointer-events: none; }
+		div { display: block; }
 		#fps {
 			position: absolute;
 			right: 18dp;
@@ -13,11 +17,63 @@
 			color: #ffd23f;
 			font-effect: outline(2dp #0b1430);
 		}
+		/* online play's connection: small, at the bottom in the middle, where a fight between two players has nothing
+		   (the game's own energy bars, names and time at the top) */
+		#net {
+			position: absolute;
+			left: 0; right: 0;
+			bottom: 10dp;
+			text-align: center;
+			font-size: 17dp;
+			white-space: pre;
+			font-weight: 600;
+			color: #dfe7fb;
+		}
+		#net .dot {
+			display: inline-block;
+			width: 9dp; height: 9dp;
+			margin-right: 7dp;
+			border-radius: 5dp;
+			background-color: #7ee08a;
+		}
+		#net.plain { font-effect: outline(2dp #0b1430); }   /* (a line of words: hosting, waiting) */
+		#net.fair .dot { background-color: #ffd23f; }
+		#net.poor .dot { background-color: #ff6b5a; }
+		/* in a match: the figures in cells, each of a fixed width (a mono font: nothing moves as they change), the
+		   label small at the left, the figure at the right */
+		#net.cells { font-family: "JetBrains Mono"; font-size: 14dp; white-space: normal; }
+		#net .row { display: block; height: 21dp; }
+		#net .row.two { margin-bottom: 4dp; height: 17dp; font-size: 11.5dp; font-weight: 500; color: #b8c4e6; }
+		#net .c {
+			display: inline-block;
+			position: relative;
+			box-sizing: border-box;
+			height: 21dp;
+			line-height: 21dp;
+			margin: 0 2.5dp;
+			border-radius: 5dp;
+			border: 1dp #2a3466;
+			background-color: #0b1430;
+		}
+		#net .two .c { height: 17dp; line-height: 17dp; border-width: 0; border-radius: 4dp; background-color: #0d1736; }
+		#net .c .l { position: absolute; left: 8dp; top: 0; font-size: 10dp; letter-spacing: 1dp; color: #8fa0d0; }
+		#net .two .c .l { left: 7dp; font-size: 9.5dp; }
+		#net .c .v { position: absolute; right: 8dp; top: 0; }
+		#net .two .c .v { right: 7dp; }
+		#net .c.name { text-align: left; }
+		#net .c.name .dot { position: absolute; left: 7dp; top: 0; width: auto; height: auto; margin: 0; border-radius: 0; background-color: transparent; font-size: 13dp; color: #7ee08a; }
+		#net.fair .c.name .dot { color: #ffd23f; }
+		#net.poor .c.name .dot { color: #ff6b5a; }
+		#net .c.name .v { left: 24dp; right: auto; }
+		#net .c.via .v, #net .c.lost .v { left: 0; right: 0; text-align: center; }
+		#net .c.direct { color: #8fe08a; }
+		#net .c.relay { color: #ffd23f; }
+		#net .c.lost { color: #ff6b5a; border-color: #ff6b5a80; }
 		/* a notice that comes and goes, at the bottom right (out of the menu's way and the HUD's) */
 		#toast {
 			position: absolute;
 			right: 24dp;
-			bottom: 40dp;
+			bottom: 60dp;   /* (over the connection display, Detailed's row too) */
 			max-width: 560dp;
 		}
 		#toast span {
@@ -30,7 +86,97 @@
 			color: #0b1430;
 			decorator: horizontal-gradient(#ffd23f #ff8f1f);
 		}
+		/* a notice that stays, in the middle (the game waits under it, dimmed): a card */
+		#notice {
+			position: absolute;
+			left: 0; right: 0; top: 0; bottom: 0;
+			background-color: #05081ab8;
+		}
+		#notice .card {
+			position: absolute;
+			left: 50%; top: 210dp;
+			width: 600dp; margin-left: -300dp;
+			height: 300dp;
+			padding-top: 52dp;
+			border-radius: 20dp;
+			border: 2dp #2a3466;
+			background-color: #0b1026;
+			text-align: center;
+		}
+		#notice .spin {   /* (only its place: the ring is drawn over it, game_menu::draw_spinner) */
+			margin: 0 auto;
+			width: 66dp; height: 66dp;
+		}
+		#notice .title {
+			margin-top: 18dp;
+			font-size: 42dp;
+			font-weight: 700;
+			font-style: italic;
+			color: #ffffff;
+		}
+		#notice .sub {
+			margin-top: 8dp;
+			font-size: 25dp;
+			font-weight: 500;
+			color: #8f9ac8;
+		}
+		#notice .small {
+			margin-top: 8dp;
+			font-size: 22dp;
+			font-weight: 500;
+			color: #5d6799;
+		}
+		/* what the players are waited for (Press Start), at the bottom in the middle */
+		#banner { position: absolute; left: 0; right: 0; bottom: 200dp; text-align: center; }   /* (above the title screen's own Press Start Button) */
+		#banner .in {
+			display: inline-block;
+			padding: 12dp 36dp 14dp 36dp;
+			border-radius: 14dp;
+			border: 2dp #ffffff;
+			decorator: horizontal-gradient(#f2d14b #f0922e);
+		}
+		#banner .title { font-size: 34dp; font-weight: 700; font-style: italic; color: #0b1026; }
+		#banner .sub { font-size: 20dp; font-weight: 600; color: #0b1026; }
+		#banner .button {
+			display: inline-block;
+			margin-left: 14dp;
+			padding: 0 14dp;
+			border-radius: 9dp;
+			background-color: #0b1026;
+			color: #f2d14b;
+			font-style: normal;
+			font-weight: 600;
+			font-size: 30dp;
+		}
+		/* a match found: the two players, VS between (the two sides drawn under this by the menu: game_menu::draw_versus) */
+		#vs { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+		#vs .pl { position: absolute; top: 210dp; font-size: 24dp; font-weight: 600; letter-spacing: 4dp; line-height: 24dp; }
+		#vs .nm { position: absolute; top: 230dp; font-size: 92dp; font-weight: 700; font-style: italic; line-height: 92dp; white-space: nowrap; }
+		#vs .fl { position: absolute; top: 148dp; height: 52dp; }
+		#vs .vflag { width: 64dp; height: 48dp; border: 2dp #ffffff; }
+		#vs .left { left: 72dp; color: #0b1026; }
+		#vs .right { right: 72dp; text-align: right; }
+		#vs .pl.right { color: #c3cbf0; }
+		#vs .nm.right { color: #ffffff; }
+		#vs .badge {
+			position: absolute;
+			left: 50%; top: 215dp;
+			width: 140dp; height: 140dp; margin-left: -65dp;   /* (its disc and ring drawn under it, round 280dp down: game_menu::draw_versus; the VS 5dp right and down of the box's middle, as it sat inside the ring's 5dp border, measured: menutest versus.png) */
+		}
+		#vs .badge div {
+			position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+			padding-right: 17dp; padding-bottom: 6dp;   /* (italic letters sit right and low of their box: measured, menutest versus.png) */
+			text-align: center;
+			font-size: 72dp; font-weight: 700; font-style: italic; line-height: 124dp;
+			color: #ffffff;
+		}
+		#vs .bar { position: absolute; left: 0; right: 0; top: 563dp; bottom: 0; text-align: center; padding-top: 38dp; }
+		#vs .line { font-size: 30dp; font-weight: 600; color: #8fe08a; }
+		#vs .line.relay { color: #f2d14b; }
+		#vs .dot { display: inline-block; width: 14dp; height: 14dp; margin-right: 12dp; border-radius: 7dp; background-color: #8fe08a; }
+		#vs .line.relay .dot { background-color: #f2d14b; }
+		#vs .sub { margin-top: 10dp; font-size: 26dp; font-weight: 500; color: #d8ddf5; }
 	</style>
 </head>
-<body><div id="fps"></div><div id="toast"></div></body>
+<body><div id="vs"></div><div id="banner"></div><div id="notice"></div><div id="fps"></div><div id="net"></div><div id="toast"></div></body>
 </rml>
