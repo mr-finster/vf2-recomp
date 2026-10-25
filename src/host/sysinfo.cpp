@@ -24,7 +24,14 @@
 #include <sys/sysctl.h>
 #endif
 #if defined(__linux__)
+#include <dirent.h>
 #include <sys/utsname.h>
+#endif
+#if defined(__ANDROID__)
+#include <android/api-level.h>
+#include <android/performance_hint.h>   // (the types only: the calls are reached through libandroid.so)
+#include <dlfcn.h>
+#include <unistd.h>
 #endif
 
 namespace sysinfo {
@@ -260,6 +267,171 @@ std::string placement()
 	return out;
 #else
 	return "";
+#endif
+}
+
+std::string cpu_frequencies()
+{
+	std::string out;
+#if defined(__linux__)
+	// cpufreq, one entry per logical CPU, gathered by the clock the core can reach (cpuinfo_max_freq:
+	// a phone's cores come in two or three kinds, each with its own top)
+	std::vector<std::pair<long, std::vector<long>>> kinds;
+	for (int i = 0; i < 256; i++) {
+		char path[128];
+		snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i);
+		FILE *f = fopen(path, "r");
+		if (!f) break;   // (no cpufreq here, or past the last core: the CPUs are numbered without a gap)
+		long top = 0;
+		const bool read = fscanf(f, "%ld", &top) == 1;
+		fclose(f);
+		if (!read || top <= 0) continue;
+		snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", i);
+		long now = 0;
+		if (FILE *g = fopen(path, "r")) {
+			if (fscanf(g, "%ld", &now) != 1) now = 0;
+			fclose(g);
+		}
+		if (now <= 0) continue;   // (an offline core has no clock to report)
+		size_t at = 0;
+		while (at < kinds.size() && kinds[at].first != top) at++;
+		if (at == kinds.size()) kinds.push_back({ top, {} });
+		kinds[at].second.push_back(now);
+	}
+	std::sort(kinds.begin(), kinds.end(), [](const auto &a, const auto &b) { return a.first > b.first; });
+	for (const auto &k : kinds) {   // the fastest kind first, and each kind's cores averaged
+		long sum = 0;
+		for (long v : k.second) sum += v;
+		char buf[96];
+		snprintf(buf, sizeof buf, "%s%zu at %.2f of %.2f GHz", out.empty() ? "" : ", ", k.second.size(),
+				 sum / double(k.second.size()) / 1e6, k.first / 1e6);
+		out += buf;
+	}
+#endif
+	return out;
+}
+
+std::string gpu_frequencies()
+{
+	std::string out;
+#if defined(__linux__)
+	// The GPU's devfreq (a phone's Mali: /sys/class/devfreq/13000000.mali/cur_freq). A phone has
+	// devfreq entries for other things too (the memory's, the display's): only the ones whose name
+	// says GPU are read, so the line means the graphics clock. Its own top is max_freq.
+	DIR *d = opendir("/sys/class/devfreq");
+	if (!d) return out;
+	while (const dirent *e = readdir(d)) {
+		const std::string name = e->d_name;
+		if (name == "." || name == "..") continue;
+		if (name.find("mali") == std::string::npos && name.find("gpu") == std::string::npos &&
+			name.find("kgsl") == std::string::npos && name.find("g3d") == std::string::npos) continue;
+		auto read = [&](const char *file) {
+			char path[512];
+			snprintf(path, sizeof path, "/sys/class/devfreq/%s/%s", name.c_str(), file);
+			FILE *f = fopen(path, "r");
+			if (!f) return 0L;
+			long v = 0;
+			if (fscanf(f, "%ld", &v) != 1) v = 0;
+			fclose(f);
+			return v;
+		};
+		const long now = read("cur_freq");
+		if (now <= 0) continue;
+		const long top = read("max_freq");
+		char buf[128];
+		// (devfreq says Hz, where cpufreq's own files say kHz: 390000000 is 390 MHz)
+		if (top > 0) snprintf(buf, sizeof buf, "%s%.2f of %.2f GHz", out.empty() ? "" : ", ", now / 1e9, top / 1e9);
+		else snprintf(buf, sizeof buf, "%s%.2f GHz", out.empty() ? "" : ", ", now / 1e9);
+		out += buf;
+	}
+	closedir(d);
+#endif
+	return out;
+}
+
+#if defined(__ANDROID__)
+namespace {
+// A phone's performance hints (ADPF), reached through libandroid.so rather than by name: the calls
+// are Android 13's, and this build serves Android 8 (minSdk 26), where the library has none of
+// them — a direct call wouldn't even link.
+struct apdf
+{
+	void *lib = nullptr;
+	APerformanceHintManager *(*get_manager)() = nullptr;
+	APerformanceHintSession *(*create_session)(APerformanceHintManager *, const int32_t *, size_t, int64_t) = nullptr;
+	int (*report_work)(APerformanceHintSession *, int64_t) = nullptr;
+	void (*close_session)(APerformanceHintSession *) = nullptr;
+	APerformanceHintManager *manager = nullptr;
+	APerformanceHintSession *session = nullptr;
+	int device_api = 0;
+
+	apdf()
+	{
+		device_api = android_get_device_api_level();
+		if (device_api < 33) return;
+		if (!(lib = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL))) return;
+		get_manager = reinterpret_cast<decltype(get_manager)>(dlsym(lib, "APerformanceHint_getManager"));
+		create_session = reinterpret_cast<decltype(create_session)>(dlsym(lib, "APerformanceHint_createSession"));
+		report_work = reinterpret_cast<decltype(report_work)>(dlsym(lib, "APerformanceHint_reportActualWorkDuration"));
+		close_session = reinterpret_cast<decltype(close_session)>(dlsym(lib, "APerformanceHint_closeSession"));
+		if (get_manager && create_session && report_work && close_session) manager = get_manager();
+	}
+	bool ready() const { return manager != nullptr; }
+};
+
+apdf &apdf_state()
+{
+	static apdf h;
+	return h;
+}
+}
+#endif
+
+bool perf_hints_available()
+{
+#if defined(__ANDROID__)
+	return apdf_state().ready();
+#else
+	return false;
+#endif
+}
+
+bool perf_hints_start(const std::vector<long> &thread_ids, int64_t target_ns)
+{
+#if defined(__ANDROID__)
+	auto &h = apdf_state();
+	if (!h.ready() || thread_ids.empty() || target_ns <= 0) return false;
+	perf_hints_stop();
+	std::vector<int32_t> ids;
+	ids.reserve(thread_ids.size());
+	for (long t : thread_ids) ids.push_back(int32_t(t));
+	h.session = h.create_session(h.manager, ids.data(), ids.size(), target_ns);
+	return h.session != nullptr;
+#else
+	(void)thread_ids;
+	(void)target_ns;
+	return false;
+#endif
+}
+
+void perf_hints_report(int64_t work_ns)
+{
+#if defined(__ANDROID__)
+	auto &h = apdf_state();
+	if (h.session && work_ns > 0) h.report_work(h.session, work_ns);
+#else
+	(void)work_ns;
+#endif
+}
+
+void perf_hints_stop()
+{
+#if defined(__ANDROID__)
+	auto &h = apdf_state();
+	if (h.session) {
+		h.close_session(h.session);
+		h.session = nullptr;
+	}
 #endif
 }
 

@@ -5,3 +5,8 @@ build/
 *.zip
 *.bin
 .DS_Store
+
+# device logs pulled off the phone: never part of the repo
+log.txt
+start-log.txt
+*.logcat

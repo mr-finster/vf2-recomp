@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Touchscreen (optional: the game also runs on gamepads/keyboards) -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <!-- Game controller support -->
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.gamepad"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
+
+    <!-- Vulkan (the SDL_GPU 3D renderer; falls back to the CPU renderer) -->
+    <uses-feature
+        android:name="android.hardware.vulkan.version"
+        android:required="false" />
+
+    <!-- No storage permission: the game keeps everything in its app-private folder
+         (SDL_GetPrefPath -> Context.getFilesDir()), and reads vf2.zip through the SAF picker.
+         No ROMs are bundled.
+
+         No backup either: Android's auto-backup (and device-to-device transfer) would carry the
+         data folder, the player's own vf2.zip included, to Google's servers, and the saves it
+         would keep instead are the game's own (settings.ini, the arcade's NVRAM) and cheap to
+         redo. Dropped in the app's folder on the shared storage, the zip stays on the phone. -->
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:theme="@style/AppTheme"
+        android:enableOnBackInvokedCallback="false"
+        android:hardwareAccelerated="true"
+        android:appCategory="game">
+
+        <activity
+            android:name="SDLActivity"
+            android:label="@string/app_name"
+            android:alwaysRetainTaskState="true"
+            android:launchMode="singleInstance"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="layoutDirection|locale|grammaticalGender|fontScale|fontWeightAdjustment|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
+            android:preferMinimalPostProcessing="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Let Android know that we can handle some USB devices and should receive this event -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

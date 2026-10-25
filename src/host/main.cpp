@@ -21,10 +21,14 @@
 // "Virtua Fighter 2 Recomp"). The player's own is asked for the first time (first_launch): a file
 // picker for MAME's vf2.zip, checked, then copied into roms/. A ROM folder of the player's own
 // (--roms <folder>, VF2_ROMS, or roms_folder = <folder> in settings.ini, in that order) is looked
-// in first for vf2.zip, and never written to unless a set is picked while it has none.
+// in first for vf2.zip, and never written to unless a set is picked while it has none. On a phone
+// (Android) the player's own is the app's files folder, where the picker copies the zip; one put
+// in the app's own folder on the shared storage instead (Android/data/<package>/files/roms, over
+// USB or adb push) is played where it lies, no picker.
 //
 // The menu (Esc, or on a pad View tapped, L3 + R3 or the touchpad click) pauses the game and its sound: Display (render scale,
-// antialiasing, the 3D's renderer: CPU, GPU or Auto, picture shape, background and screen filters, the frame rate, fullscreen), Sound
+// antialiasing, the 3D's renderer: CPU, GPU or Auto, picture shape, background and screen filters, the frame rate, fullscreen,
+// the on-screen controls), Sound
 // (the overall, music and effects volumes), Game (PC or arcade play style, reset), Arcade
 // settings (the game's own, from its test mode: a change restarts the game as the menu closes;
 // and the service menu), Controls (each player's pad, keys and pad buttons) and Quit. Its choices
@@ -92,6 +96,15 @@
 //        tapped is a coin only when it's set as Coin); View + LB: render scale;
 //        View + RB: picture shape. Pads come and go as they're plugged in; each player's pad and
 //        buttons are chosen in Controls.
+// Touch: on a touch screen (Android) the on-screen controls are drawn over the picture: a d-pad,
+//        Guard, Punch and Kick, Start and a Menu button, into the same input bits as the keys and
+//        pads (player 1). Display > On-screen controls: Off, Auto (while the player has no pad),
+//        or On. Android's Back button opens the menu too (SDL_ANDROID_TRAP_BACK_BUTTON keeps it
+//        from closing the game); the menu itself is tapped (SDL's own touch to mouse).
+// Sound: on Android it's SDL's own AAudio stream of the SCSP's own 44100 Hz 16-bit stereo (SDL
+//        resamples it to whatever the device runs at, usually 48000), marked as a game's (the
+//        stream role hint: AAUDIO_USAGE_GAME). It pauses with the app going to the background, and
+//        follows the phone's output as it changes (headphones plugged, Bluetooth).
 //
 // Testing without a display:
 //   VF2_HIDDEN=1         no window on screen, no sound out (the board still runs)
@@ -150,13 +163,16 @@
 #include "../gpu/gpu3d.h"
 #include "menu.h"
 #include "controls.h"
+#include "touch_controls.h"
 #include "sysinfo.h"
 #include <SDL3/SDL.h>
 #ifdef __APPLE__
 #include <pthread.h>
 #endif
+#if defined(_WIN32) || defined(__ANDROID__)
+#include <SDL3/SDL_main.h>   // WinMain on Windows; the SDLActivity's entry point on Android
+#endif
 #ifdef _WIN32
-#include <SDL3/SDL_main.h>   // WinMain, and argv as UTF-8
 // A laptop with two graphics chips (NVIDIA Optimus, AMD switchable graphics): the game on the faster one, not the one
 // in the processor, whatever Windows would pick. The drivers look for these two in the program's exports.
 extern "C" {
@@ -167,6 +183,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <algorithm>
 #include <atomic>
 #include <array>
+#include <cerrno>
 #include <chrono>
 #include <cmath>
 #include <cerrno>
@@ -202,10 +219,126 @@ namespace {
 constexpr double FRAME_HZ = 16000000.0 / (656.0 * 424.0);   // 57.52 Hz, MAME's Model 2 screen
 constexpr float LEVEL = 2.8f;   // --volume 100: +9 dB over the board's output
 constexpr int MAX_SCALE = 6, DEFAULT_MAX_SCALE = 4;
-// The menu's files and the shipped backgrounds: beside the program, two up from it (build/bin in
-// the source tree), or the current folder's
-std::string find_assets()
+#if defined(__ANDROID__)
+// Android ships the menu, its font and the painted sides inside the APK, where only SDL's own
+// reading reaches them (the game's, and RmlUi's, is plain fopen). Copy the tree once into the data
+// folder and use that: <data>/assets.
+// SDL names an APK asset the way the APK's own tree does, *inside* its assets folder: the menu is
+// "ui/menu.rml" while the zip entry is "assets/ui/menu.rml". With the "assets/" prefix SDL would
+// name a folder of the data folder instead — and SDL_EnumerateDirectory maps a relative path to
+// <files>/ first, so it would list that (empty) folder and never look in the APK at all. So: no
+// prefix, and never the name of the folder being copied into.
+static const char *APK_ASSET_DIRS[] = { "ui", "fonts", "backgrounds" };
+
+namespace {
+
+// A step of the copy that failed, with the message the failing call left (SDL sets none on some).
+// The copy's own message (below) tells only that the whole thing failed: which of the steps did is
+// what these lines are for — a phone's logcat is of the other end (the app's own log.txt).
+void asset_failed(const char *what, const std::string &path, const char *why)
 {
+	fprintf(stderr, "assets: %s %s: %s\n", what, path.c_str(), why ? why : "SDL set no error");
+}
+
+struct asset_copy { std::string from, to; bool ok = true; int entries = 0; };
+bool copy_asset_dir(const std::string &from, const std::string &to);
+
+// SDL guarantees an enumerated dirname ends with a separator ("ui/", SDL_filesystem.h:332): joining
+// with a slash of our own makes "ui//menu.rml", which a filesystem forgives but the APK's
+// AAssetManager takes literally — it isn't the zip's "ui/menu.rml", so the read failed and nothing
+// was ever copied. Join to exactly one separator.
+std::string asset_join(const char *dir, const char *name)
+{
+	std::string d = dir ? dir : "";
+	if (!d.empty() && d.back() != '/') d += "/";
+	return d + (name ? name : "");
+}
+
+SDL_EnumerationResult copy_asset_entry(void *ud, const char *dir, const char *name)
+{
+	auto *c = static_cast<asset_copy *>(ud);
+	const std::string src = asset_join(dir, name), dst = asset_join(c->to.c_str(), name);
+	c->entries++;
+	SDL_PathInfo info;
+	if (!SDL_GetPathInfo(src.c_str(), &info)) { asset_failed("stat", src, SDL_GetError()); c->ok = false; return SDL_ENUM_CONTINUE; }
+	if (info.type == SDL_PATHTYPE_DIRECTORY) {
+		if (!copy_asset_dir(src, dst)) c->ok = false;
+		return SDL_ENUM_CONTINUE;
+	}
+	size_t n = 0;
+	void *d = SDL_LoadFile(src.c_str(), &n);
+	if (!d) { asset_failed("read", src, SDL_GetError()); c->ok = false; return SDL_ENUM_CONTINUE; }
+	std::error_code ec;
+	std::filesystem::create_directories(std::filesystem::path(dst).parent_path(), ec);
+	if (FILE *f = fopen(dst.c_str(), "wb")) {
+		const bool wrote = fwrite(d, 1, n, f) == n;
+		const bool closed = fclose(f) == 0;
+		if (!wrote || !closed) { asset_failed("write", dst, "the write came up short"); c->ok = false; }
+	} else { asset_failed("write", dst, strerror(errno)); c->ok = false; }
+	SDL_free(d);
+	return SDL_ENUM_CONTINUE;
+}
+
+bool copy_asset_dir(const std::string &from, const std::string &to)
+{
+	std::error_code ec;
+	std::filesystem::create_directories(to, ec);
+	asset_copy c{ from, to };
+	// (a folder the APK hasn't got is a failure, not an empty copy that reports success; and a
+	// listing that came out empty is the data folder's own folder, not the APK's)
+	if (!SDL_EnumerateDirectory(from.c_str(), copy_asset_entry, &c)) { asset_failed("listing", from, SDL_GetError()); c.ok = false; }
+	else if (!c.entries) { asset_failed("listing", from, "empty: the data folder's own, not the APK's?"); c.ok = false; }
+	return c.ok;
+}
+
+// The APK's assets into <data>/assets: the whole tree, and again when the game itself changed (a
+// new APK's menu, fonts or painted sides). The stamp is the version the copy was made of. True when
+// the copy is in place afterwards; it does the talking itself.
+bool copy_apk_assets(const std::string &dir)
+{
+	std::error_code ec;
+	const std::string want = std::string(VF2_VERSION) + " " + VF2_DATE, stamp = dir + "/.version";
+	char have[128] = { 0 };
+	if (FILE *f = fopen(stamp.c_str(), "rb")) {
+		const size_t n = fread(have, 1, sizeof have - 1, f);
+		fclose(f);
+		if (n && want == have && std::filesystem::is_regular_file(dir + "/ui/menu.rml", ec))
+			return true;   // (this version's copy is already there)
+	}
+	bool ok = true;
+	for (const char *d : APK_ASSET_DIRS) ok = copy_asset_dir(d, dir + "/" + d) && ok;
+	if (ok && !std::filesystem::is_regular_file(dir + "/ui/menu.rml", ec)) {   // (the menu's own file: what the copy is for)
+		asset_failed("verify", dir + "/ui/menu.rml", "not there after the copy");
+		ok = false;
+	}
+	if (ok)
+		fprintf(stderr, "assets: the APK's ui/, fonts/ and painted sides copied into %s\n", dir.c_str());
+	else
+		fprintf(stderr, "assets: the APK's ui/, fonts/ or painted sides couldn't be copied into %s: the menu has no files and the sides stay unpainted (the steps that failed are above)\n", dir.c_str());
+	if (ok)
+		if (FILE *f = fopen(stamp.c_str(), "wb")) {   // (the stamp is a convenience: without it the copy is simply made again)
+			if (fwrite(want.data(), 1, want.size(), f) != want.size())
+				fprintf(stderr, "assets: the copy's stamp couldn't be written (%s)\n", stamp.c_str());
+			fclose(f);
+		}
+	return ok;
+}
+
+} // namespace
+#endif
+
+// The menu's files and the shipped backgrounds: beside the program, two up from it (build/bin in
+// the source tree), or the current folder's. Android: the APK's, copied beside the data (above).
+std::string find_assets(const std::string &data)
+{
+#if defined(__ANDROID__)
+	if (!data.empty()) {
+		const std::string dir = data + "/assets";
+		if (copy_apk_assets(dir)) return dir;
+	}
+#else
+	(void)data;
+#endif
 	const char *base = SDL_GetBasePath();
 	const std::string b = base ? base : "";
 	for (const std::string &d : { b + "assets", b + "../../assets", std::string("assets") })
@@ -320,7 +453,8 @@ bool g_left_test_menu = false;   // set when it closes (the PC way then restarts
 
 // The pressed bits of IN0, IN1 and IN2 for the next frame, from the keyboard and the pads, and the
 // hotkeys pressed on a pad
-hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const player_controls ctl[2], uint8_t in[3])
+hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const player_controls ctl[2], uint8_t in[3],
+				   touch_controls *overlay)
 {
 	static const uint8_t BITS[C_COUNT] = {
 		PL_UP, PL_DOWN, PL_LEFT, PL_RIGHT, PL_GUARD, PL_PUNCH, PL_KICK,
@@ -337,6 +471,18 @@ hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const play
 		// Start is the cabinet's start button: in the arcade way it starts only with a credit (coins
 		// come from the Coin binding or the 5 and 6 keys)
 		auto press_start = [&] { st.start_delay = 0; };
+		// the on-screen controls (a touch screen) are player 1's
+		if (p == 0 && overlay) {
+			static const struct { int at; uint8_t bit; } TOUCH_BITS[] = {
+				{ touch_controls::UP, PL_UP }, { touch_controls::DOWN, PL_DOWN },
+				{ touch_controls::LEFT, PL_LEFT }, { touch_controls::RIGHT, PL_RIGHT },
+				{ touch_controls::GUARD, PL_GUARD }, { touch_controls::PUNCH, PL_PUNCH },
+				{ touch_controls::KICK, PL_KICK } };
+			for (const auto &t : TOUCH_BITS)
+				if (overlay->held(t.at)) in[1] |= t.bit;
+			if (overlay->take_start()) press_start();
+			if (overlay->take_menu()) hk = hotkey::menu;
+		}
 		// a key set as Menu opens it too (Esc always does)
 		const bool kmenu = key(ctl[p].key[C_MENU]);
 		if (kmenu && !key_menu_was[p]) hk = hotkey::menu;
@@ -544,11 +690,21 @@ struct settings
 {
 	int scale = 0, aspect = 0, volume = 100, music = 50, effects = 100, aa = 1, filter = 0, ring = 0;
 	int pipelined_at = 0;
+	// Display's own two rows for the gpu renderer: vsync, and how many frames it may keep in flight
+	// (see apply_display_settings, where the second one is explained)
+	int vsync = 1;
+	int on_screen = 1;   // the on-screen controls (a touch screen): 0 off, 1 while the player has no pad, 2 always
 	int secret = 0;   // Cheats > Secret character: the fighter in Akira's place (model2a::set_secret_character), 0 none
-	// settings.ini's version: 2 from v0.1.2 (none before). Its upgrades, once, as it's read:
+	// settings.ini's version: 2 from v0.1.2 (none before), 3 from the phone's fullscreen (this
+	// fork) or from the GPU's failures forgotten once (upstream v0.1.15), 4 the merged build. Its
+	// upgrades, once, as it's read:
 	//   2: the old default music volume, 20, to the new one, 50 (the music's stereo reverb mended:
 	//      at 20 it's now too quiet); a 20 chosen later is kept (the file then says version 2)
-	static constexpr int VERSION = 3;   // (3: GPU failures saved by older builds forgotten once)
+	//   3: on a phone, fullscreen = 0 (the old default: the menu couldn't open on Android before
+	//      this version, so the player never chose it) to 1, the new default
+	//   4: the GPU's failures saved by older builds forgotten once (upstream's 3; the fork's files
+	//      already say 3, so the merged build checks below 4, not below 3)
+	static constexpr int VERSION = 4;
 	int version = VERSION;
 	bool upgraded = false;   // (an upgrade made as it was read: saved at once)
 	// the 3D's renderer (Display > 3D renderer): 0 the CPU, 1 the GPU, 2 Auto (whichever is faster
@@ -561,7 +717,24 @@ struct settings
 	std::string gpu3d_failed;   // SDL_GPU's drivers whose 3D failed here ("direct3d12 vulkan"): the next start tries the next
 	std::string roms_folder;   // where the player keeps vf2.zip (roms_folder = ...: kept as written)
 	int arcade_coin = -2;   // the arcade way's coin setting, kept while the PC way has FREE PLAY in its place (-1: none to give back; -2: none kept yet)   // the render scale this machine needed pipelining at (the governor's, kept: a start there starts pipelined)
+	// A phone has no window to speak of: start immersive (Display > Fullscreen turns it off, and
+	// settings.ini keeps that choice). Elsewhere, a window the player can move and resize.
+#if defined(__ANDROID__)
+	bool fullscreen = true, timings = false, arcade = false, smooth_bg = false, show_fps = false, smooth = true;
+	// SDL's gpu renderer keeps one frame in flight: every picture then waits for the one before it
+	// to be drawn, so the GPU's own time for a picture is in the frame's. Cheap on a desktop, and
+	// what the smooth pictures (up to 120 a second) can't afford on a phone: 2 lets the drawing get
+	// ahead of the GPU again (Display > GPU frames in flight, which is where it's measured).
+	int frames_in_flight = 2;
+	// Android's performance hints (Display > Performance hints, ADPF): a session over the threads a
+	// frame's work runs on, so the phone keeps their clocks up (sysinfo::perf_hints_start). On by
+	// default; off to compare a run without it. Nothing elsewhere.
+	int perf_hints = 1;
+#else
 	bool fullscreen = false, timings = false, arcade = false, smooth_bg = false, show_fps = false, smooth = true;
+	int frames_in_flight = 1;   // (SDL's renderer's own: the shortest delay to the screen)
+	int perf_hints = 0;   // (Android's performance hints: nothing here)
+#endif
 	player_controls ctl[2] = { player_controls::defaults(0), player_controls::defaults(1) };
 
 	void load(const std::string &path)
@@ -585,7 +758,7 @@ struct settings
 		num("music_volume", music, 0, 100);
 		version = 0;
 		num("settings_version", version, 0, 1000);
-		const int read_version = version;
+		const int file_version = version;   // (what the file said: the upgrades below look at it)
 		if (version < 2 && music == 20) {
 			music = 50; upgraded = true;
 			fprintf(stderr, "settings: the music volume 20 (the old default) moved to 50, the new one\n");
@@ -595,6 +768,10 @@ struct settings
 		num("screen_filter", filter, 0, 2);
 		num("ring_size", ring, 0, 1600);
 		num("pipelined_at", pipelined_at, 0, MAX_SCALE);
+		num("vsync", vsync, 0, 1);
+		num("frames_in_flight", frames_in_flight, 1, 3);
+		num("perf_hints", perf_hints, 0, 1);
+		num("on_screen_controls", on_screen, 0, 2);
 		num("renderer_3d", renderer3d, 0, 2);
 		num("gpu_quality", gpu_quality, 0, 1);
 		num("graphics", graphics, 0, 1);
@@ -602,7 +779,7 @@ struct settings
 		if (auto it = kv.find("gpu_3d_failed"); it != kv.end()) gpu3d_failed = it->second;
 		// (older builds saved a driver as failed for any GPU error in play, a suspend or a reset: every
 		// later start on the CPU. Forgotten once, each driver tried again from this build on)
-		if (read_version < 3 && (!gpu3d_failed.empty() || !auto3d.empty())) {
+		if (file_version < 4 && (!gpu3d_failed.empty() || !auto3d.empty())) {
 			if (!gpu3d_failed.empty()) fprintf(stderr, "settings: the GPU drivers saved as failed (%s) tried again (an older build saved one failure in play for good)\n", gpu3d_failed.c_str());
 			gpu3d_failed.clear(); auto3d.clear(); upgraded = true;
 		}
@@ -622,6 +799,15 @@ struct settings
 		if (secret != 9 && secret != 11 && secret != 12) secret = 0;
 		if (ring && (ring < 1300 || ring % 100)) ring = 0;   // 0: by difficulty
 		flag("fullscreen", fullscreen);
+#if defined(__ANDROID__)
+		// (a phone's screen is the window: a file from before this version has the old default, 0,
+		//  which the player couldn't have chosen — the menu opens for the first time in this one.
+		//  Display > Fullscreen, and then a file of this version, turn it off for good.)
+		if (file_version < 3 && !fullscreen) {
+			fullscreen = true; upgraded = true;
+			fprintf(stderr, "settings: fullscreen on (a phone's screen is the window)\n");
+		}
+#endif
 		flag("frame_timings", timings);
 		flag("arcade_mode", arcade);
 		flag("background_filter", smooth_bg);
@@ -655,10 +841,12 @@ struct settings
 		fprintf(f, "# Virtua Fighter 2 settings (the in-game menu writes these)\n");
 		fprintf(f, "settings_version = %d\n", version);
 		fprintf(f, "scale = %d\npicture_shape = %d\nfullscreen = %d\nframe_timings = %d\nvolume = %d\narcade_mode = %d\n"
-				"background_filter = %d\nmusic_volume = %d\neffects_volume = %d\nantialiasing = %d\nshow_fps = %d\nscreen_filter = %d\nring_size = %d\nsmooth_motion = %d\npipelined_at = %d\narcade_coins = %d\n", scale, aspect,
-				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin);
+				"background_filter = %d\nmusic_volume = %d\neffects_volume = %d\nantialiasing = %d\nshow_fps = %d\nscreen_filter = %d\nring_size = %d\nsmooth_motion = %d\npipelined_at = %d\narcade_coins = %d\nvsync = %d\nframes_in_flight = %d\n", scale, aspect,
+				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin, vsync, frames_in_flight);
 		fprintf(f, "renderer_3d = %d\ngpu_quality = %d\nauto_3d = %s\n", renderer3d, gpu_quality, auto3d.c_str());
+		fprintf(f, "perf_hints = %d\n", perf_hints);
 		fprintf(f, "secret_character = %d\n", secret);
+		fprintf(f, "on_screen_controls = %d\n", on_screen);
 		if (graphics) fprintf(f, "graphics = %d\n", graphics);
 		if (!gpu3d_failed.empty()) fprintf(f, "gpu_3d_failed = %s\n", gpu3d_failed.c_str());
 		if (!gpu3d_failed.empty() || !auto3d.empty()) fprintf(f, "gpu_learnt_build = %s\n", BUILD);
@@ -742,7 +930,27 @@ bool first_launch(const std::string &data, const std::string &folder, romset::re
 			return false;
 		}
 		if (chosen.files.empty()) return false;
-		const std::string f = chosen.files[0];
+		std::string f = chosen.files[0];
+#if defined(__ANDROID__)
+		// Android's picker hands back a content:// URI, which only SDL can read (not fopen): copy
+		// the set through SDL into roms/vf2.zip, then read it back as a plain file.
+		if (f.rfind("content://", 0) == 0) {
+			fs::create_directories(roms, ec);
+			size_t n = 0;
+			void *d = SDL_LoadFile(f.c_str(), &n);
+			if (!d) {
+				note = "Couldn't read that file: " + std::string(SDL_GetError()) + "\n\nChoose your vf2.zip.";
+				continue;
+			}
+			const bool wrote = save_blob(zip.string(), d, n);
+			SDL_free(d);
+			if (!wrote) {
+				note = "Couldn't copy it into " + roms.string() + "\n\nChoose your vf2.zip.";
+				continue;
+			}
+			f = zip.string();
+		}
+#endif
 		romset::result r = romset::load(f);
 		if (!r.ok) {
 			note = fs::path(f).filename().string() + ": " + r.error + "\n\nChoose MAME's \"vf2\" set (vf2.zip).\n\n" + where;
@@ -899,6 +1107,16 @@ int main(int argc, char **argv)
 		if (!arg_roms.empty()) roms_folder = player_folder(arg_roms), from = "--roms";
 		else if (const char *e = getenv("VF2_ROMS"); e && *e) roms_folder = player_folder(e), from = "VF2_ROMS";
 		else if (!cfg.roms_folder.empty()) roms_folder = player_folder(cfg.roms_folder, data), from = "settings.ini";
+#ifdef __ANDROID__
+		else if (const char *ext = SDL_GetAndroidExternalStoragePath()) {
+			// the phone's own folder, Android/data/<package>/files: a vf2.zip dropped there with
+			// adb push or a file manager is played where it lies, without the first start's picker
+			namespace fs = std::filesystem;
+			std::error_code ec2;
+			if (fs::is_regular_file(fs::path(ext) / "roms" / "vf2.zip", ec2))
+				roms_folder = (fs::path(ext) / "roms").string(), from = "the phone's folder";
+		}
+#endif
 		if (!roms_folder.empty()) fprintf(stderr, "ROM folder (%s): %s\n", from.c_str(), roms_folder.c_str());
 		else fprintf(stderr, "ROM folder: %s\n", (std::filesystem::path(data) / "roms").string().c_str());
 		if (!first_launch(data, roms_folder, roms)) return hidden ? 1 : 0;   // (a test run without the game: an error)
@@ -931,7 +1149,7 @@ int main(int argc, char **argv)
 			fclose(f);
 		}
 	// widescreen's painted sides: the shipped ones (assets/backgrounds), then the player's own, which win
-	load_backgrounds(m, find_assets() + "/backgrounds");
+	load_backgrounds(m, find_assets(data) + "/backgrounds");
 	load_backgrounds(m, data + "/backgrounds");
 	load_blob(backup_path, m.backup_ram().data(), m.backup_ram().size());
 	load_blob(eeprom_path, m.eeprom_cells(), 64 * sizeof(u16));
@@ -1024,6 +1242,11 @@ int main(int argc, char **argv)
 	SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
 #endif
 	if (getenv("VF2_PAD_KEYS")) SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");   // (tests: the window may not have the focus)
+#ifdef __ANDROID__
+	// Android's Back button: kept by the app (the key comes to us as AC_BACK), so it opens the menu
+	// instead of closing the game (the SDLActivity's onBackPressed asks for this hint by name)
+	SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+#endif
 	if (!SDL_Init(SDL_INIT_VIDEO)) return fail(std::string("Couldn't start the video: ") + SDL_GetError());
 	if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) fprintf(stderr, "no gamepads: %s\n", SDL_GetError());
 	if (sound && !SDL_InitSubSystem(SDL_INIT_AUDIO)) fprintf(stderr, "no sound: %s\n", SDL_GetError());
@@ -1038,8 +1261,17 @@ int main(int argc, char **argv)
 		}
 	}
 	// hidden until it has the game's first picture to show
+	// A phone's window is the screen, and it can't be resized. SDL_WINDOW_RESIZABLE there also has
+	// SDL ask Android for "any orientation, as the player locked the rotation" (SDLActivity's
+	// setOrientationBis: a resizable window with no orientation hint is SCREEN_ORIENTATION_FULL_USER)
+	// instead of the landscape the manifest asks for: a session on a phone held with the rotation
+	// locked came up portrait, 1220 x 2421 in the log, its picture a 4:3 band down the middle.
 	SDL_Window *win = SDL_CreateWindow("Virtua Fighter 2", win_w, win_h,
+#if defined(__ANDROID__)
+		SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_HIDDEN);
+#else
 		SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_HIDDEN);
+#endif
 	if (!win) return fail(std::string("Couldn't open the window: ") + SDL_GetError());
 	SDL_HideCursor();
 	int focus_checks = 600;   // about 5 s: going fullscreen on a Mac moves to a new Space, which takes a while
@@ -1217,7 +1449,62 @@ int main(int argc, char **argv)
 #endif
 	if (!ren) ren = SDL_CreateRenderer(win, nullptr);
 	if (!ren) return fail(std::string("Couldn't start the graphics: ") + SDL_GetError());
-	SDL_SetRenderVSync(ren, getenv("VF2_NO_VSYNC") ? 0 : 1);   // (VF2_NO_VSYNC=1: tests, as a driver forcing it off)
+	// Display's two settings for the renderer in use (the menu's rows call this too):
+	//
+	// vsync: on, the picture is shown in step with the screen (no tearing, and every picture waits
+	// for the screen's next refresh); off, no waiting at all.
+	//
+	// frames in flight: SDL's own gpu renderer makes this 1 the moment it starts, for the shortest
+	// delay between a finger and the screen. What that costs is invisible on a desktop and heavy on
+	// a phone: every SDL_RenderPresent waits for the picture before it to have been drawn, so the
+	// drawing and the GPU's work are one step after another instead of alongside, and the GPU's own
+	// time for a picture lands in the frame's (a picture shown still drawing's fence is what the log
+	// prints as "a picture N ms on the GPU"). 2 or 3 let the drawing get ahead of the GPU: the same
+	// pictures, more of them a second, one or two frames more delay. Whatever's asked for here, the
+	// log's render state line and the 10 s pace lines are where it's seen.
+	auto apply_display_settings = [&] {
+		const int want_vsync = getenv("VF2_NO_VSYNC") ? 0 : cfg.vsync;   // (VF2_NO_VSYNC=1: tests, as a driver forcing it off)
+		if (!SDL_SetRenderVSync(ren, want_vsync)) fprintf(stderr, "vsync %d: %s\n", want_vsync, SDL_GetError());
+		const char *rname = SDL_GetRendererName(ren);
+		SDL_GPUDevice *gd = rname && !strcmp(rname, "gpu") ? SDL_GetGPURendererDevice(ren) : nullptr;
+		if (gd && !SDL_SetGPUAllowedFramesInFlight(gd, Uint32(cfg.frames_in_flight)))
+			fprintf(stderr, "the GPU's frames in flight (%d): %s\n", cfg.frames_in_flight, SDL_GetError());
+		// What the driver was asked for and which driver it is. vsync off asks for mailbox first,
+		// then immediate, and only then the screen's own pace (SDL_render_gpu.c's ChoosePresentMode)
+		// - which of the three the phone's window accepts is not otherwise visible, and mailbox is
+		// what the phone's own numbers said pay for a high picture rate. The driver's name, version
+		// and info are worth a line of their own: Android's graphics drivers arrive with system
+		// updates, and Arm's own advice is tied to driver releases.
+		if (gd) {
+			const bool mailbox = SDL_WindowSupportsGPUPresentMode(gd, win, SDL_GPU_PRESENTMODE_MAILBOX);
+			const bool immediate = SDL_WindowSupportsGPUPresentMode(gd, win, SDL_GPU_PRESENTMODE_IMMEDIATE);
+			const char *mode = want_vsync ? "vsync" : mailbox ? "mailbox" : immediate ? "immediate" : "vsync";
+			SDL_PropertiesID pr = SDL_GetGPUDeviceProperties(gd);
+			const char *dn = SDL_GetStringProperty(pr, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, nullptr);
+			const char *dv = SDL_GetStringProperty(pr, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, nullptr);
+			const char *di = SDL_GetStringProperty(pr, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, nullptr);
+			std::string drv = std::string(dn ? dn : "?") + " " + (dv ? dv : "?");
+			if (di && *di) drv += " (" + std::string(di) + ")";
+			fprintf(stderr, "the GPU's present mode: %s (vsync %s; mailbox%s, immediate%s); the driver: %s\n",
+				mode, want_vsync ? "on" : "off", mailbox ? "" : " no", immediate ? "" : " no", drv.c_str());
+		}
+	};
+	apply_display_settings();
+	// Android's performance hints (sysinfo::perf_hints_*, ADPF): a session over the threads a frame's
+	// work runs on, with the frame's own 17.4 ms as its target, so the phone's scheduler keeps their
+	// cores - and the GPU's clocks - up instead of taking the game for a program in the background
+	// (MediaTek's PowerHAL is said to; the Android counterpart of tune()'s Windows power throttling).
+	// The work each pass really took is reported back further down the loop. Display > Performance
+	// hints turns it off to be compared, and VF2_NO_PERF_HINTS=1 does the same for a run.
+	bool perf_hints_up = false;
+	auto apply_perf_hints = [&] {
+		sysinfo::perf_hints_stop();
+		perf_hints_up = false;
+#if defined(__ANDROID__)
+		if (cfg.perf_hints && !getenv("VF2_NO_PERF_HINTS"))
+			perf_hints_up = sysinfo::perf_hints_start(row_pool::get().worker_tids(), int64_t(1e9 / FRAME_HZ));
+#endif
+	};
 	// The picture's shape: the chosen one, or the window's (fit: between 4:3 and 32:9)
 	auto window_aspect = [&] {
 		int w = 0, h = 0;
@@ -2043,6 +2330,12 @@ int main(int argc, char **argv)
 
 	SDL_AudioStream *audio = nullptr;
 	if (sound) {
+#ifdef __ANDROID__
+		// AAudio takes this hint as the stream's usage, AAUDIO_USAGE_GAME: without it the sound is
+		// declared as the system's default for media, which is where Android's own effects (an
+		// equaliser, ducking) and its game mode look. SDL's own other backends default to "Game".
+		SDL_SetHint(SDL_HINT_AUDIO_DEVICE_STREAM_ROLE, "Game");
+#endif
 		SDL_AudioSpec spec{ SDL_AUDIO_S16, 2, model2a::SOUND_RATE };
 		audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
 		if (audio) {
@@ -2199,7 +2492,7 @@ int main(int argc, char **argv)
 
 	// ---- the menu (Esc, or View on a pad) ----
 	game_menu menu;
-	if (!menu.init(win, ren, find_assets()))
+	if (!menu.init(win, ren, find_assets(data)))
 		fprintf(stderr, "menu: couldn't load assets/ui (the game runs without it)\n");
 	menu.set_footer(std::string("Virtua Fighter 2 Recomp ") + VF2_VERSION + (*VF2_DATE ? std::string(" · ") + VF2_DATE : ""));
 	// The render state in use, to the log: at the start, at each change of scale, shape or
@@ -2218,10 +2511,11 @@ int main(int argc, char **argv)
 		if (!g3.dev || g3.mode == R3D_CPU) snprintf(r3d, sizeof r3d, "the CPU (%s%s)", R3D_NAMES[g3.mode], g3.dev ? "" : ", no GPU renderer");
 		else snprintf(r3d, sizeof r3d, "the %s (%s%s, %s; last check CPU %.2f ms, GPU %.2f)", g3.on ? "GPU" : "CPU", R3D_NAMES[g3.mode], g3.failed ? ", the GPU failed" : "",
 					  g3.dev->quality() == gpu3d_quality::exact ? "exact" : "fast", g3.cpu_ms, g3.gpu_ms);
-		fprintf(stderr, "render state (%s): %dx (drawn at %dx), antialiasing %s, %s %.2f:1, pipelined %s, the 3D on %s, the 2D on the %s (%s), drawn %s, smooth motion %s, governor %s (over %d, short %d), %d threads, vsync %d, screen %.2f Hz, window %d x %d, i960 %s\n",
+		const std::string hints = sysinfo::perf_hints_available() ? std::string(", performance hints ") + (perf_hints_up ? "on" : "off") : std::string();
+		fprintf(stderr, "render state (%s): %dx (drawn at %dx), antialiasing %s, %s %.2f:1, pipelined %s, the 3D on %s, the 2D on the %s (%s), drawn %s, smooth motion %s, governor %s (over %d, short %d), %d threads, vsync %d, frames in flight %d%s, screen %.2f Hz, window %d x %d, i960 %s\n",
 				why, scale, m.render_scale(), aa == 0 ? "Low" : aa_now() > 1 ? (aa_now() == 2 ? "2x" : aa_now() == 3 ? "3x" : "on") : "off", ASPECT_NAMES[aspect_i], m.width() / 372.0,
 				pipelined ? "yes" : "no", r3d, gpu2d || g3.on ? "GPU" : "CPU", rn ? rn : "?", draw_locked ? "into the texture" : "in memory, then sent up", !cfg.smooth ? "off" : smooth_limit ? "on (60 a second)" : "on",
-				govern_cuts ? "on" : govern ? "pipelining only" : "off", load.over, load.slow, row_pool::get().threads(), vsync, hz, pw, ph,
+				govern_cuts ? "on" : govern ? "pipelining only" : "off", load.over, load.slow, row_pool::get().threads(), vsync, cfg.frames_in_flight, hints.c_str(), hz, pw, ph,
 				!rec ? "interpreted" : rec->nentry ? "native" : "recompiled C++");
 	};
 	// a new render scale or antialiasing: a new picture size
@@ -2320,6 +2614,21 @@ int main(int argc, char **argv)
 	};
 	auto on_off = [](bool b) { return std::string(b ? "On" : "Off"); };
 	auto wrap = [](int v, int n) { return (v % n + n) % n; };
+	// The on-screen controls (a touch screen): a d-pad, Guard, Punch and Kick, Start and a Menu
+	// button over the picture (src/host/touch_controls.h). Auto shows them while player 1 has no
+	// pad; On always; never over the menu (its own touch UI is there). Fingers are followed in the
+	// event loop, where the renderer is at hand to place them (finger's x, y are of the window).
+	touch_controls touch;
+	bool touch_present = false;   // (a touch screen here: asked of SDL once, and a finger means one)
+	{
+		int n = 0;
+		SDL_TouchID *devs = SDL_GetTouchDevices(&n);
+		touch_present = n > 0;
+		SDL_free(devs);
+	}
+	auto touch_shown = [&] {
+		return !menu.is_open() && (cfg.on_screen == 2 || (cfg.on_screen == 1 && touch_present && !pads[0]));
+	};
 	auto back_item = [&] { return menu_item{ "Back", "Back to the previous page.", {}, {}, [&] { menu.pop(); } }; };
 	auto display_page = [&] {
 		menu_page p{ "Display", "", {} };
@@ -2419,9 +2728,33 @@ int main(int argc, char **argv)
 		p.items.push_back({ "Show FPS", "Shows the frame rate in the top right corner.",
 			[&] { return on_off(cfg.show_fps); },
 			[&](int) { cfg.show_fps = !cfg.show_fps; cfg_dirty = true; if (!cfg.show_fps) menu.set_fps(""); } });
+		{
+			int now = 0;
+			if (SDL_GetRenderVSync(ren, &now))
+				p.items.push_back({ "Vsync",
+					"On: a picture is shown in step with the screen (no tearing), and every picture waits for the screen's next refresh. Off: no waiting, so more pictures a second where the screen's refresh is high (a phone's is 120), at the price of some tearing.",
+					[&] { int v = 0; SDL_GetRenderVSync(ren, &v); return on_off(v != 0); },
+					[&](int) { cfg.vsync = !cfg.vsync; cfg_dirty = true; apply_display_settings(); } });
+		}
+		if (const char *renderer_now = SDL_GetRendererName(ren); renderer_now && !strcmp(renderer_now, "gpu"))
+			p.items.push_back({ "GPU frames in flight",
+				"How many frames SDL's gpu renderer may have in flight (1 to 3). 1 is the shortest delay between a finger and the screen, but every picture then waits for the one before it to be drawn: the drawing and the GPU's work follow one another instead of going alongside, and the GPU's own time for a picture lands in the frame's. 2 or 3 let the drawing get ahead of the GPU — the same pictures, more of them a second, one or two frames more delay.",
+				[&] { return std::to_string(cfg.frames_in_flight); },
+				[&](int d) { cfg.frames_in_flight = std::clamp(cfg.frames_in_flight + d, 1, 3); cfg_dirty = true; apply_display_settings(); } });
+#if defined(__ANDROID__)
+		if (sysinfo::perf_hints_available())
+			p.items.push_back({ "Performance hints",
+				"Android's own hint session over the threads that put a frame together, with a frame's 17.4 ms as its target: the phone then keeps their cores and the GPU at their clocks instead of taking the game for a program in the background. Off, to compare a run without it.",
+				[&] { return on_off(cfg.perf_hints); },
+				[&](int) { cfg.perf_hints = !cfg.perf_hints; cfg_dirty = true; apply_perf_hints(); } });
+#endif
 		p.items.push_back({ "Fullscreen", "Play fullscreen or in a window. (F11, F or Alt+Enter)",
 			[&] { return on_off(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN); },
 			[&](int) { set_fullscreen(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN)); } });
+		p.items.push_back({ "On-screen controls",
+			"For a touch screen: a d-pad, Guard, Punch and Kick, Start and a Menu button over the picture, to play without a pad. Auto shows them while player 1 has no pad.",
+			[&] { return cfg.on_screen == 0 ? std::string("Off") : cfg.on_screen == 2 ? std::string("On") : std::string("Auto (no pad)"); },
+			[&](int d) { cfg.on_screen = wrap(cfg.on_screen + d, 3); cfg_dirty = true; if (!touch_shown()) touch.release(); } });
 		p.items.push_back(back_item());
 		return p;
 	};
@@ -2685,12 +3018,16 @@ int main(int argc, char **argv)
 	// the menu pauses the game and its sound: however it opened (Esc, the pad's View, the frames'
 	// hotkey) or closed, the sound device follows at once (its queue doesn't drain meanwhile)
 	bool sound_paused = false;
+	// Android sends these as the app leaves and comes back (WILL_ENTER_BACKGROUND, then
+	// DID_ENTER_FOREGROUND): nothing runs while it's away, and the clock is forgotten so the
+	// frames it missed aren't run at once on return.
+	bool suspended = false;
 	auto sync_menu_sound = [&] {
 		if (!audio || menu.is_open() == sound_paused) return;
 		sound_paused = menu.is_open();
 		if (sound_paused) SDL_PauseAudioStreamDevice(audio); else SDL_ResumeAudioStreamDevice(audio);
 	};
-	auto open_menu = [&] { if (menu.ready() && !menu.is_open()) menu.open(main_page()); sync_menu_sound(); };
+	auto open_menu = [&] { touch.release(); if (menu.ready() && !menu.is_open()) menu.open(main_page()); sync_menu_sound(); };
 	pad_state pstate[2];
 	int shot = 0;   // F12's screenshots: the next number to try
 
@@ -2817,6 +3154,17 @@ int main(int argc, char **argv)
 	int fps_shown = 0;    // new pictures shown (Show FPS), counted over half a second
 	bool hold_on = false; // the last frame run held back by scene sync on purpose (counted as shown)
 	uint64_t fps_since = SDL_GetTicksNS();
+	apply_perf_hints();
+#if defined(__ANDROID__)
+	if (cfg.perf_hints && !getenv("VF2_NO_PERF_HINTS")) {
+		if (perf_hints_up)
+			fprintf(stderr, "performance hints: a session on %d threads, %.2f ms a frame\n", row_pool::get().threads(), 1000.0 / FRAME_HZ);
+		else if (sysinfo::perf_hints_available())
+			fprintf(stderr, "performance hints: the session wouldn't start\n");
+		else
+			fprintf(stderr, "performance hints: none this phone has (Android 13 and up)\n");
+	}
+#endif
 	// Fullscreen: F11, Alt+Enter, or F (F only while no player has it as a control; the menu takes
 	// keys first, so a key being bound there isn't one)
 	auto fullscreen_key = [&](const SDL_KeyboardEvent &k) {
@@ -2867,14 +3215,39 @@ int main(int argc, char **argv)
 		const bool menu_was_open = menu.is_open();
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_EVENT_QUIT) running = false;
+			else if (e.type == SDL_EVENT_WILL_ENTER_BACKGROUND) {   // (Android: nothing runs in the background)
+				suspended = true;
+				touch.release();   // (a lift may not come: the app is going away)
+				if (audio && !sound_paused) SDL_PauseAudioStreamDevice(audio);
+			}
+			else if (e.type == SDL_EVENT_DID_ENTER_FOREGROUND) {
+				suspended = false;
+				restart_clock();
+				if (audio && !sound_paused) SDL_ResumeAudioStreamDevice(audio);
+			}
 			else if (e.type == SDL_EVENT_RENDER_DEVICE_RESET || e.type == SDL_EVENT_RENDER_TARGETS_RESET) textures_lost(e.type == SDL_EVENT_RENDER_DEVICE_RESET);
 			else if (e.type == SDL_EVENT_RENDER_DEVICE_LOST) { fprintf(stderr, "the graphics device was lost: closing\n"); running = false; }
+			else if (e.type == SDL_EVENT_KEY_DOWN && e.key.scancode == SDL_SCANCODE_AC_BACK && !e.key.repeat) {
+				// Android's Back: the menu, not the app (before the menu, which takes every key);
+				// a page up at a time, like Esc (and the on-screen controls' Menu button opens it)
+				if (menu.is_open()) menu.pop(); else open_menu();
+			}
 			// (F11 and Alt+Enter with the menu open too, unless it's waiting for a key: Alt+Enter was its Enter)
 			else if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat && menu.is_open() && !menu.capturing()
 					 && (e.key.scancode == SDL_SCANCODE_F11 || (e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT))))
 				set_fullscreen(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN));
 			else if (menu.handle_event(e)) continue;
-			else if (e.type == SDL_EVENT_GAMEPAD_ADDED || e.type == SDL_EVENT_GAMEPAD_REMOVED) { open_pads(); menu.refresh(); }
+			else if (e.type == SDL_EVENT_FINGER_DOWN || e.type == SDL_EVENT_FINGER_MOTION ||
+					 e.type == SDL_EVENT_FINGER_UP || e.type == SDL_EVENT_FINGER_CANCELED) {
+				touch_present = true;
+				if (touch_shown())
+					touch.finger(ren, win, e.tfinger, e.type == SDL_EVENT_FINGER_DOWN || e.type == SDL_EVENT_FINGER_MOTION);
+			}
+			else if (e.type == SDL_EVENT_GAMEPAD_ADDED || e.type == SDL_EVENT_GAMEPAD_REMOVED) {
+				open_pads();
+				menu.refresh();
+				if (!touch_shown()) touch.release();   // (Auto: a pad arriving takes them away, fingers and all)
+			}
 			else if (e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED && !aspect_i && apply_aspect()) reshape();
 			else if (e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN || e.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN) {
 				menu.refresh();
@@ -2927,7 +3300,7 @@ int main(int argc, char **argv)
 			for (pad_state &s : pstate) s.menu_was = s.touch_was = s.sticks_was = true;
 			restart_clock();
 		}
-		const bool stopped = paused || menu.is_open();
+		const bool stopped = paused || menu.is_open() || suspended;
 		int due = 0;
 		bool draw_into_texture = false;   // the newest frame, drawn straight into the texture after the frames
 		bool held = false;                // the newest frame held back by scene sync
@@ -3018,7 +3391,7 @@ int main(int argc, char **argv)
 			uint8_t ports[input_script::N_PORTS];
 			script.apply(game_frame, ports);
 			uint8_t live[3];
-			const hotkey hk = read_inputs(m, pads, pstate, cfg.ctl, live);
+			const hotkey hk = read_inputs(m, pads, pstate, cfg.ctl, live, touch_shown() ? &touch : nullptr);
 			m.m_in0 = ports[input_script::IN0] & ~live[0];
 			m.m_in1 = ports[input_script::IN1] & ~live[1];
 			m.m_in2 = ports[input_script::IN2] & ~live[2];
@@ -3310,6 +3683,7 @@ int main(int argc, char **argv)
 			load.work += w;
 			pass_work = w;
 			if (due) load.worst = std::max(load.worst, w / due);
+			if (perf_hints_up && due) sysinfo::perf_hints_report(int64_t(w / due));   // (the frame's own work, ADPF)
 		}
 		// the FPS (Display > Show FPS): new pictures shown, counted over half a second
 		// (a picture held on purpose, a scene change held till it's whole or a cut's first frame,
@@ -3332,6 +3706,7 @@ int main(int argc, char **argv)
 		SDL_RenderClear(ren);
 		SDL_RenderTexture(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, nullptr);
 		draw_filter();
+		if (touch_shown()) touch.draw(ren);
 		menu.render();
 		pace.blit += SDL_GetTicksNS() - tb;
 		if (!running && gpu_pic.check_every) gpu_pic.report();
@@ -3655,6 +4030,8 @@ int main(int argc, char **argv)
 						ten.frames / ten.secs, ten.pictures / ten.secs, screen_hz, ten.work / (ten.secs * 10), ten.emu / pics, ten.draw / pics, pipelined ? " (alongside)" : "",
 						ten.upload / pics, ten.present / passes, scale, !smooth_on() ? ", smooth off" : "", thr);
 				if (const std::string where = sysinfo::placement(); !where.empty()) fprintf(stderr, "  %s\n", where.c_str());
+				if (const std::string clocks = sysinfo::cpu_frequencies(); !clocks.empty()) fprintf(stderr, "  the cores at: %s\n", clocks.c_str());
+				if (const std::string gpu_clock = sysinfo::gpu_frequencies(); !gpu_clock.empty()) fprintf(stderr, "  the GPU at: %s\n", gpu_clock.c_str());
 				ten = pace_ten{};
 				static uint64_t g3_pics0 = 0, g3_unw0 = 0;
 				static double g3_gpu0 = 0, g3_cpu0 = 0;

@@ -1,0 +1,121 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The version follows git, as the native code's does (app/CMakeLists.txt's VF2_VERSION, which the
+// menu's footer shows): the name is git describe, and the code the name's major.minor.patch
+// (v0.1.15 -> 115), so Android sees each tagged build as an upgrade. No git (a source tarball,
+// or a fetch that doesn't include the tag): 0.1.0, code 1.
+def gitText = { List<String> args ->
+    try {
+        return providers.exec { commandLine(['git'] + args); workingDir = rootDir }.standardOutput.asText.get().trim()
+    } catch (Exception ignored) {
+        return ''
+    }
+}
+def vf2VersionName = gitText(['describe', '--tags', '--always']) ?: '0.1.0'
+def vf2VersionCode = {
+    def m = (vf2VersionName =~ /^v?(\d+)\.(\d+)\.(\d+)/)
+    m ? (m[0][1] as int) * 10000 + (m[0][2] as int) * 100 + (m[0][3] as int) : 1
+}()
+
+android {
+    namespace 'org.libsdl.app'
+    compileSdk 34
+    buildToolsVersion '34.0.0'
+    ndkVersion '30.0.16248370'
+
+    defaultConfig {
+        applicationId 'com.vf2recomp.vf2'
+        minSdk 26
+        targetSdk 34
+        versionCode vf2VersionCode
+        versionName vf2VersionName
+
+        ndk {
+            // Target the Xiaomi 14T Pro (Dimensity 9300+). arm64 only for now.
+            abiFilters 'arm64-v8a'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_static'
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    // The game's assets (menu UI, font, painted sides) live in the repo's assets/ folder.
+    sourceSets.main {
+        assets.srcDirs = ['../../assets']
+    }
+
+    androidResources {
+        // A phone has no use for the desktop icon set (icon.png, VF2.icns, VF2.ico: 850 KB the Mac
+        // and Windows packages take from the same folder), so leave it out of the APK. The fonts'
+        // own licence (assets/fonts/OFL.txt) stays: the font ships with it.
+        ignoreAssetsPattern = 'icon'
+    }
+
+    packaging {
+        jniLibs {
+            // With the default (libraries stored uncompressed and page-aligned), every rebuild
+            // that changes native code makes AGP's incremental packaging leave the previous copy
+            // of libmain.so behind as a ~50 MB orphan inside the APK, doubling its size. Storing
+            // them compressed avoids that (and makes the APK much smaller); Android unpacks them
+            // at install time.
+            useLegacyPackaging = true
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError = false
+    }
+}
+
+// AGP's incremental APK packaging rewrites only the entries it considers changed and never
+// truncates the file, so a rebuilt native library leaves its previous copy behind as orphaned bytes
+// (our ~50 MB libmain.so grew the APK by a library's worth on every native rebuild). Deleting the
+// APK *before* packaging runs sends it back to a full, clean write. It costs a few seconds per
+// build, and the size is then always honest.
+def clearPackagedApks = tasks.register('clearPackagedApks') {
+    def apkDir = layout.buildDirectory.dir('outputs/apk')
+    doLast {
+        def dir = apkDir.get().asFile
+        if (dir.exists()) dir.eachFileRecurse { if (it.name.endsWith('.apk')) it.delete() }
+    }
+}
+tasks.matching { it.name == 'packageDebug' || it.name == 'packageRelease' }.configureEach {
+    dependsOn clearPackagedApks
+}
+
+// SDL3 and FreeType are not in the repository: tools/android/deps.sh fetches their pinned release
+// tarballs, checks the SHA-256 and unpacks them into build/deps/android, where CMakeLists.txt
+// builds them. It runs before CMake configures, on every build: the check is a pair of hashes, so
+// a truncated download or an edited tarball fails the build rather than changing the game.
+def fetchAndroidDeps = tasks.register('fetchAndroidDeps', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'sh', rootProject.file('../tools/android/deps.sh').absolutePath
+}
+tasks.matching { it.name.startsWith('configureCMake') || it.name.startsWith('externalNativeBuild') }
+    .configureEach { dependsOn fetchAndroidDeps }

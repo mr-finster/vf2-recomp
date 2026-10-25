@@ -54,11 +54,18 @@ screen's refresh rate.
 | Render scale up to 6x, widescreen and ultrawide, smooth motion | Working |
 | Menu, keyboard and gamepads, two players, the arcade's settings | Working |
 | macOS, Windows, Linux / Steam Deck | Working |
+| Android (arm64) | Experimental: see [android/README.md](android/README.md) |
 | The 3D drawn on the GPU (Display > 3D renderer: Auto, GPU or CPU) | Working on macOS (Metal), Windows (Direct3D 12 or Vulkan) and Linux / Steam Deck (Vulkan): the same picture as the CPU's, checked when the game starts; Auto uses the GPU unless it's clearly slower, and any difference or error falls back to the CPU |
 | Stereo reverb (the sound board's DSP) | Working: wide stereo, as on the cabinet (fixed in v0.1.2) |
 | Portable mode, your own ROM folder | Working |
 | Secret characters (Menu > Cheats): Dural, MUE and KOJAC | Working |
 | Online play | Not yet |
+
+## Android
+
+An experimental arm64 Android port lives in [`android/`](android/README.md). It builds with Gradle and
+the NDK, needs Android 8.0 or newer and your own `vf2.zip` (no game files are included), and is not
+part of the desktop build. See [`android/README.md`](android/README.md) for build, install and controls.
 
 ## Secret characters
 
