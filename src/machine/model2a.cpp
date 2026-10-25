@@ -167,6 +167,7 @@ model2a::model2a(romset::result &&roms)
 	: m_roms(std::move(roms)), m_rom(m_roms.regions[romset::MAINCPU]), m_data(m_roms.regions[romset::MAIN_DATA]),
 	  m_cpu(*this)
 {
+	for (const std::vector<u8> &r : m_roms.regions) m_rom_hash = m_rom_hash * 0x100000001B3ull ^ m2::state_hash(r.data(), r.size());
 	m_tgp = std::make_unique<tgp_bus>(*this);
 	m_ram200.assign(0x40000, 0);
 	m_workram.assign(0x100000, 0);

@@ -138,7 +138,12 @@ $(BIN)/netfuzz: $(NET) tools/netfuzz.cpp
 	$(CXX) -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $^ -o $@
 
 # The rollback soak test (tools/vf2soak.cpp): two boards, one rolled back every frame, byte for byte the same
-$(BIN)/vf2soak: $(call objs,tools/vf2soak.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000)) $(SLJIT_OBJ)
+$(BIN)/vf2soak: $(call objs,tools/vf2soak.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+
+# vf2net: two boards, each with its own session, through a simulated network, checked against a straight run
+$(BIN)/vf2net: $(call objs,tools/vf2net.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 

@@ -67,6 +67,8 @@ public:
 	// boards in the same state have the same bytes after them, and only those are compared or hashed
 	static constexpr size_t STATE_HEADER = 24;
 	uint64_t polygon_count_reads() const { return m_video->m_polygon_count_reads; }
+	// A hash of the ROMs' contents as loaded, before any patch (the handshake's: both players need the same)
+	uint64_t rom_hash() const { return m_rom_hash; }
 
 	// Runs to the end of the next vblank, where MAME draws the screen. MAME's screen starts at
 	// the top of vblank: vblank N begins at cycle (N + 1) * CYCLES_PER_FRAME, and frame N (as
@@ -392,6 +394,7 @@ private:
 	static constexpr size_t PAGE = 4096;
 	std::vector<uint32_t> m_page_gen[PAGED];
 	uint32_t m_snap_id = 0, m_snap_epoch = 0, m_snap_gen = 1;
+	uint64_t m_rom_hash = 0;
 	void touch(int r, size_t byte) { m_page_gen[r][byte / PAGE] = m_snap_gen; }
 	u8 *paged_base(int r);   // (where each is now: swap_2d swaps the vectors)
 	size_t paged_bytes(int r) const;

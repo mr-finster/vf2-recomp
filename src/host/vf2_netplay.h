@@ -1,0 +1,105 @@
+// VF2 in a netplay session (src/net): the board as the session's Game. What both sides start from (the host's
+// backup RAM and EEPROM, so the same arcade settings and rankings), how they start (a cold start, the PC way on
+// both: free play, the FREE PLAY notices hidden, the boot run unseen), each player's switches as an input word, and
+// the bytes for the sound board under rollback. VF3's vf3_netplay, for VF2's board.
+//
+// In a match the board runs with its sound board held and the byte link (as MAME's reference runs it: the i960
+// never hears back from the sound board, so it isn't part of what the two sides must agree on). The bytes the game
+// sends the sound board go to a sound board of their own (take_sound), which plays to the real clock.
+#pragma once
+#include "../machine/model2a.h"
+#include "../net/session.h"
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <vector>
+
+namespace vf2net {
+
+constexpr int BOOT_FRAMES = 1200;   // the boot, unseen, up to the SEGA logo at most (with the WARNING shortened, ~100)
+
+// A player's switches as the session's input word (the stick, Punch, Kick, Guard, Start and Coin; never test or
+// service), from the board's ports (active low, as the cabinet's) and back. Start is the press the host made of
+// it (the PC way's 6 frames), not a key held: the word is what the game gets.
+constexpr uint16_t START_BUTTON = 256, COIN_BUTTON = 512;
+uint16_t pack(uint8_t in0, uint8_t player_port, int player);
+void unpack(const uint16_t input[2], model2a &board);
+
+// A hash of the ROMs' contents as loaded (before any patch)
+uint64_t content_hash(const model2a &board);
+// The host's starting blob: its backup RAM and EEPROM, and its secret character (0: none; Cheats' choice)
+std::vector<uint8_t> start_blob(const model2a &board, int secret = 0);
+
+// The settings a match plays with on both sides, whatever each has offline (they change the game's program or
+// its timing): the scenery culling widescreen uses (so a 16:9 and a 4:3 player run the same game), the sound
+// board held, the byte link, the WARNING screen shortened, the FREE PLAY notices hidden
+constexpr int MATCH_CULLING = 2;
+
+// The score between the two players, read from the game's own RAM after each frame (as Fightcade's detectors do):
+// each player's rounds won in the match on now (both back to 0 when it's over), and which players are playing (a
+// side not playing is the CPU's). A match counts only if both were playing at each round it was won (not the
+// winner's fights against the CPU after it, nor one a challenger broke into); each reading only once it's held 30
+// frames, longer than any rollback, so a guessed frame never scores. VF2's places: still to be found with the ROM
+// (tools/vf2detect.cpp); until then known() is false and it counts nothing.
+struct Score
+{
+	int matches[2] = {}, rounds[2] = {};   // between the two players: matches won, and rounds won in them
+	void frame(const model2a &board);
+	int players() const { return playing; }          // (who's in the game, as held: bit 0 player 1, bit 1 player 2)
+	uint8_t players_now() const { return now[2]; }   // (as the RAM has it this frame, not yet held: when one went out)
+	int round_ends = 0;   // (each round's end, any players': a moment no one's in control, while the game shows who won)
+	static constexpr uint32_t ROUNDS_P1 = 0, ROUNDS_P2 = 0, PLAYING = 0;   // (work RAM offsets; 0: not found yet)
+	static constexpr bool known() { return ROUNDS_P1 && ROUNDS_P2 && PLAYING; }
+private:
+	uint8_t seen[2] = {}, now[3] = {}, playing = 0;
+	int held = 0;
+	bool versus = false;   // (the match on now: both playing at every round so far)
+};
+
+class Adapter : public vfnet::Game
+{
+public:
+	explicit Adapter(model2a &board) : board(board) {}
+	~Adapter() override { board.on_uart_tx = nullptr; }
+
+	// Set by the host program:
+	// one frame (the ports are set): resim, a frame run again (no picture, no sound needed). Default:
+	// board.run_frame(). Whatever takes the frame's bytes for the sound board calls take_sound (else the adapter
+	// does after the frame, and gives them to sound_out).
+	std::function<void(bool resim)> run;
+	std::function<void()> program_changed;     // the program was patched (the recompiled code was made again)
+	std::function<void()> settle;              // before a save or load: anything running alongside the board waits
+	std::function<void(const std::vector<uint8_t> &)> sound_out;   // bytes for the sound board
+	std::function<void()> on_begin;            // a match's start, before the board is set up for it (keep the player's NVRAM and settings)
+	std::function<void()> booting;             // now and then in the match's boot (seconds of frames: the window's events)
+
+	bool begin(const std::vector<uint8_t> &blob) override;
+	void save(std::vector<uint8_t> &state) override;
+	bool load(const std::vector<uint8_t> &state) override;
+	void advance(const uint16_t input[2], bool resim) override;
+	// (the state's hash without its header: that's this board's own bookkeeping, not the game's)
+	uint64_t hash(const std::vector<uint8_t> &state);
+	size_t hash_skip() const override { return model2a::STATE_HEADER; }
+	// The frame's bytes for the sound board to send now: all of them the first time a frame runs; run again after a
+	// rollback, none if its bytes went already (the sound board can't take back what it played: a wrong guess's
+	// sound stays), and if it sent none and has some now, those (late)
+	void take_sound(std::vector<uint8_t> &out);
+	int secret() const { return started_secret; }   // (the match's secret character, from the host's blob)
+
+	// tests: the state's hash after each frame a multiple of this, the last time it ran (0: none kept)
+	uint32_t checkpoint_every = 0;
+	std::map<uint32_t, uint64_t> checkpoints;
+
+private:
+	model2a &board;
+	uint32_t frame = 0;   // the session's frame the board is at
+	std::vector<uint8_t> pending;   // the bytes the game sent the sound board in the frame running
+	bool collecting = false;
+	// per frame: the bytes the sound board was sent for it (a frame run again sends only what wasn't)
+	std::map<uint32_t, std::vector<uint8_t>> sound_sent;
+	std::vector<uint8_t> check_buf;
+	bool sound_taken = false;
+	int started_secret = 0;
+};
+
+} // namespace vf2net
