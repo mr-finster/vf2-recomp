@@ -115,6 +115,7 @@ From the [latest release](https://github.com/mr-finster/vf2-recomp/releases/late
 | macOS 11+ (Apple silicon and Intel) | `VirtuaFighter2Recomp-mac.zip` |
 | Windows 10 or 11 (64-bit) | `VirtuaFighter2Recomp-windows.zip` |
 | Linux / Steam Deck (x86-64) | `VirtuaFighter2Recomp-deck.tar.gz` |
+| Linux on ARM (ARM64: a Raspberry Pi 5; Ubuntu 22.04, Debian 12, Raspberry Pi OS bookworm or newer), unpacked and run as the x86-64 Linux one | `VirtuaFighter2Recomp-linux-arm64.tar.gz` |
 
 **Mac and Windows**
 
