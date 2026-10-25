@@ -32,6 +32,7 @@ int main(int argc, char **argv)
 	bool solo = false, solo2 = false;
 	long p2_once = -1;   // (player 2 presses Start only at this frame: a challenger who joins once)   // (solo2: player 1 never presses Start)   // (player 2 never presses Start: player 1 against the computer)
 	std::vector<long> dumps;   // (work RAM after these frames, to dump_F.bin)
+	std::vector<long> tile_dumps;   // (--tiles F: the tile maps' rows 4-9 and the layer registers then, printed)
 	for (int i = 1; i < argc; i++) {
 		std::string a = argv[i];
 		if (a == "--frames" && i + 1 < argc) frames = strtol(argv[++i], nullptr, 10);
@@ -41,6 +42,7 @@ int main(int argc, char **argv)
 		else if (a == "--solo2") solo2 = true;
 		else if (a == "--p2-once" && i + 1 < argc) p2_once = strtol(argv[++i], nullptr, 10);
 		else if (a == "--dump" && i + 1 < argc) dumps.push_back(strtol(argv[++i], nullptr, 10));
+		else if (a == "--tiles" && i + 1 < argc) tile_dumps.push_back(strtol(argv[++i], nullptr, 10));
 		else if (a == "--every" && i + 1 < argc) every = strtol(argv[++i], nullptr, 10);
 		else if (a == "--watch" && i + 1 < argc) {
 			std::string v = argv[++i];
@@ -95,6 +97,18 @@ int main(int argc, char **argv)
 			char path[64];
 			snprintf(path, sizeof path, "dump_%ld.bin", f);
 			if (FILE *o = fopen(path, "wb")) { fwrite(ram.data(), 1, n, o); fclose(o); }
+		}
+		if (std::find(tile_dumps.begin(), tile_dumps.end(), f) != tile_dumps.end()) {
+			const segas24_tile &t = m.tiles();
+			for (int l = 0; l < 4; l++)
+				for (int row = 4; row <= 9; row++) {
+					printf("frame %ld map %d row %d:", f, l, row);
+					for (int c = 0; c < 64; c++) printf(" %04x", t.tile_r(uint32_t(l * 0x1000 + row * 64 + c)));
+					printf("\n");
+				}
+			printf("frame %ld regs:", f);
+			for (int k = 0; k < 16; k++) printf(" %04x", t.tile_r(0x5000 + k));
+			printf("\n");
 		}
 		if (!shots.empty() && f % every == 0) {
 			const bitmap_rgb32 &b = m.render(true);

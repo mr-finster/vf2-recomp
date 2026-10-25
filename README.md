@@ -58,7 +58,7 @@ screen's refresh rate.
 | Stereo reverb (the sound board's DSP) | Working: wide stereo, as on the cabinet (fixed in v0.1.2) |
 | Portable mode, your own ROM folder | Working |
 | Secret characters (Menu > Cheats): Dural, MUE and KOJAC | Working |
-| Online play | Not yet |
+| Online play (rollback; a random opponent, or a friend with a room code) | In testing: see docs/netplay.md |
 
 ## Secret characters
 

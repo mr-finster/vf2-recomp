@@ -2257,6 +2257,13 @@ void model2a::draw_2d(bool polygons, bool parts)
 		}
 	});
 	m_tiles.m_ox = 0;
+	{   // (online play: the players' names in place of their fighters', in the picture only)
+		std::lock_guard<std::mutex> lk(m_hud_mx);
+		if (!m_hud_names[0].empty() || !m_hud_names[1].empty()) {
+			const m2hud::Flag *fl[2] = { &m_hud_flags[0], &m_hud_flags[1] };
+			m2hud::draw(m_tiles, m_sys24_top, e, m_hud_names, fl);
+		}
+	}
 	const bool smooth = m_backdrop_smooth && s > 1 && wide && !(polygons && m_video->shows_framebuffer());
 	if (smooth) backdrop_smooth(w, !parts);
 	m_2d_wide = wide;

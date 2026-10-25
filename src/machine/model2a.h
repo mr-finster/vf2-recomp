@@ -26,11 +26,13 @@
 #include "scsp.h"
 #include "state_io.h"
 #include "../../third_party/mame/m68000/m68000.h"
+#include "hud_names.h"
 #include <array>
 #include <functional>
 #include <deque>
 #include <map>
 #include <vector>
+#include <mutex>
 
 class model2a : public mame_bus32
 {
@@ -254,6 +256,12 @@ public:
 	u32 peek32(u32 a) { return read_dword(a); }
 	const std::vector<u8> &workram() const { return m_workram; }
 	const segas24_tile &tiles() const { return m_tiles; }
+	// Online play's names under the energy bars (hud_names.h), in the 2D picture only, and their flags: "" none
+	void set_hud_names(const std::string names[2], const m2hud::Flag *flags[2] = nullptr)
+	{
+		std::lock_guard<std::mutex> lk(m_hud_mx);
+		for (int p = 0; p < 2; p++) { m_hud_names[p] = names[p]; m_hud_flags[p] = flags && flags[p] ? *flags[p] : m2hud::Flag{}; }
+	}
 	const std::vector<u8> &backup_ram() const { return m_backup; }
 	const u16 *eeprom_cells() const { return m_eeprom.cells; }
 	// The board's NVRAM, to keep between runs: backup RAM (16 KB) and the 93C46's 64 cells.
@@ -422,6 +430,9 @@ private:
 	std::vector<u32> m_tex0, m_tex1;
 	std::vector<u8> m_lumaram, m_m2comm_share;
 	segas24_tile m_tiles;
+	std::mutex m_hud_mx;   // (the names are set by the host while a picture's drawn alongside)
+	std::string m_hud_names[2];
+	m2hud::Flag m_hud_flags[2];
 
 	// ---- MAME's scheduler (emu/schedule.cpp, diexec.cpp) for the i960 and the TGP ----
 	using atime = unsigned __int128;   // attoseconds since power-on
