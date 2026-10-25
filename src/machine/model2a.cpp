@@ -11,6 +11,7 @@
 #include "parallel.h"
 #include <zlib.h>
 #include <chrono>
+#include <random>
 
 // ---------------------------------------------------------------------------------------------
 // The TGP (MB86234): MAME's copro_tgp_* maps. Its FIFOs are the board's (fifo_pop/fifo_push).
@@ -191,6 +192,7 @@ model2a::model2a(romset::result &&roms)
 	m_video->m_fbvramA = m_fbvram_a.data();
 	m_video->m_fbvramB = m_fbvram_b.data();
 	resize_screen();
+	setup_pages();
 	m_cpu.on_irq_ack = [this](int line, offs_t) { m_irq_count[line & 3]++; };
 	// I80960KB at 50 MHz / 2; MB86234 at 50 MHz, a cycle every 3 clocks
 	m_sched[CPU_I960].set_rate(25000000);
@@ -531,6 +533,7 @@ void model2a::reset()
 {
 	render_wait();
 	m_cur_2d.reset();   // (what was kept for drawing pictures again belongs to the run before)
+	m_snap_epoch++;     // (states saved before: the next save copies everything)
 	m_video->smooth_reset();
 	m_last_pic.reset();
 	m_ram_log.clear();
@@ -583,6 +586,281 @@ void model2a::reset()
 	if (!m_link_fast) timer_adjust(T_UART, AS_PER_SEC / 1000000);
 	irq_update();
 	set_input_line(L_TGP_HALT, ASSERT_LINE);   // model2_tgp_state: the TGP waits for its program
+}
+
+void model2a::power_on()
+{
+	render_wait();
+	std::fill(m_ram200.begin(), m_ram200.end(), 0);
+	std::fill(m_workram.begin(), m_workram.end(), 0);
+	std::fill(m_bufferram.begin(), m_bufferram.end(), 0);
+	std::fill(m_backup.begin(), m_backup.end(), 0xff);
+	std::fill(m_cpuctl.begin(), m_cpuctl.end(), 0);
+	std::fill(m_palram.begin(), m_palram.end(), 0);
+	std::fill(m_colorxlat.begin(), m_colorxlat.end(), 0);
+	std::fill(m_fbvram_a.begin(), m_fbvram_a.end(), 0);
+	std::fill(m_fbvram_b.begin(), m_fbvram_b.end(), 0);
+	std::fill(m_tex0.begin(), m_tex0.end(), 0);
+	std::fill(m_tex1.begin(), m_tex1.end(), 0);
+	std::fill(m_lumaram.begin(), m_lumaram.end(), 0);
+	std::fill(m_m2comm_share.begin(), m_m2comm_share.end(), 0);
+	std::fill(m_tiles.tile_ram.begin(), m_tiles.tile_ram.end(), 0);
+	std::fill(m_tiles.char_ram.begin(), m_tiles.char_ram.end(), 0);
+	m_tiles.char_version++;
+	m_tiles.mark_dirty();
+	m_pens.fill(0xff000000);
+	m_palette_dirty = true;
+	for (int k = 0; k < 4; k++) m_video->note_ram(k);
+	m_eeprom = eeprom93c46{};
+	std::fill(std::begin(m_eeprom.cells), std::end(m_eeprom.cells), 0xffff);
+	m_cpu.power_on();
+	m_tgp->cpu.power_on();
+	std::fill(std::begin(m_tgp->prog), std::end(m_tgp->prog), 0);
+	std::fill(std::begin(m_tgp->ram0), std::end(m_tgp->ram0), 0);
+	std::fill(std::begin(m_tgp->ram1), std::end(m_tgp->ram1), 0);
+	m_tgp->bank_reg = m_tgp->sincos_base = m_tgp->inv_base = m_tgp->isqrt_base = 0;
+	std::fill(std::begin(m_tgp->atan_base), std::end(m_tgp->atan_base), 0);
+	m_video->power_on();
+	m_coproctl = m_coprocnt = m_geoctl = m_geocnt = m_geo_write_start = 0;
+	m_videocontrol = m_framenum = 0;
+	m_render_test_mode = m_render_mode = m_render_unk = false;
+	m_in0 = m_in1 = m_in2 = m_sw = 0xff;
+	m_link_byte = 0;
+	reset();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Save states. The state: a header (for this board's saves only), the RAMs at fixed places, then the
+// rest (state()). A save into a buffer this board saved before, since its last reset, copies only the
+// device memories' pages written since; the RAMs the i960's recompiled code writes directly, and
+// buffer RAM (the TGP and the geometrizer's port write it too), always whole.
+// ---------------------------------------------------------------------------------------------
+
+namespace {
+
+struct state_header { uint32_t magic, version, id, epoch, gen, zero; };
+static_assert(sizeof(state_header) == model2a::STATE_HEADER);
+
+const char *const PAGED_NAMES[] = { "tile ram", "char ram", "palette", "colour tables", "framebuffer a", "framebuffer b",
+	"texture ram 0", "texture ram 1", "luma ram" };
+
+template <class IO> void attos(IO &io, unsigned __int128 &t)   // (the scheduler's times, as two 64-bit halves)
+{
+	uint64_t lo = uint64_t(t), hi = uint64_t(t >> 64);
+	io.pod(lo);
+	io.pod(hi);
+	t = (unsigned __int128)hi << 64 | lo;
+}
+
+template <class IO, class E> void enum32(IO &io, E &e)
+{
+	int32_t v = int32_t(e);
+	io.pod(v);
+	e = E(v);
+}
+
+} // namespace
+
+u8 *model2a::paged_base(int r)
+{
+	switch (r) {
+	case P_TILE: return reinterpret_cast<u8 *>(m_tiles.tile_ram.data());
+	case P_CHAR: return reinterpret_cast<u8 *>(m_tiles.char_ram.data());
+	case P_PAL: return reinterpret_cast<u8 *>(m_palram.data());
+	case P_XLAT: return reinterpret_cast<u8 *>(m_colorxlat.data());
+	case P_FB_A: return reinterpret_cast<u8 *>(m_fbvram_a.data());
+	case P_FB_B: return reinterpret_cast<u8 *>(m_fbvram_b.data());
+	case P_TEX0: return reinterpret_cast<u8 *>(m_tex0.data());
+	case P_TEX1: return reinterpret_cast<u8 *>(m_tex1.data());
+	default: return m_lumaram.data();
+	}
+}
+
+size_t model2a::paged_bytes(int r) const
+{
+	switch (r) {
+	case P_TILE: return m_tiles.tile_ram.size() * 2;
+	case P_CHAR: return m_tiles.char_ram.size() * 2;
+	case P_PAL: return m_palram.size() * 2;
+	case P_XLAT: return m_colorxlat.size() * 2;
+	case P_FB_A: return m_fbvram_a.size() * 2;
+	case P_FB_B: return m_fbvram_b.size() * 2;
+	case P_TEX0: return m_tex0.size() * 4;
+	case P_TEX1: return m_tex1.size() * 4;
+	default: return m_lumaram.size();
+	}
+}
+
+void model2a::setup_pages()
+{
+	for (int r = 0; r < PAGED; r++) m_page_gen[r].assign((paged_bytes(r) + PAGE - 1) / PAGE, 0);
+	std::random_device rd;
+	m_snap_id = rd() ^ uint32_t(uintptr_t(this));
+	m_snap_epoch++;
+}
+
+size_t model2a::fixed_state_size() const
+{
+	size_t n = STATE_HEADER + m_ram200.size() + m_workram.size() + m_bufferram.size() + m_cpuctl.size() +
+		m_m2comm_share.size() + m_backup.size();
+	for (int r = 0; r < PAGED; r++) n += paged_bytes(r);
+	return n;
+}
+
+// The state's small parts, after the memories
+template <class IO> void model2a::state(IO &io)
+{
+	io.section("i960");
+	m_cpu.state(io);
+	io.section("tgp");
+	m_tgp->cpu.state(io);
+	io.pod(m_tgp->prog); io.pod(m_tgp->ram0); io.pod(m_tgp->ram1);
+	io.pod(m_tgp->bank_reg); io.pod(m_tgp->sincos_base); io.pod(m_tgp->inv_base); io.pod(m_tgp->isqrt_base); io.pod(m_tgp->atan_base);
+	io.section("scheduler");
+	for (timer &t : m_timer) {
+		attos(io, t.expire); attos(io, t.start); attos(io, t.period);
+		io.pod(t.seq); io.pod(t.enabled); io.pod(t.param);
+	}
+	io.pod(m_timer_seq);
+	for (cpu_sched &c : m_sched) {   // (period, divshift, divisor: the clocks, set once)
+		attos(io, c.local);
+		io.pod(c.cycles); io.pod(c.suspend); io.pod(c.nextsuspend); io.pod(c.eat); io.pod(c.nexteat);
+	}
+	io.pod(m_order); io.pod(m_suspend_changes);
+	attos(io, m_base);
+	for (std::vector<int> &q : m_line_queue) io.vec(q);
+	io.pod(m_frame_number); io.pod(m_tgp_cycle_base);
+	io.section("fifos");
+	for (gen_fifo *f : { &m_fifo_in, &m_fifo_out }) {
+		io.deq(f->values); io.deq(f->extra);
+		io.pod(f->empty_triggered); io.pod(f->full_triggered);
+	}
+	io.section("board");
+	io.pod(m_intreq); io.pod(m_intena); io.pod(m_timervals); io.pod(m_timerorig); io.pod(m_timerrun);
+	io.pod(m_coproctl); io.pod(m_coprocnt); io.pod(m_geoctl); io.pod(m_geocnt); io.pod(m_geo_write_start);
+	io.pod(m_videocontrol); io.pod(m_framenum);
+	io.pod(m_render_test_mode); io.pod(m_render_mode); io.pod(m_render_unk);
+	{
+		int16_t xoffset, yoffset;
+		u8 zclip;
+		m_video->get_regs(xoffset, yoffset, zclip);
+		io.pod(m_video->m_geo_read_start_address); io.pod(xoffset); io.pod(yoffset); io.pod(zclip);
+		if constexpr (IO::loading) m_video->set_regs(xoffset, yoffset, zclip);
+	}
+	io.pod(m_in0); io.pod(m_in1); io.pod(m_in2); io.pod(m_sw);
+	io.pod(m_io_port); io.pod(m_io_config); io.pod(m_io_mode); io.pod(m_io_analog); io.pod(m_ctrlmode);
+	io.section("eeprom");
+	eeprom93c46 &e = m_eeprom;
+	io.pod(e.cells); io.pod(e.cs); io.pod(e.clk); io.pod(e.di);
+	enum32(io, e.state);
+	io.pod(e.locked); io.pod(e.bits); io.pod(e.cmd_addr); io.pod(e.shift); io.pod(e.address);
+	enum32(io, e.command);
+	io.pod(e.completion); io.pod(e.cs_rise);
+	io.section("uart");
+	uart8251 &u = m_uart;
+	enum32(io, u.flags);
+	io.pod(u.status); io.pod(u.command); io.pod(u.mode); io.pod(u.tx_data); io.pod(u.br_factor); io.pod(u.delayed_tx_en);
+	io.pod(u.tx_bits_left); io.pod(u.tx_shift); io.pod(u.txc_count); io.pod(u.txc);
+	io.pod(m_link_fast); io.pod(m_link_mode_edge);
+	attos(io, m_link_t0);
+	io.pod(m_link_delivered); io.pod(m_link_in_step); io.pod(m_link_byte);
+	io.pod(m_m2comm_cn); io.pod(m_m2comm_fg);
+	io.section("end");
+}
+
+void model2a::save_state(std::vector<uint8_t> &out, std::vector<m2::StateSection> *sections)
+{
+	render_wait();   // (a picture being drawn alongside may have taken the 3D's RAMs back for a moment)
+	if (sections) sections->clear();
+	const size_t fixed = fixed_state_size();
+	state_header h{};
+	if (out.size() >= fixed) memcpy(&h, out.data(), sizeof h);
+	const bool since = out.size() >= fixed && h.magic == STATE_MAGIC && h.version == STATE_VERSION && h.id == m_snap_id && h.epoch == m_snap_epoch;
+	const uint32_t prev = since ? h.gen : 0;
+	out.resize(fixed);   // (no allocation once the buffer has had a state)
+	h = { STATE_MAGIC, STATE_VERSION, m_snap_id, m_snap_epoch, m_snap_gen, 0 };
+	memcpy(out.data(), &h, sizeof h);
+	size_t at = STATE_HEADER;
+	auto whole = [&](const char *name, const void *src, size_t n) {
+		if (sections) sections->push_back({ name, at });
+		memcpy(out.data() + at, src, n);
+		at += n;
+	};
+	whole("ram 200000", m_ram200.data(), m_ram200.size());
+	whole("work ram", m_workram.data(), m_workram.size());
+	whole("buffer ram", m_bufferram.data(), m_bufferram.size());
+	whole("cpu control", m_cpuctl.data(), m_cpuctl.size());
+	whole("m2comm", m_m2comm_share.data(), m_m2comm_share.size());
+	whole("backup ram", m_backup.data(), m_backup.size());
+	for (int r = 0; r < PAGED; r++) {
+		const u8 *base = paged_base(r);
+		const size_t bytes = paged_bytes(r);
+		const std::vector<uint32_t> &gen = m_page_gen[r];
+		if (sections) sections->push_back({ PAGED_NAMES[r], at });
+		if (!since) memcpy(out.data() + at, base, bytes);
+		else
+			for (size_t q = 0; q < gen.size(); q++)
+				if (gen[q] > prev) memcpy(out.data() + at + q * PAGE, base + q * PAGE, std::min(PAGE, bytes - q * PAGE));
+		at += bytes;
+	}
+	m2::StateWriter w(out, sections, true);
+	state(w);
+	m_snap_gen++;   // (writes from now on are after this save)
+}
+
+bool model2a::load_state(const uint8_t *p, size_t n)
+{
+	const size_t fixed = fixed_state_size();
+	state_header h{};
+	if (n < fixed) return false;
+	memcpy(&h, p, sizeof h);
+	if (h.magic != STATE_MAGIC || h.version != STATE_VERSION) return false;
+	render_wait();
+	keep_2d();   // (a picture of the frame now still held keeps the 2D it was drawn from)
+	// a state this board saved since its last reset: only the pages written since it was saved differ
+	const bool since = h.id == m_snap_id && h.epoch == m_snap_epoch;
+	size_t at = STATE_HEADER;
+	auto whole = [&](void *dst, size_t m) { memcpy(dst, p + at, m); at += m; };
+	whole(m_ram200.data(), m_ram200.size());
+	whole(m_workram.data(), m_workram.size());
+	whole(m_bufferram.data(), m_bufferram.size());
+	whole(m_cpuctl.data(), m_cpuctl.size());
+	whole(m_m2comm_share.data(), m_m2comm_share.size());
+	whole(m_backup.data(), m_backup.size());
+	for (int r = 0; r < PAGED; r++) {
+		u8 *base = paged_base(r);
+		const size_t bytes = paged_bytes(r);
+		std::vector<uint32_t> &gen = m_page_gen[r];
+		bool changed = false;
+		for (size_t q = 0; q < gen.size(); q++) {
+			const size_t len = std::min(PAGE, bytes - q * PAGE);
+			u8 *dst = base + q * PAGE;
+			const uint8_t *src = p + at + q * PAGE;
+			if (since ? gen[q] <= h.gen : !memcmp(dst, src, len)) continue;
+			memcpy(dst, src, len);
+			gen[q] = m_snap_gen;   // (changed now: the next save into any buffer copies it)
+			changed = true;
+			if (r == P_TILE || r == P_CHAR) m_tiles.restored(r == P_TILE, offs_t(q * PAGE / 2), len / 2);
+		}
+		at += bytes;
+		if (!changed) continue;
+		// what follows from them: the pens, the GPU's copies of the 3D's RAMs
+		if (r == P_PAL || r == P_XLAT) m_palette_dirty = true;
+		if (r == P_XLAT) note_gpu_ram(RAM_XLAT);
+		if (r == P_TEX0) note_gpu_ram(RAM_TEX0);
+		if (r == P_TEX1) note_gpu_ram(RAM_TEX1);
+		if (r == P_LUMA) note_gpu_ram(RAM_LUMA);
+	}
+	m2::StateReader rd(p + fixed, n - fixed);
+	state(rd);
+	m_head = -1;
+	// smooth motion's record of the 3D's RAMs changing: the frames from the one restored on are to run again
+	if (!m_ram_log.empty()) {
+		auto it = m_ram_log.begin();
+		while (it != m_ram_log.end() && it->frame < m_frame_number) ++it;
+		m_ram_log.erase(it, m_ram_log.end());
+	}
+	return rd.done();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1266,7 +1544,7 @@ void model2a::dev_write(u32 a, u32 data, u32 mem_mask)
 	const u32 t = a & ~0x110000u;
 	if (t >= 0x01000000 && t < 0x01010000) {
 		const offs_t o = (t - 0x01000000) >> 1;
-		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { m_tiles.tile_w(o + h, d, m); });
+		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { touch(P_TILE, ((o + h) & 0x7fff) * 2); m_tiles.tile_w(o + h, d, m); });
 		return;
 	}
 	if ((a & ~0x100000u) == 0x01020000 || (a & ~0x100000u) == 0x01070000) return;   // nopw
@@ -1275,7 +1553,7 @@ void model2a::dev_write(u32 a, u32 data, u32 mem_mask)
 	const u32 c = a & ~0x100000u;
 	if (c >= 0x01080000 && c < 0x01100000) {
 		const offs_t o = (c - 0x01080000) >> 1;
-		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { m_tiles.char_w(o + h, d, m); });
+		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { touch(P_CHAR, ((o + h) & 0x3ffff) * 2); m_tiles.char_w(o + h, d, m); });
 		return;
 	}
 	if (a >= 0x01800000 && a < 0x01804000) {
@@ -1291,6 +1569,7 @@ void model2a::dev_write(u32 a, u32 data, u32 mem_mask)
 			const u16 v = (m_colorxlat[offset] & ~m) | (d & m);
 			if (v == m_colorxlat[offset]) return;   // (the same value: nothing to draw again)
 			before_3d_ram_change(RAM_XLAT, offset, m_colorxlat[offset], v);
+			touch(P_XLAT, offset * 2);
 			m_colorxlat[offset] = v;
 			if ((offset & 0xff) == 0x80 / 2) m_palette_dirty = true;
 		});
@@ -1322,12 +1601,12 @@ void model2a::dev_write(u32 a, u32 data, u32 mem_mask)
 	}
 	if (a >= 0x11600000 && a < 0x11680000) {
 		const offs_t o = (a - 0x11600000) >> 1;
-		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { m_fbvram_a[o + h] = (m_fbvram_a[o + h] & ~m) | (d & m); });
+		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { touch(P_FB_A, (o + h) * 2); m_fbvram_a[o + h] = (m_fbvram_a[o + h] & ~m) | (d & m); });
 		return;
 	}
 	if (a >= 0x11680000 && a < 0x11700000) {
 		const offs_t o = (a - 0x11680000) >> 1;
-		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { m_fbvram_b[o + h] = (m_fbvram_b[o + h] & ~m) | (d & m); });
+		write16_halves(data, mem_mask, [&](int h, u16 d, u16 m) { touch(P_FB_B, (o + h) * 2); m_fbvram_b[o + h] = (m_fbvram_b[o + h] & ~m) | (d & m); });
 		return;
 	}
 	if (a >= 0x12000000 && a < 0x12800000) {   // tex0_w / tex1_w: 16 bits per dword written
@@ -1338,6 +1617,7 @@ void model2a::dev_write(u32 a, u32 data, u32 mem_mask)
 		const u32 v = (offset & 1) == 0 ? (t & 0xffff0000) | (data & 0xffff) : (t & 0x0000ffff) | ((data & 0xffff) << 16);
 		if (v == t) return;   // (the same value: nothing changes, and a picture being drawn may be reading it)
 		before_3d_ram_change(a < 0x12400000 ? RAM_TEX0 : RAM_TEX1, offset >> 1, t, v);   // (the 3D's colours: model2_video::defer_drawing)
+		touch(a < 0x12400000 ? P_TEX0 : P_TEX1, (offset >> 1) * 4);
 		t = v;
 		return;
 	}
@@ -1347,6 +1627,7 @@ void model2a::dev_write(u32 a, u32 data, u32 mem_mask)
 		u8 &l = m_lumaram[(a - 0x12800000) >> 2];
 		if (u8(data) == l) return;   // (as above)
 		before_3d_ram_change(RAM_LUMA, (a - 0x12800000) >> 2, l, u8(data));
+		touch(P_LUMA, (a - 0x12800000) >> 2);
 		l = u8(data);
 		return;
 	}
@@ -1423,6 +1704,7 @@ void model2a::palette_w(offs_t offset, u16 data, u16 mem_mask)
 	const u16 v = (m_palram[offset] & ~mem_mask) | (data & mem_mask);
 	if (v == m_palram[offset]) return;   // (the same value: the pen is as it was; a picture being drawn may be reading it)
 	if (offset >= 0x1000) before_3d_ram_change(RAM_PAL, offset, m_palram[offset], v);   // (the polygons' colours)
+	touch(P_PAL, offset * 2);
 	m_palram[offset] = v;
 	set_pen(int(offset));
 }

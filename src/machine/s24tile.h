@@ -34,6 +34,19 @@ public:
 	}
 	uint64_t char_version = 0;          // (counts the tile graphics' writes: a copy of them is still good while it's the same)
 	void mark_dirty() { m_dirty = true; }   // (the RAMs swapped from outside: decode again)
+	// n words from o of the tile RAM (maps true: the maps' entries) or of the tile graphics, written from
+	// outside (a save state's pages put back): decoded again at the next update()
+	void restored(bool maps, offs_t o, size_t n)
+	{
+		if (maps) {
+			for (size_t i = o; i < o + n && i < 0x4000; i++) m_entry_dirty[i] = 1;
+			m_entries_dirty = true;
+		} else {
+			for (size_t i = o; i < o + n && i < char_ram.size(); i += 16) m_char_dirty[i >> 4] = 1;
+			m_chars_dirty = true;
+			char_version++;
+		}
+	}
 
 	// One map as a 512x512 picture (after update()), for exporting the artwork.
 	void render_map(int l, uint32_t *out) const

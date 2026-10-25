@@ -152,6 +152,14 @@ public:
 	void draw_deferred();
 	void model2_3d_zclip_w(u32 data);
 	u32 polygon_count_r();
+	uint64_t m_polygon_count_reads = 0;   // (polygon_count_r's: a save state leaves the count out, being the picture's)
+	// Save states (the board's): the registers the game writes and the 3D keeps (xhout, xvout, the z clip; the
+	// read start is m_geo_read_start_address). The rest (the geometrizer's matrices and polygons, the lists) is
+	// the picture's alone, and goes by the widescreen setting, so a state leaves it out.
+	void get_regs(int16_t &xoffset, int16_t &yoffset, u8 &zclip) const;
+	void set_regs(int16_t xoffset, int16_t yoffset, u8 zclip);
+	// A cold start's: the geometrizer and rasterizer as made, nothing kept from before (the board's power_on)
+	void power_on();
 	// The 3D drawn at `scale` times the arcade's 496 x 384 (1: MAME's picture). Only where the
 	// polygons fall on the screen is scaled: each pixel's colour comes from the same texels, at
 	// its own u, v and z, by the same code. The last polygons drawn are drawn again at once.

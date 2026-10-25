@@ -24,6 +24,7 @@
 #include "model2_video.h"
 #include "parallel.h"
 #include "scsp.h"
+#include "state_io.h"
 #include "../../third_party/mame/m68000/m68000.h"
 #include <array>
 #include <functional>
@@ -44,6 +45,29 @@ public:
 	~model2a() override;
 
 	void reset();
+	// A cold start: every RAM as a board just switched on has it (zeros, backup RAM 0xff, the EEPROM's cells
+	// 0xffff), the CPUs' registers and the board's cleared, nothing kept from a run before (reset() keeps work
+	// RAM, the tile and texture RAMs, backup RAM and more, and the CPUs' resets leave some registers). Then
+	// reset(). Netplay's start: two boards that ran differently before start the same.
+	void power_on();
+
+	// Save states (state_io.h): everything the game's run depends on, the i960's and the TGP's state, the
+	// scheduler (its timers, the CPUs' clocks, the input lines' queues), the FIFOs, the board's registers and
+	// all its RAMs (about 7 MB). Not the sound board: a state is whole only with it held (set_sound(false)) and
+	// the byte link (set_byte_link(true)), as in a match, where nothing the sound board does reaches this
+	// board. Nor the 3D's own state (its matrices, lists, pictures): the picture's alone, and it goes by the
+	// widescreen setting (the game never reads it back; polygon_count_reads() says if it did). save_state
+	// reuses the buffer's memory; sections, if given, are filled with where each part starts. load_state
+	// restores one this build saved, and false (the board then half restored: reset it) if it isn't one.
+	// Between frames only (after run_frame()).
+	void save_state(std::vector<uint8_t> &out, std::vector<m2::StateSection> *sections = nullptr);
+	bool load_state(const uint8_t *p, size_t n);
+	static constexpr uint32_t STATE_MAGIC = 0x53324656, STATE_VERSION = 1;   // "VF2S"
+	// The state's first bytes are for this board's saves alone (which board, since which reset, which save): two
+	// boards in the same state have the same bytes after them, and only those are compared or hashed
+	static constexpr size_t STATE_HEADER = 24;
+	uint64_t polygon_count_reads() const { return m_video->m_polygon_count_reads; }
+
 	// Runs to the end of the next vblank, where MAME draws the screen. MAME's screen starts at
 	// the top of vblank: vblank N begins at cycle (N + 1) * CYCLES_PER_FRAME, and frame N (as
 	// MAME's frame_number counts) is drawn when it ends, VBLANK_CYCLES later.
@@ -359,6 +383,20 @@ public:
 private:
 	struct tgp_bus;
 	friend struct tgp_bus;
+
+	// Save states (save_state): the field list, run both ways; the device memories copied by the 4 KB pages
+	// written since (each page's save number when last written). The RAMs the recompiled code writes directly,
+	// and buffer RAM (the TGP's too), are copied whole.
+	template <class IO> void state(IO &io);
+	enum { P_TILE, P_CHAR, P_PAL, P_XLAT, P_FB_A, P_FB_B, P_TEX0, P_TEX1, P_LUMA, PAGED };
+	static constexpr size_t PAGE = 4096;
+	std::vector<uint32_t> m_page_gen[PAGED];
+	uint32_t m_snap_id = 0, m_snap_epoch = 0, m_snap_gen = 1;
+	void touch(int r, size_t byte) { m_page_gen[r][byte / PAGE] = m_snap_gen; }
+	u8 *paged_base(int r);   // (where each is now: swap_2d swaps the vectors)
+	size_t paged_bytes(int r) const;
+	size_t fixed_state_size() const;
+	void setup_pages();
 
 	romset::result m_roms;
 	const std::vector<u8> &m_rom, &m_data;

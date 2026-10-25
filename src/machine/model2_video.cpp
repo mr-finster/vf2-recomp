@@ -361,7 +361,48 @@ void model2_video::model2_3d_zclip_w(u32 data)
 // TODO: only Sky Target seems to use this for unknown purpose
 u32 model2_video::polygon_count_r()
 {
+	m_polygon_count_reads++;
 	return m_raster->poly_list_index;
+}
+
+void model2_video::get_regs(int16_t &xoffset, int16_t &yoffset, u8 &zclip) const
+{
+	xoffset = m_crtc_xoffset;
+	yoffset = m_crtc_yoffset;
+	zclip = m_raster->master_z_clip;
+}
+
+void model2_video::set_regs(int16_t xoffset, int16_t yoffset, u8 zclip)
+{
+	m_crtc_xoffset = xoffset;
+	m_crtc_yoffset = yoffset;
+	m_renderer->set_xoffset(xoffset);
+	m_renderer->set_yoffset(yoffset);
+	m_raster->master_z_clip = zclip;
+}
+
+void model2_video::power_on()
+{
+	u16 *const texture_rom = m_raster->texture_rom;
+	const u32 texture_mask = m_raster->texture_rom_mask;
+	u32 *const polygon_rom = m_geo->polygon_rom;
+	const u32 polygon_mask = m_geo->polygon_rom_mask;
+	m_raster = std::make_unique<raster_state>();
+	m_raster->texture_rom = texture_rom;
+	m_raster->texture_rom_mask = texture_mask;
+	m_geo = std::make_unique<geo_state>();
+	m_geo->state = this;
+	m_geo->raster = m_raster.get();
+	m_geo->polygon_rom = polygon_rom;
+	m_geo->polygon_rom_mask = polygon_mask;
+	m_geo_read_start_address = 0;
+	set_regs(0, 0, 0);
+	m_render_done = false;
+	m_render_test_mode = false;
+	std::fill(std::begin(m_shown), std::end(m_shown), -1);
+	for (int p = 0; p < 4; p++) m_pictures[p].deferred = false;
+	m_deferred = false;
+	smooth_reset();
 }
 
 // What screen_update draws between the tile layers' two passes, worked out when MAME does it

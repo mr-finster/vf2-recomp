@@ -60,6 +60,13 @@ $(OBJ)/%.o: %.cpp
 # reference's pictures exactly, for checking; it then needs FMA (Intel 2013 Haswell, AMD 2012 on).
 $(OBJ)/src/machine/model2_video.o $(OBJ)/src/machine/model2_smooth.o: CXXFLAGS += $(RENDER_FLAGS)
 
+# The game's own float arithmetic (the i960's floating point in the interpreter and the native code's
+# helpers, the TGP's ALU, the board): one rounding an operation on every machine, so that two in a
+# netplay match (an Apple silicon Mac's clang would fuse a * b + c, an x86-64 PC can't) run the
+# same game. Not the renderer's (the picture's alone, above).
+GAME_FLAGS = -ffp-contract=off
+$(call objs,$(CORE) src/machine/model2a.cpp): CXXFLAGS += $(GAME_FLAGS)
+
 # RmlUi (MIT, third_party/rmlui): the in-game menu. Its core and the SDL backend, built with FreeType.
 RML_SRC = $(wildcard third_party/rmlui/Source/Core/*.cpp third_party/rmlui/Source/Core/*/*.cpp) \
 	third_party/rmlui/Backends/RmlUi_Platform_SDL.cpp third_party/rmlui/Backends/RmlUi_Renderer_SDL.cpp
@@ -104,6 +111,11 @@ $(BIN)/vf2dis: $(call objs,tools/vf2dis.cpp $(HOST) $(CORE) $(GEN_NONE)) $(SLJIT
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 $(BIN)/vf2run: $(call objs,tools/vf2run.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+
+# The rollback soak test (tools/vf2soak.cpp): two boards, one rolled back every frame, byte for byte the same
+$(BIN)/vf2soak: $(call objs,tools/vf2soak.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
