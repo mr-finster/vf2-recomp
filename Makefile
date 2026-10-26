@@ -171,3 +171,41 @@ $(BIN)/gpu3dcmp: $(call objs,tools/gpu3dcmp.cpp src/host/stb_image_impl.cpp $(MA
 endif
 .PHONY: gpu3dcmp
 gpu3dcmp: $(BIN)/gpu3dcmp
+
+# gpu3dbench: the same check from the made-up bench scene (tools/gpu3dbench.cpp), which needs no
+# ROM: the pictures a driver draws can be judged on any machine, out of what gpu3dcmp needs.
+ifeq ($(GPU3D),sdlgpu)
+$(OBJ)/tools/gpu3dbench.o: CXXFLAGS += $(SDL_CFLAGS) -DGPU3DBENCH_SDLGPU=1
+$(BIN)/gpu3dbench: $(call objs,tools/gpu3dbench.cpp src/machine/model2_video.cpp src/machine/model2_smooth.cpp src/core/mame_shim.cpp) $(OBJ)/src/gpu/gpu3d_sdlgpu.o
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS)
+else
+$(BIN)/gpu3dbench: $(call objs,tools/gpu3dbench.cpp src/machine/model2_video.cpp src/machine/model2_smooth.cpp src/core/mame_shim.cpp) $(OBJ)/src/gpu/gpu3d_metal.o
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) -framework Metal -framework Foundation -framework CoreVideo -framework QuartzCore
+endif
+.PHONY: gpu3dbench
+gpu3dbench: $(BIN)/gpu3dbench
+
+# touchcheck: the on-screen controls (src/host/touch_controls.h) on their own, with SDL's own finger
+# events pressed, moved and lifted over them (tools/touchcheck.cpp), and the overlay drawn offscreen
+# to a PNG to look at. No ROM, no game: SDL_VIDEODRIVER=offscreen without a display.
+$(OBJ)/tools/touchcheck.o: CXXFLAGS += $(SDL_CFLAGS)
+$(BIN)/touchcheck: $(call objs,tools/touchcheck.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS)
+.PHONY: touchcheck
+touchcheck: $(BIN)/touchcheck
+
+# audiocheck: the host's audio path on its own (tools/audiocheck.cpp), which needs no ROM: the same
+# SDL stream (44100 Hz 16-bit stereo), the same 1/57.52 s frames and the same queue of about 3.5
+# frames, a tone to hear on the device, and what the device did with it (its own rate and buffer,
+# whether it kept the wall clock's time, and a pause freezing the queue). SDL_AUDIODRIVER=disk or
+# =dummy where there is no sound card; on a phone the game itself is the real check (VF2_PACE_LOG=1
+# prints the queue every 60 frames).
+$(OBJ)/tools/audiocheck.o: CXXFLAGS += $(SDL_CFLAGS)
+$(BIN)/audiocheck: $(call objs,tools/audiocheck.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS)
+.PHONY: audiocheck
+audiocheck: $(BIN)/audiocheck

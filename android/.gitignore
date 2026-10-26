@@ -1,0 +1,9 @@
+# Android build outputs and local state
+build/
+.cxx/
+.gradle/
+local.properties
+*.iml
+.idea/
+# device logs pulled off the phone (adb logcat > ...)
+*.logcat

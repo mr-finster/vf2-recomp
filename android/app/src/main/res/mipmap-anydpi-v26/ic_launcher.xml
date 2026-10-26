@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The adaptive icon (Android 8+, the only kind this port's minSdk 26 sees): the launcher draws
+     its own shape as a mask over the two layers, and only the middle 66dp of the 108dp canvas is
+     guaranteed to be seen, which is why the letters come as their own layer, inside that. Both
+     layers come from the desktop icon's own art, which tools/release/make_icon.py draws: its
+     android mode writes these PNGs and the launcher icon from the same variants. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

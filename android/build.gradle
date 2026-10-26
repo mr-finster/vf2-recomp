@@ -1,0 +1,22 @@
+// Root build file for the Android port of Virtua Fighter 2 Recomp.
+// The game itself is built by CMake through the NDK (see app/CMakeLists.txt).
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.3'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}
