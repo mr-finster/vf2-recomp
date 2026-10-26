@@ -37,7 +37,8 @@ std::string online_version(const std::string &build);
 
 // A hash of the ROMs' contents as loaded (before any patch)
 uint64_t content_hash(const model2a &board);
-// The host's starting blob: its backup RAM and EEPROM, and its secret character (0: none; Cheats' choice)
+// The host's starting blob: its backup RAM and EEPROM, its secret character (0: none; Cheats' choice) and its place in the
+// stages' list (a fresh one each call: STAGE)
 std::vector<uint8_t> start_blob(const model2a &board, int secret = 0);
 
 // The settings a match plays with on both sides, whatever each has offline (they change the game's program or
@@ -52,6 +53,13 @@ constexpr int MATCH_CULLING = 2;
 // put right. As VF3's.
 inline int scene_byte(const model2a &board) { return board.game_mode(); }
 inline bool in_select(const model2a &board) { return scene_byte(board) == 7; }
+
+// The fight's stage: work RAM 0x64 (0-9 the ten fighters' stages, 10 and 11 Dural's), which the game sets at the
+// select from its count of fights (0x5b) and the scene tools force (VF2_STAGE). A cold start counts from 0: every
+// match's first fight was on the same stage. A match's stages go on from the host's random place (the blob's last
+// byte), set through the select and the VS screen (Adapter::advance).
+constexpr uint32_t STAGE = 0x64, FIGHTS = 0x5b;
+constexpr int STAGES = 10;
 
 // The score between the two players, read from the game's own RAM after each frame (as Fightcade's detectors do):
 // each player's rounds won in the match on now (both back to 0 when it's over), and which players are playing (a
@@ -108,6 +116,7 @@ public:
 	// The match's boot's bytes for the sound board, a frame's each (begin): a sound board made for the match runs a
 	// frame for each with them as it starts, as it would have booted alongside this board, before the match's own
 	std::vector<std::vector<uint8_t>> boot_sound;
+	int stage_offset = 0;   // (the host's place in the stages' list, from its blob)
 	int secret() const { return started_secret; }   // (the match's secret character, from the host's blob)
 
 	// tests: the state's hash after each frame a multiple of this, the last time it ran (0: none kept)

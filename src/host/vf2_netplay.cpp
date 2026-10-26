@@ -1,6 +1,7 @@
 #include "vf2_netplay.h"
 #include <cctype>
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 
 namespace vf2net {
@@ -67,6 +68,9 @@ std::vector<uint8_t> start_blob(const model2a &b, int secret)
 	const uint8_t *e = reinterpret_cast<const uint8_t *>(b.eeprom_cells());
 	out.insert(out.end(), e, e + 64 * 2);
 	out.push_back(uint8_t(secret));
+	// the host's random place in the stages' list (stage_for): a fresh one each match
+	const uint64_t t = uint64_t(std::chrono::steady_clock::now().time_since_epoch().count()) * 2654435761u;
+	out.push_back(uint8_t((t >> 24) % STAGES));
 	return out;
 }
 
@@ -91,10 +95,11 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 {
 	const size_t backup_n = board.backup_ram().size();
 	uint32_t magic = 0;
-	if (blob.size() != 4 + backup_n + 64 * 2 + 1) return false;
+	if (blob.size() != 4 + backup_n + 64 * 2 + 2) return false;
 	memcpy(&magic, blob.data(), 4);
 	if (magic != BLOB_MAGIC) return false;
-	const int secret = blob.back();
+	const int secret = blob[blob.size() - 2];
+	stage_offset = blob.back() % STAGES;
 	if (secret != 0 && secret != 9 && secret != 11 && secret != 12) return false;
 	if (settle) settle();
 	if (on_begin) on_begin();
@@ -186,6 +191,10 @@ bool Adapter::load(const std::vector<uint8_t> &state)
 void Adapter::advance(const uint16_t input[2], bool resim)
 {
 	unpack(input, board);
+	// random stages, as VF3's: through the select and the VS screen, each fight's stage the game's own count of
+	// fights on from the host's place in the list (from the board's RAM and the blob alone: the same on both sides)
+	if (board.game_mode() == 7 || board.game_mode() == 8)
+		const_cast<std::vector<u8> &>(board.workram())[STAGE] = u8((board.workram()[FIGHTS] + stage_offset) % STAGES);
 	sound_taken = false;
 	if (run) run(resim);
 	else board.run_frame();
