@@ -191,10 +191,12 @@ bool Adapter::load(const std::vector<uint8_t> &state)
 void Adapter::advance(const uint16_t input[2], bool resim)
 {
 	unpack(input, board);
-	// random stages, as VF3's: through the select and the VS screen, each fight's stage the game's own count of
-	// fights on from the host's place in the list (from the board's RAM and the blob alone: the same on both sides)
-	if (board.game_mode() == 7 || board.game_mode() == 8)
-		const_cast<std::vector<u8> &>(board.workram())[STAGE] = u8((board.workram()[FIGHTS] + stage_offset) % STAGES);
+	// random stages, as VF3's: through a versus's select and VS screen, each fight's stage the one after the last,
+	// on from the host's place in the list (from the board's RAM and the blob alone: the same on both sides)
+	if ((board.game_mode() == 7 || board.game_mode() == 8) && board.workram()[VERSUS] == 1) {
+		auto &ram = const_cast<std::vector<u8> &>(board.workram());
+		ram[FIGHTS] = ram[STAGE] = u8((ram[LAST_STAGE] + 1 + stage_offset) % STAGES);
+	}
 	sound_taken = false;
 	if (run) run(resim);
 	else board.run_frame();

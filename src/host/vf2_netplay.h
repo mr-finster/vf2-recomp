@@ -57,8 +57,12 @@ inline bool in_select(const model2a &board) { return scene_byte(board) == 7; }
 // The fight's stage: work RAM 0x64 (0-9 the ten fighters' stages, 10 and 11 Dural's), which the game sets at the
 // select from its count of fights (0x5b) and the scene tools force (VF2_STAGE). A cold start counts from 0: every
 // match's first fight was on the same stage. A match's stages go on from the host's random place (the blob's last
-// byte), set through the select and the VS screen (Adapter::advance).
-constexpr uint32_t STAGE = 0x64, FIGHTS = 0x5b;
+// byte), set through a versus's select and VS screen (Adapter::advance). The count is what's set, not the stage:
+// the game loads the stage's textures from the count partway through the select, and the stage alone set gave
+// one stage's shapes in another's textures (Wolf's fence black). Each one from the last fight's stage (LAST_STAGE,
+// the same all through the select), so setting the count doesn't move it; a 2P select alone (VERSUS: 1 there, 0
+// in a 1P game's, whose count is the CPU's ladder)
+constexpr uint32_t STAGE = 0x64, FIGHTS = 0x5b, LAST_STAGE = 0x3058, VERSUS = 0x56;
 constexpr int STAGES = 10;
 
 // The score between the two players, read from the game's own RAM after each frame (as Fightcade's detectors do):
