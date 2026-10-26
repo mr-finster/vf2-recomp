@@ -97,6 +97,9 @@ public:
 	// rollback, none if its bytes went already (the sound board can't take back what it played: a wrong guess's
 	// sound stays), and if it sent none and has some now, those (late)
 	void take_sound(std::vector<uint8_t> &out);
+	// The match's boot's bytes for the sound board, a frame's each (begin): a sound board made for the match runs a
+	// frame for each with them as it starts, as it would have booted alongside this board, before the match's own
+	std::vector<std::vector<uint8_t>> boot_sound;
 	int secret() const { return started_secret; }   // (the match's secret character, from the host's blob)
 
 	// tests: the state's hash after each frame a multiple of this, the last time it ran (0: none kept)

@@ -18,10 +18,13 @@ class segas24_tile;
 
 namespace m2hud {
 
-// A country's flag, small, as the picture's pixels (0xAARRGGBB): beside a name, out from the middle, where it fits
+// A country's flag beside a name, out from the middle, where it fits: its size in the picture's pixels, and those
+// pixels (0xAARRGGBB), or none: its place left in the box for the host to draw it there, sharper (flag_at)
 struct Flag { int w = 0, h = 0; std::vector<uint32_t> px; };
 
-// top: the layers over the 3D (model2a's), the arcade's column 0 at ox. False if the HUD wasn't there.
-bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2] = nullptr);
+// top: the layers over the 3D (model2a's), the arcade's column 0 at ox. False if the HUD wasn't there. flag_at: each
+// player's flag's place, its left and the box's top (the flag 3.5 lower, in the middle of the letters' rows), in top's
+// pixels; -1 for none drawn
+bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2] = nullptr, int flag_at[2][2] = nullptr);
 
 } // namespace m2hud

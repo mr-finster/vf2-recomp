@@ -108,8 +108,9 @@ bool plain_column(const bitmap_rgb32 &top, int x, int y0, int y1)
 
 } // namespace
 
-bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2])
+bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2], int flag_at[2][2])
 {
+	if (flag_at) for (int p = 0; p < 2; p++) flag_at[p][0] = flag_at[p][1] = -1;
 	int p1_first = 0, p2_last = 0;
 	if (!fight_hud(tiles, p1_first, p2_last)) return false;
 	constexpr int Y0 = 6 * 8, Y1 = Y0 + 15;
@@ -164,9 +165,14 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 		// the name in it: player 1's from the left, player 2's to the right
 		const int ty = Y0 + 3;
 		int x = p ? nx1 - right - pad - inner + 1 : nx0 + left + pad;
-		if (fl && !p) {   // (player 1's flag to the left of the name)
+		auto put_flag = [&](int fx) {
+			if (flag_at) { flag_at[p][0] = fx; flag_at[p][1] = Y0; }
+			if (fl->px.size() < size_t(fl->w) * size_t(fl->h)) return;   // (the host's to draw)
 			for (int y = 0; y < fl->h; y++)
-				for (int k = 0; k < fl->w; k++) top.pix(ty + (GH - fl->h) / 2 + y, x + k) = fl->px[size_t(y) * size_t(fl->w) + size_t(k)];
+				for (int k = 0; k < fl->w; k++) top.pix(ty + (GH - fl->h) / 2 + y, fx + k) = fl->px[size_t(y) * size_t(fl->w) + size_t(k)];
+		};
+		if (fl && !p) {   // (player 1's flag to the left of the name)
+			put_flag(x);
 			x += fl->w + gap;
 		}
 		// each letter outlined in black first, as the game's own are (a pixel round every stroke's, corners too), so it
@@ -202,8 +208,7 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 		}
 		if (fl && p) {   // (player 2's to the right of it)
 			x += gap - (PITCH - GW);
-			for (int y = 0; y < fl->h; y++)
-				for (int k = 0; k < fl->w; k++) top.pix(ty + (GH - fl->h) / 2 + y, x + k) = fl->px[size_t(y) * size_t(fl->w) + size_t(k)];
+			put_flag(x);
 		}
 	}
 	return true;

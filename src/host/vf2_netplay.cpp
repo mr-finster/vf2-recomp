@@ -131,13 +131,17 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	std::vector<uint8_t> eeprom(64 * 2);
 	memcpy(eeprom.data(), board.eeprom_cells(), eeprom.size());
 	cold(backup.data(), eeprom.data());
-	// (the boot's bytes too, from this cold start: a sound board made for the match, alone, needs its set-up; they go
-	// with the first frame's)
+	// (the boot's bytes too, from this cold start, a frame's at a time: a sound board made for the match, alone, needs
+	// its set-up, and booting as this board boots, as the arcade's does, to take it: all at once on its first frame,
+	// its program not yet started, they were lost, and the character select had no music or sounds)
 	board.on_uart_tx = [this](uint8_t b) { if (collecting) pending.push_back(b); };
 	collecting = true;
 	pending.clear();
+	boot_sound.clear();
 	for (int i = 0; i < BOOT_FRAMES && !board.past_boot(); i++) {
 		board.run_frame();
+		boot_sound.push_back(std::move(pending));
+		pending.clear();
 		if (booting && i % 60 == 59) booting();
 	}
 	frame = 0;

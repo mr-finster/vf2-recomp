@@ -2261,8 +2261,10 @@ void model2a::draw_2d(bool polygons, bool parts)
 		std::lock_guard<std::mutex> lk(m_hud_mx);
 		if (!m_hud_names[0].empty() || !m_hud_names[1].empty()) {
 			const m2hud::Flag *fl[2] = { &m_hud_flags[0], &m_hud_flags[1] };
-			m2hud::draw(m_tiles, m_sys24_top, e, m_hud_names, fl);
-		}
+			if (!m2hud::draw(m_tiles, m_sys24_top, e, m_hud_names, fl, m_hud_flag_at))
+				for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
+		} else
+			for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
 	}
 	const bool smooth = m_backdrop_smooth && s > 1 && wide && !(polygons && m_video->shows_framebuffer());
 	if (smooth) backdrop_smooth(w, !parts);
