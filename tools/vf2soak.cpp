@@ -6,7 +6,7 @@
 // must be the straight board's, byte for byte; at the first that isn't, the two states are written out and the
 // parts that differ named.
 //   vf2soak <vf2.zip> [--script FILE | --random SEED] [--frames N] [--delay D] [--only-misses] [--interp]
-//           [--hashes FILE] [--quiet]
+//           [--hashes FILE] [--quiet] [--draw]
 // Both boards start as a netplay match does (vf2_netplay's begin: a cold start, free play, the boot run unseen,
 // the sound board held and the byte link). --script: inputs from a script (src/host/input_script.h, frames
 // counted from the match's start); --random SEED: two random players who press Start now and then (a versus: one
@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 	std::string rom, script_path, hashes_path;
 	long frames = -1, delay = 7;
 	uint32_t seed = 1;
-	bool quiet = false, interp = false, only_misses = false, synthetic = false;
+	bool quiet = false, interp = false, only_misses = false, synthetic = false, draw = false;
 	const char *usage = "usage: vf2soak <vf2.zip> [--script FILE | --random SEED] [--frames N] [--delay D] [--only-misses] [--interp] [--hashes FILE] [--quiet]\n"
 	                    "       vf2soak --synthetic [--frames N] [--delay D] [--only-misses] [--hashes FILE] [--quiet]\n";
 	for (int i = 1; i < argc; i++) {
@@ -116,6 +116,7 @@ int main(int argc, char **argv)
 		else if (a == "--interp") interp = true;
 		else if (a == "--synthetic") synthetic = true;
 		else if (a == "--quiet") quiet = true;
+		else if (a == "--draw") draw = true;   // (the pictures drawn as the game draws them: a frame run again, none)
 		else if (a[0] != '-' && rom.empty()) rom = a;
 		else {
 			fprintf(stderr, "vf2soak: unknown argument %s\n%s", a.c_str(), usage);
@@ -143,6 +144,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "vf2soak: the match's start failed (not the ROM known?)\n");
 		return 1;
 	}
+	if (draw) A.set_draw_3d(true);
 	input_script script;
 	std::string error;
 	if (!script_path.empty() && !script.load(script_path, error)) {
@@ -185,7 +187,7 @@ int main(int argc, char **argv)
 			// Player 2's input for frame k arrives: k is certain, and B's state before it was made with real inputs only
 			const uint64_t k = f - uint64_t(delay);
 			std::vector<uint8_t> &mine = ring[k % ring_n];
-			A.save_state(straight, &sections);
+			(draw ? A.render_wait() : void()), A.save_state(straight, &sections);
 			const size_t H = model2a::STATE_HEADER;   // (each board's own bookkeeping: not compared)
 			if (hashes) fprintf(hashes, "%llu %016llx\n", (unsigned long long)k, (unsigned long long)m2::state_hash(straight.data() + H, straight.size() - H));
 			if (mine.size() != straight.size() || memcmp(mine.data() + H, straight.data() + H, mine.size() - H) != 0) {
@@ -208,6 +210,7 @@ int main(int argc, char **argv)
 			if (miss || !only_misses) {
 				rollbacks++;
 				auto t = Clock::now();
+				if (draw) B.render_wait();
 				if (!B.load_state(mine.data(), mine.size())) {
 					printf("frame %llu: the save state didn't load\n", (unsigned long long)k);
 					failed = true;
@@ -223,6 +226,7 @@ int main(int argc, char **argv)
 					used[g] = mix(real[g], real[k]);
 					t = Clock::now();
 					apply(B, used[g]);
+					if (draw) B.set_draw_3d(false);
 					B.run_frame();
 					t_run.add(ms_since(t));
 				}
@@ -230,11 +234,13 @@ int main(int argc, char **argv)
 		}
 		// Frame f on B: its state before it kept, player 2's input guessed (the last one come: none yet at first)
 		auto t = Clock::now();
+		if (draw) B.render_wait();
 		B.save_state(ring[f % ring_n]);
 		t_save.add(ms_since(t));
 		used.push_back(mix(real[f], f >= uint64_t(delay) ? real[f - uint64_t(delay)] : Ports{}));
 		t = Clock::now();
 		apply(B, used[f]);
+		if (draw) B.set_draw_3d(true);
 		B.run_frame();
 		t_run.add(ms_since(t));
 		t_tick.add(ms_since(tick));

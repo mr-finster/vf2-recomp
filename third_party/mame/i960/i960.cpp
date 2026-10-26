@@ -1834,25 +1834,25 @@ void i960_cpu_device::execute_op(uint32_t opcode)
 			case 0x0: // cvtri
 				m_icount -= 33;
 				t1f = get_1_rif(opcode);
-				set_ri(opcode, (int32_t)round_to_int(t1f));
+				set_ri(opcode, f2s32(round_to_int(t1f)));   // (as x86-64 on every machine: mame_shim.h)
 				break;
 
 			case 0x1: // cvtril
 				m_icount -= 35;
 				t1f = get_1_rif(opcode);
-				set_ri64(opcode, (int64_t)round_to_int(t1f));
+				set_ri64(opcode, f2s64(round_to_int(t1f)));
 				break;
 
 			case 0x2: // cvtzri
 				m_icount -= 43;
 				t1f = get_1_rif(opcode);
-				set_ri(opcode, (int32_t)t1f);
+				set_ri(opcode, f2s32(t1f));
 				break;
 
 			case 0x3: // cvtzril
 				m_icount -= 44;
 				t1f = get_1_rif(opcode);
-				set_ri64(opcode, (int64_t)t1f);
+				set_ri64(opcode, f2s64(t1f));
 				break;
 
 			case 0x9: // movr

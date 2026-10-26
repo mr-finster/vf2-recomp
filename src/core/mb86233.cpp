@@ -217,10 +217,10 @@ void mb86233_device::alu_pre(u32 alu)
 		// cfxd
 		m_alu_stmask = F_ZRD|F_SGD|F_CPD|F_OVD|F_DVZD;
 		switch((m_m >> 1) & 3) {
-		case 0: m_alu_r1 = s32(roundf(u2f(m_d))); break;
-		case 1: m_alu_r1 = s32(ceilf(u2f(m_d))); break;
-		case 2: m_alu_r1 = s32(floorf(u2f(m_d))); break;
-		case 3: m_alu_r1 = s32(u2f(m_d)); break;
+		case 0: m_alu_r1 = f2s32(roundf(u2f(m_d))); break;   // (as x86-64 on every machine: mame_shim.h)
+		case 1: m_alu_r1 = f2s32(ceilf(u2f(m_d))); break;
+		case 2: m_alu_r1 = f2s32(floorf(u2f(m_d))); break;
+		case 3: m_alu_r1 = f2s32(u2f(m_d)); break;
 		}
 		stset_set_sz_int(m_alu_r1);
 		break;

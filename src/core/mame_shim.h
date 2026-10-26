@@ -23,6 +23,12 @@ using offs_t = uint32_t;
 
 enum { CLEAR_LINE = 0, ASSERT_LINE = 1, HOLD_LINE = 2 };
 
+// A float to an integer as x86-64 converts it, on every machine: in range, towards zero; out of range or not a
+// number, the most negative one (x86-64's "integer indefinite"). C++ leaves those undefined, and an Arm CPU saturates
+// instead (and gives 0 for not a number): two machines in a netplay match (a Mac and a PC or a Steam Deck) ran
+// different games from there. The i960's cvtri/cvtzri and the TGP's cfxd go through these.
+inline int32_t f2s32(double v) { return v >= -2147483648.0 && v < 2147483648.0 ? int32_t(v) : INT32_MIN; }
+inline int64_t f2s64(double v) { return v >= -9223372036854775808.0 && v < 9223372036854775808.0 ? int64_t(v) : INT64_MIN; }
 template <typename T, typename U> constexpr T BIT(T x, U n) noexcept { return (x >> n) & T(1); }
 inline int64_t mul_32x32(int32_t a, int32_t b) { return int64_t(a) * int64_t(b); }
 inline uint64_t mulu_32x32(uint32_t a, uint32_t b) { return uint64_t(a) * uint64_t(b); }
