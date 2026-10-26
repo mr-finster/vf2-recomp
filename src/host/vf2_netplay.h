@@ -45,6 +45,14 @@ std::vector<uint8_t> start_blob(const model2a &board, int secret = 0);
 // board held, the byte link, the WARNING screen shortened, the FREE PLAY notices hidden
 constexpr int MATCH_CULLING = 2;
 
+// The character select on screen: the game's mode (work RAM 0x2b, model2a::game_mode) 7 from the first frame after
+// Start to the VS screen, the challenger's select too, and never elsewhere (3 the title and the attract, 4-6 Start's
+// frames, 8 the VS screen, 9 the fights; held frame by frame over a 2P run and a challenger's way back in). A match
+// plays it in lockstep (vfnet::Session::set_lockstep): no frame on a guess, so a face never flashes as a guess is
+// put right. As VF3's.
+inline int scene_byte(const model2a &board) { return board.game_mode(); }
+inline bool in_select(const model2a &board) { return scene_byte(board) == 7; }
+
 // The score between the two players, read from the game's own RAM after each frame (as Fightcade's detectors do):
 // each player's rounds won in the match on now (both back to 0 when it's over), and which players are playing (a
 // side not playing is the CPU's). A match counts only if both were playing at each round it was won (not the

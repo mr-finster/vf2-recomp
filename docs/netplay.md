@@ -19,7 +19,9 @@ keeping in time, the handshake, the lobby, privacy and safety.
 - **The match's sound**: the match's board runs with its sound board held (the same on both sides: the i960 never
   hears back from it), and a second board, the sound board alone (`model2a::set_sound_only`: only the 68000 and the
   SCSP run), plays the bytes it sends, a MIDI byte's time apart, on a thread of its own to the real clock (main.cpp's
-  `match_sound_start`), the boot's bytes first. Under rollback a frame's bytes go once (`Adapter::take_sound`): a
+  `match_sound_start`), booted first as the match's board booted, a frame for each of its with that frame's bytes
+  (`Adapter::boot_sound`): reset at the match's start with them all at once, its program was still starting for a
+  second or two and a Start pressed then (its sound, and the select's music after it) was lost. Under rollback a frame's bytes go once (`Adapter::take_sound`): a
   wrong guess can leave a stray sound, never a late one. `vf2soundonly` checks the sound board alone against the
   game's own: each second's loudness alike (1.000 over 40 s of the attract).
 - **The score** (`vf2net::Score`, found with `tools/vf2detect.cpp`): work RAM 0x4f and 0x51, each player's rounds
@@ -27,8 +29,11 @@ keeping in time, the handshake, the lobby, privacy and safety.
   player 1 alone). Checked against the HUD's round markers over four matches and a challenger who joined and lost.
 - **The names on the energy bars** (`src/machine/hud_names.*`): the HUD's name pictures (map 0, rows 6 and 7,
   columns 2-7 and 54-59; recognised by the round markers at columns 22-25 and 36-39) made again from the game's own
-  box (its frame and checker), as wide as the name, and the name drawn in the game's orange, with the flag; in the
-  2D picture only, never the board. `VF2_HUD_NAMES=P1,P2` for vf2run's pictures.
+  box (its frame and checker), as wide as the name, and the name drawn in the game's orange, the flag's place left
+  beside it (the host draws the 48 x 36 flag there, on the window's pixels: `model2a::hud_flag_at`); in the 2D
+  picture only, never the board. `VF2_HUD_NAMES=P1,P2` for vf2run's pictures.
+- **The character select in lockstep**, as VF3's (`vf2net::in_select`: the game's mode, work RAM 0x2b, 7 from Start
+  to the VS screen, the challenger's select too): no frame on a guess, so a face never flashes as one is put right.
 
 ## Where it stands
 

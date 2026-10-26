@@ -2768,6 +2768,7 @@ int main(int argc, char **argv)
 	std::vector<uint8_t> own_backup;
 	uint16_t own_eeprom[64] = {};
 	bool match_on = false, resimmed = false;
+	bool menu_closed_elsewhere = false;   // (the menu closed by a match starting: its closing's bookkeeping still owed)
 	// The match's sound: a sound board alone (model2a::set_sound_only) on a thread of its own, to the real clock,
 	// fed the bytes the match's board sends its (held: the same on both sides); the queue kept topped up whatever
 	// the frames do (held back for the other side, slowed to keep in time), so it never drops out or changes pitch
@@ -2991,7 +2992,8 @@ int main(int argc, char **argv)
 					m.set_hud_names(names, fl);
 				}
 				game_frame = vf2net::BOOT_FRAMES;
-				if (menu.is_open()) menu.close();
+				assign_before.reset();   // (the board's arcade settings are the host's now: no restart for them)
+				if (menu.is_open()) { menu.close(); menu_closed_elsewhere = true; }
 				restart_clock();
 				sync_menu_sound();
 				// who's playing who, over the title screen for a moment (the host is player 1)
@@ -3297,7 +3299,9 @@ int main(int argc, char **argv)
 			}
 		}
 		sync_menu_sound();
-		if (menu.is_open() != menu_was_open && !menu.is_open()) {
+		if ((menu.is_open() != menu_was_open && !menu.is_open()) || std::exchange(menu_closed_elsewhere, false)) {
+			// (not a match just left from the menu: Leave closes it before end_match has shown MATCH OVER, which it then didn't)
+			if (online.phase() == Online::Phase::off && !match_on) { online.set_last_match({}); online.forget_failure(); }   // (MATCH OVER, COULDN'T CONNECT: just after, not for ever)
 			log_state("the menu closed");
 			// settings changed in the menu are saved as it closes (not only at quit: a crash or a
 			// force quit would lose them); test runs save nothing
