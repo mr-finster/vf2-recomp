@@ -578,10 +578,10 @@ I960_FI void i960_rec::exec(C &c, const u32 opcode, const u32 disp)
 
 	case 0x6c:
 		switch ((opcode >> 7) & 0xf) {
-		case 0x0: ic -= 33; t1f = get_1_rif(c, opcode); set_ri(c, opcode, u32(s32(round_to_int(c, t1f)))); break;
-		case 0x1: ic -= 35; t1f = get_1_rif(c, opcode); set_ri64(c, opcode, u64(s64(round_to_int(c, t1f)))); break;
-		case 0x2: ic -= 43; t1f = get_1_rif(c, opcode); set_ri(c, opcode, u32(s32(t1f))); break;
-		case 0x3: ic -= 44; t1f = get_1_rif(c, opcode); set_ri64(c, opcode, u64(s64(t1f))); break;
+		case 0x0: ic -= 33; t1f = get_1_rif(c, opcode); set_ri(c, opcode, u32(f2s32(round_to_int(c, t1f)))); break;
+		case 0x1: ic -= 35; t1f = get_1_rif(c, opcode); set_ri64(c, opcode, u64(f2s64(round_to_int(c, t1f)))); break;
+		case 0x2: ic -= 43; t1f = get_1_rif(c, opcode); set_ri(c, opcode, u32(f2s32(t1f))); break;
+		case 0x3: ic -= 44; t1f = get_1_rif(c, opcode); set_ri64(c, opcode, u64(f2s64(t1f))); break;
 		case 0x9: ic -= 5; t1f = get_1_rif(c, opcode); set_rif(c, opcode, t1f); break;
 		default: FAT((opcode >> 7) & 0xf);
 		}
