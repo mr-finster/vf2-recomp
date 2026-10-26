@@ -2768,6 +2768,8 @@ int main(int argc, char **argv)
 	std::vector<uint8_t> own_backup;
 	uint16_t own_eeprom[64] = {};
 	bool match_on = false, resimmed = false;
+	std::string hud_player[2];   // (a match's: the players' names for the HUD, each shown while they're in the game)
+	int hud_in_shown = -1;
 	bool menu_closed_elsewhere = false;   // (the menu closed by a match starting: its closing's bookkeeping still owed)
 	// The match's sound: a sound board alone (model2a::set_sound_only) on a thread of its own, to the real clock,
 	// fed the bytes the match's board sends its (held: the same on both sides); the queue kept topped up whatever
@@ -2986,10 +2988,9 @@ int main(int argc, char **argv)
 					names[online.local_player() ^ 1] = online.opponent();
 					hud_country[online.local_player()] = online.my_country();
 					hud_country[online.local_player() ^ 1] = online.peer_country();
-					m2hud::Flag f[2];   // (their places only: the host draws them, draw_hud_flags)
-					for (int p = 0; p < 2; p++) if (flags::index_of(hud_country[p]) >= 0) { f[p].w = flags::W / 4; f[p].h = flags::H / 4; }
-					const m2hud::Flag *fl[2] = { &f[0], &f[1] };
-					m.set_hud_names(names, fl);
+					hud_player[0] = names[0];
+					hud_player[1] = names[1];
+					hud_in_shown = -1;   // (set on the HUD below, for the players in the game)
 				}
 				game_frame = vf2net::BOOT_FRAMES;
 				assign_before.reset();   // (the board's arcade settings are the host's now: no restart for them)
@@ -3006,6 +3007,22 @@ int main(int argc, char **argv)
 				                   online.is_hosting() ? online.my_country() : online.peer_country(), online.is_hosting() ? online.peer_country() : online.my_country() });
 			}
 			fprintf(stderr, "online: %s\n", Online::log_masked(n.text).c_str());
+		}
+		if (match_on) {   // (each player's name and flag on the HUD only while they're in the game: a side the CPU has, the game's own)
+			const int in = online.players_in_game();
+			if (in != hud_in_shown) {
+				hud_in_shown = in;
+				fprintf(stderr, "online: the HUD's names: %s\n", in == 3 ? "both players'" : in == 1 ? "player 1's (player 2 the CPU's)" : in == 2 ? "player 2's (player 1 the CPU's)" : "the game's own (no one in the game yet)");
+				std::string names[2];
+				m2hud::Flag f[2];   // (their places only: the host draws them, draw_hud_flags)
+				for (int p = 0; p < 2; p++) {
+					if (!(in >> p & 1)) continue;
+					names[p] = hud_player[p];
+					if (flags::index_of(hud_country[p]) >= 0) { f[p].w = flags::W / 4; f[p].h = flags::H / 4; }
+				}
+				const m2hud::Flag *fl[2] = { &f[0], &f[1] };
+				m.set_hud_names(names, fl);
+			}
 		}
 		if ((match_on && !online.playing()) || (g_match_board && !online.playing() && !online.starting())) end_match();   // (ended, left, or never got going)
 		static bool said_interrupted = false;
