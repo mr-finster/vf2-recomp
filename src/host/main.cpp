@@ -2228,35 +2228,55 @@ int main(int argc, char **argv)
 
 	// ---- the menu (Esc, or View on a pad) ----
 	game_menu menu;
-	// the countries' flags (assets/ui/flags.png), for the HUD's: each a 12 x 9 of its 48 x 36, a box of 4 x 4 for a pixel
+	// Online play's flags on the HUD, beside each player's name (m2hud::draw leaves their place in the box): the
+	// countries' flags (assets/ui/flags.png, 48 x 36 each, as they are) drawn over the game's picture there, 12 x 9 of
+	// the arcade's pixels in the middle of the letters' rows, its edges on the window's own pixels (sharp at any
+	// size), after the picture and before the screen filter; as VF1's
 	SDL_Surface *flag_atlas = nullptr;
-	if (SDL_Surface *f = SDL_LoadSurface((find_assets() + "/ui/flags.png").c_str())) {
-		flag_atlas = SDL_ConvertSurface(f, SDL_PIXELFORMAT_ABGR8888);
-		SDL_DestroySurface(f);
-	}
-	auto hud_flag = [&](const std::string &country) {
-		m2hud::Flag fl;
-		const int i = flags::index_of(country);
-		if (!flag_atlas || i < 0) return fl;
-		const int x0 = i % flags::COLS * flags::CELL_W + 1, y0 = i / flags::COLS * flags::CELL_H + 1;
-		if (x0 + flags::W > flag_atlas->w || y0 + flags::H > flag_atlas->h) return fl;
-		fl.w = flags::W / 4;
-		fl.h = flags::H / 4;
-		fl.px.resize(size_t(fl.w) * size_t(fl.h));
-		for (int y = 0; y < fl.h; y++)
-			for (int x = 0; x < fl.w; x++) {
-				unsigned sum[4] = {};
-				for (int dy = 0; dy < 4; dy++)
-					for (int dx = 0; dx < 4; dx++) {
-						const uint8_t *q = static_cast<const uint8_t *>(flag_atlas->pixels) + size_t(y0 + y * 4 + dy) * size_t(flag_atlas->pitch) + size_t(x0 + x * 4 + dx) * 4;
-						for (int c = 0; c < 3; c++) sum[c] += q[c] * q[3];   // (by their cover: a flag not a rectangle, Nepal's)
-						sum[3] += q[3];
-					}
-				const unsigned a = sum[3] / 16, d = sum[3] ? sum[3] : 1;
-				// (the 2D's pixels: 0xAARRGGBB, 0 see-through; a pixel mostly outside the flag left see-through)
-				fl.px[size_t(y) * size_t(fl.w) + size_t(x)] = a < 128 ? 0u : 0xFF000000u | (sum[0] / d) << 16 | (sum[1] / d) << 8 | (sum[2] / d);
+	SDL_Texture *flag_tex[2] = { nullptr, nullptr };
+	std::string hud_country[2], flag_made[2];   // (each player's, as the lobby has it: "" none; and the one each texture holds)
+	auto hud_flag = [&](int p) -> SDL_Texture * {
+		const int i = flags::index_of(hud_country[p]);
+		if (i < 0) return nullptr;
+		if (flag_tex[p] && flag_made[p] == hud_country[p]) return flag_tex[p];
+		if (!flag_atlas)
+			if (SDL_Surface *f = SDL_LoadSurface((find_assets() + "/ui/flags.png").c_str())) {
+				flag_atlas = SDL_ConvertSurface(f, SDL_PIXELFORMAT_ABGR8888);
+				SDL_DestroySurface(f);
 			}
-		return fl;
+		if (!flag_atlas) return nullptr;
+		const int x0 = i % flags::COLS * flags::CELL_W + 1, y0 = i / flags::COLS * flags::CELL_H + 1;
+		if (x0 + flags::W > flag_atlas->w || y0 + flags::H > flag_atlas->h) return nullptr;
+		if (flag_tex[p]) SDL_DestroyTexture(flag_tex[p]);
+		flag_tex[p] = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, flags::W, flags::H);
+		if (!flag_tex[p]) return nullptr;
+		SDL_UpdateTexture(flag_tex[p], nullptr, static_cast<const uint8_t *>(flag_atlas->pixels) + size_t(y0) * size_t(flag_atlas->pitch) + size_t(x0) * 4, flag_atlas->pitch);
+		SDL_SetTextureScaleMode(flag_tex[p], SDL_SCALEMODE_LINEAR);
+		SDL_SetTextureBlendMode(flag_tex[p], SDL_BLENDMODE_BLEND);
+		flag_made[p] = hud_country[p];
+		return flag_tex[p];
+	};
+	auto draw_hud_flags = [&] {
+		if (hud_country[0].empty() && hud_country[1].empty()) return;
+		int lw = 0, lh = 0;
+		SDL_RendererLogicalPresentation mode;
+		SDL_FRect out;
+		SDL_GetRenderLogicalPresentation(ren, &lw, &lh, &mode);
+		if (lw <= 0 || lh <= 0 || !SDL_GetRenderLogicalPresentationRect(ren, &out) || out.w <= 0) return;
+		// (the arcade's pixels to the logical size's, and the logical size's to the window's: each edge put on a whole
+		// window pixel, so the flag's never blurred into the box around it)
+		const float sx = float(lw) / float(m.width()), sy = float(lh) / float(model2a::HEIGHT), wx = out.w / float(lw), wy = out.h / float(lh);
+		auto snap_x = [&](float v) { return (std::round(out.x + v * sx * wx) - out.x) / wx; };
+		auto snap_y = [&](float v) { return (std::round(out.y + v * sy * wy) - out.y) / wy; };
+		for (int p = 0; p < 2; p++) {
+			int x = 0, y = 0;
+			if (!m.hud_flag_at(p, x, y)) continue;
+			if (SDL_Texture *t = hud_flag(p)) {
+				const float l = snap_x(float(x)), r = snap_x(float(x) + 12), top = snap_y(float(y) + 3.5f), bottom = snap_y(float(y) + 12.5f);   // (12 x 9, in the middle of the letters' rows)
+				const SDL_FRect dst{ l, top, r - l, bottom - top };
+				SDL_RenderTexture(ren, t, nullptr, &dst);
+			}
+		}
 	};
 	if (!menu.init(win, ren, find_assets()))
 		fprintf(stderr, "menu: couldn't load assets/ui (the game runs without it)\n");
@@ -2788,9 +2808,18 @@ int main(int argc, char **argv)
 		{ std::lock_guard<std::mutex> lk(msound.mx); msound.in.clear(); }
 		SDL_ClearAudioStream(audio);
 		const int target = int(frame_bytes * QUEUED);
-		msound.th = std::thread([&, target, bp] {
+		msound.th = std::thread([&, target, bp, boot = online.adapter.boot_sound] {
 			model2a &b = *bp;
 			std::vector<uint8_t> bytes;
+			// (booted as the match's board booted, a frame for each of its, unheard: its program started and set up
+			// before the match's first frame, as the arcade's, so a Start pressed at once is heard, the select's
+			// music after it)
+			for (const std::vector<uint8_t> &f : boot) {
+				if (msound.quit) break;
+				b.sound_bytes(f.data(), f.size());
+				b.run_frame();
+				b.m_audio_out.clear();
+			}
 			while (!msound.quit) {
 				if (SDL_GetAudioStreamQueued(audio) >= target) { SDL_DelayNS(1000000); continue; }
 				{ std::lock_guard<std::mutex> lk(msound.mx); bytes.swap(msound.in); }
@@ -2891,7 +2920,7 @@ int main(int argc, char **argv)
 		if (match_on) fprintf(stderr, "online: the match ended at frame %llu; back to playing alone\n", (unsigned long long)game_frame);
 		match_on = false;
 		msound.stop();
-		{ const std::string none[2]; m.set_hud_names(none); }
+		{ const std::string none[2]; m.set_hud_names(none); hud_country[0].clear(); hud_country[1].clear(); }
 		if (audio) SDL_ClearAudioStream(audio);
 		menu.set_notice("");
 		menu.set_banner("");
@@ -2954,8 +2983,10 @@ int main(int argc, char **argv)
 					std::string names[2];
 					names[online.local_player()] = online.identity.name;
 					names[online.local_player() ^ 1] = online.opponent();
-					const m2hud::Flag f[2] = { hud_flag(online.local_player() == 0 ? online.my_country() : online.peer_country()),
-					                           hud_flag(online.local_player() == 0 ? online.peer_country() : online.my_country()) };
+					hud_country[online.local_player()] = online.my_country();
+					hud_country[online.local_player() ^ 1] = online.peer_country();
+					m2hud::Flag f[2];   // (their places only: the host draws them, draw_hud_flags)
+					for (int p = 0; p < 2; p++) if (flags::index_of(hud_country[p]) >= 0) { f[p].w = flags::W / 4; f[p].h = flags::H / 4; }
 					const m2hud::Flag *fl[2] = { &f[0], &f[1] };
 					m.set_hud_names(names, fl);
 				}
@@ -3133,7 +3164,10 @@ int main(int argc, char **argv)
 	// drawn on the CPU or the GPU, one being drawn alongside), and the picture on show drawn again
 	// as it was. VF2_RESET_AT=pass,...: tests, as if the device had been reset at those passes.
 	auto textures_lost = [&](bool device) {
-		if (device) crt_paint.lost();
+		if (device) {
+			crt_paint.lost();
+			for (auto &t : flag_tex) if (t) { SDL_DestroyTexture(t); t = nullptr; }   // (made again when next drawn)
+		}
 		fprintf(stderr, "the renderer's %s reset: its textures made again\n", device ? "device" : "targets");
 		if (async_pending) {   // (its texture may be gone: nothing unlocked into it, the picture dropped)
 			m.render_wait();
@@ -3725,6 +3759,7 @@ int main(int argc, char **argv)
 		SDL_RenderClear(ren);
 		crt_on = cfg.crt_colours || cfg.brightness != 100 || cfg.gamma != 100;
 		crt_paint.draw(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, cfg.crt_colours, cfg.brightness, cfg.gamma);   // (CRT colours, brightness, gamma: the picture only)
+		draw_hud_flags();
 		draw_filter();
 		menu.render();
 		pace.blit += SDL_GetTicksNS() - tb;

@@ -262,6 +262,15 @@ public:
 		std::lock_guard<std::mutex> lk(m_hud_mx);
 		for (int p = 0; p < 2; p++) { m_hud_names[p] = names[p]; m_hud_flags[p] = flags && flags[p] ? *flags[p] : m2hud::Flag{}; }
 	}
+	// where each player's flag goes (hud_names: its place left for the host's sharper one), in the picture's pixels
+	// (width() by HEIGHT): its left, and the box's top; false for none in the picture last made
+	bool hud_flag_at(int p, int &x, int &y)
+	{
+		std::lock_guard<std::mutex> lk(m_hud_mx);
+		x = m_hud_flag_at[p][0];
+		y = m_hud_flag_at[p][1];
+		return x >= 0 && !m_hud_names[p].empty();
+	}
 	const std::vector<u8> &backup_ram() const { return m_backup; }
 	const u16 *eeprom_cells() const { return m_eeprom.cells; }
 	// The board's NVRAM, to keep between runs: backup RAM (16 KB) and the 93C46's 64 cells.
@@ -433,6 +442,7 @@ private:
 	std::mutex m_hud_mx;   // (the names are set by the host while a picture's drawn alongside)
 	std::string m_hud_names[2];
 	m2hud::Flag m_hud_flags[2];
+	int m_hud_flag_at[2][2] = { { -1, -1 }, { -1, -1 } };
 
 	// ---- MAME's scheduler (emu/schedule.cpp, diexec.cpp) for the i960 and the TGP ----
 	using atime = unsigned __int128;   // attoseconds since power-on
