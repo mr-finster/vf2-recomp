@@ -58,7 +58,7 @@ screen's refresh rate.
 | Stereo reverb (the sound board's DSP) | Working: wide stereo, as on the cabinet (fixed in v0.1.2) |
 | Portable mode, your own ROM folder | Working |
 | Secret characters (Menu > Cheats): Dural, MUE and KOJAC | Working |
-| Online play (rollback; a random opponent, or a friend with a room code) | In testing: see docs/netplay.md |
+| Online play | Experimental: rollback netplay, a random opponent or a friend by room code, no setup (see [Online play](#online-play-experimental)) |
 
 ## Secret characters
 
@@ -183,6 +183,79 @@ Gamepad (Xbox layout): d-pad or stick to move, X guard, A punch, B kick, Y guard
 LB guard + kick, RT all three, Start to start. View (tap), L3 + R3 or the touchpad click opens the menu (Menu can be
 moved in Controls); View + LB / RB change the render scale / picture shape. In Arcade mode, set Coin in Controls (View
 works) for a coin button.
+
+## Online play (experimental)
+
+Rollback netplay, as modern fighting games have it: your own inputs show at once (after the input delay), and the
+game quietly corrects the moment your opponent's arrive. Both players need **the same online version** (every release
+from v0.1.16 on plays the others, until one changes the game: its notes will say; a build of your own
+between releases plays only the same build) and **the same
+`vf2.zip`**; it tells you if not. Matches always play the PC way, free play, with the
+host's arcade settings (rounds, difficulty, energy). The stage is a random one for the first fight, the game's own order after it, as on an arcade cabinet that's been
+on all day. Each player uses their own
+Player 1 controls.
+
+**A random opponent:** Menu > **Online** > **RANDOM**. It finds whoever else is looking, the nearest first (the
+best connection), and widens the search the longer you wait; **Stop** gives up. Play solo while you wait: the match
+takes over once it's found. After the match, **New opponent** looks again.
+
+**With a friend, by room code (anywhere: no setup, nothing to forward):**
+
+1. Both: Menu > **Online**. The first time, it asks your name (up to 10 letters, shown under your energy bar,
+   with your country's flag).
+2. One player: **HOST**. It shows a room code like `FR7-W25` (**Copy code** puts it on the clipboard): send it to
+   the other player.
+3. The other: **JOIN**, and type the code (or paste it). It joins by itself at the 6th letter; the steps on the screen
+   show how far it's got. Once you're both in, the game starts at its title screen: both press Start.
+
+On a controller the code and name screens show letters to pick with A (X deletes, Y pastes); on a keyboard just type.
+In a match, whoever loses is told to press Start for a rematch (as in the arcade, the winner plays on against the
+computer until they do). After leaving a match, **Play again** keeps the same code: the host opens it again and the other player joins it by itself.
+
+The games connect to each other directly whenever they can; when a network won't let them (phones' 5G, some
+office, school and hotel networks), the match goes through a relay (Cloudflare's) instead, automatically. The
+connection display says RELAY then (DIRECT otherwise). The room code only finds the other player: no game data goes through the
+lobby. The flags are the countries Cloudflare places each player's connection in (a VPN shows its own).
+
+**If it won't connect**
+
+- The Online screen says what went wrong in plain words, under **Couldn't connect**, and which step it got to:
+  check the code, and that the host is still hosting (a room closes when the host stops). **Try again** goes again.
+- **Firewalls:** the first time you host, allow the game when asked. Windows: if you dismissed it, Windows Security >
+  Firewall > Allow an app, tick Virtua Fighter 2 Recomp for **Private and Public**. Mac: System Settings > Network >
+  Firewall > Options: allow it; each new version of the (unsigned) Mac app may need allowing again. Also System
+  Settings > Privacy & Security > Local Network: on.
+- Hotel, school and public Wi-Fi often keep devices on the same network from seeing each other: the match goes
+  through the relay instead, by itself.
+
+**For the smoothest match**
+
+- A cable beats Wi-Fi. **Steam Deck:** turn off Wi-Fi power management (Settings > System > Developer Mode on, then
+  Settings > Developer > Enable Wi-Fi power management off): it holds packets back in bursts.
+- **Input delay** (Online > Settings): Auto uses as little as it can (none on a LAN, 1 frame almost anywhere else)
+  and accounts for slower machines: each side tells the other how much rollback it can run without a hitch (a Steam
+  Deck in a fight: none), and the other side's delay covers the rest, so neither side stutters. It keeps the game at
+  full speed against a far opponent with more delay instead (up to 15 frames). A short burst of ping is left to rollback; a delay raised for a
+  longer spell comes back down a frame a second once it's over.
+  Or set 0 to 10 yourself: higher means fewer corrections, lower a quicker response.
+- **Connection display:** On shows the other player, the ping, the input delay, the rollback and DIRECT or RELAY at
+  the bottom of the screen (the game's own bars and time are at the top), each in a cell of its own that doesn't move
+  as the numbers change (the dot green, yellow or red); Detailed adds a row: the jitter, the average rollback, how far
+  ahead your side runs and each frame's cost. Under about 100 ms ping plays well; past ~250 ms the delay rises to keep
+  the game at its full speed.
+
+**Good to know**
+
+- The menu doesn't pause a match (it goes on behind it, your inputs off). Leaving a match tells the other player.
+- Your opponent can see your IP address, as in any direct peer-to-peer game (and a friend by code your local network's, in case you share one; a random opponent never gets that). **Hide my IP address** (Menu >
+  Online > Settings) sends matches through the relay instead, so they see only Cloudflare's: it adds a
+  little ping (more on the same network), so it's off unless you want it.
+- Not yet: spectating, replays, rematch without reconnecting.
+
+**Reporting a problem:** please include **both players'** `log.txt` (and `log.1.txt` if the game's been opened again
+since: the last 3 runs' logs are kept as `log.1.txt` to `log.3.txt`; the game's data folder: Windows `%APPDATA%\Virtua
+Fighter 2 Recomp`, Mac `~/Library/Application Support/Virtua Fighter 2 Recomp`, Steam Deck / Linux the game's own
+folder or `~/.local/share/Virtua Fighter 2 Recomp`), what each is playing on, Wi-Fi or cable, and the ping shown.
 
 ## How it works
 

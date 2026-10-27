@@ -29,7 +29,7 @@ void unpack(const uint16_t input[2], model2a &board);
 // only with what a match depends on (the board, the recompiler, their compiler flags, this adapter, online.cpp's
 // match settings, src/net's protocol), so a release that changes only the picture or the menus still plays the one
 // before. Named after the release that brings it; VF2's first online release names it (docs/RELEASING-ALL.md).
-inline constexpr const char *NET_VERSION = "vf2-online-1";
+inline constexpr const char *NET_VERSION = "v0.1.16";
 // The online version a build plays as: NET_VERSION for a release (its version a release's name: v0.1.16, or with a
 // word after it), else the build's own (git describe's between releases, a bare commit, "dev"): a test build, which
 // may carry a change to the game, plays only the same build
