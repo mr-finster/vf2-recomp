@@ -363,10 +363,14 @@ double i960_cpu_device::get_2_rif(uint32_t opcode)
 	}
 }
 
+// (vf2-recomp: a NaN stored as one pattern, x86's own, on every machine, as src/rec/i960_ops.h's)
+static double nan_fixed(double v) { return v != v ? u2d(0xfff8000000000000ull) : v; }
+
 void i960_cpu_device::set_rif(uint32_t opcode, double val)
 {
+	val = nan_fixed(val);
 	if(!(opcode & 0x00002000))
-		m_r[(opcode>>19) & 0x1f] = f2u(val);
+		m_r[(opcode>>19) & 0x1f] = val != val ? 0xffc00000u : f2u(val);
 	else if(!(opcode & 0x00e00000))
 		m_fp[(opcode>>19) & 3] = val;
 	else
@@ -407,6 +411,7 @@ double i960_cpu_device::get_2_rifl(uint32_t opcode)
 
 void i960_cpu_device::set_rifl(uint32_t opcode, double val)
 {
+	val = nan_fixed(val);
 	if(!(opcode & 0x00002000)) {
 		uint64_t v = d2u(val);
 		m_r[(opcode>>19) & 0x1e] = v;

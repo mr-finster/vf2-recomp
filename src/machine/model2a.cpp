@@ -464,10 +464,20 @@ void model2a::use_interpreter()
 // restarted itself (it leaves a marker at 0x59cfe0 first, 0x6116c); neither on a power-on. Here
 // only its countdown gets shorter: `mov 1,r15` puts 1 in it, so the boot moves on at the next
 // frame, as it does at frame 724. Checked against the whole routine (0xa834-0xa9a3, both states).
+static const u8 MOV_1_R15[4] = { 0x01, 0x1e, 0x78, 0x5c }, SHLO_7_5_R15[4] = { 0x07, 0x5e, 0x79, 0x59 };   // 5c781e01, 59795e07
 bool model2a::shorten_warning()
 {
-	static const u8 mov_1_r15[4] = { 0x01, 0x1e, 0x78, 0x5c };   // 5c781e01 (was 59795e07)
-	return patch_program(0xa950, mov_1_r15, 4, 0xa834, 0xa9a4 - 0xa834, 0x4bbdbdf6);
+	return patch_program(0xa950, MOV_1_R15, 4, 0xa834, 0xa9a4 - 0xa834, 0x4bbdbdf6);
+}
+
+// The WARNING's countdown as the game has it again (an online match shortens it on both sides, the boot unseen:
+// after it, a player who sees the boot sees it whole)
+void model2a::restore_warning()
+{
+	auto &rom = m_roms.regions[romset::MAINCPU];
+	if (rom.size() < 0xa954 || memcmp(&rom[0xa950], MOV_1_R15, 4) != 0) return;
+	memcpy(&rom[0xa950], SHLO_7_5_R15, 4);
+	if (m_rec) m_rec->code_changed(0xa950, 4);
 }
 
 // The player select's fighters by slot (0x33e4c: Akira, Pai, Lau, Wolf, Jeffry, Kage, Sarah,

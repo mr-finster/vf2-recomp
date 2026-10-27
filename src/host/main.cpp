@@ -194,6 +194,12 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 // Every message box goes through here: a test run (VF2_HIDDEN) never shows one (nor a file picker),
 // the message goes to stderr (log.txt without a console) instead.
+// The volumes an online match's own sound board plays at (the overall, the music, the effects: 0-100 each, 8 bits
+// apiece): set by the Sound page, taken by the match sound's thread before each frame (the match's board is the
+// other one, unheard)
+static std::atomic<uint32_t> g_match_volumes{ 0 };
+static uint32_t pack_volumes(int volume, int music, int effects) { return uint32_t(volume) | uint32_t(music) << 8 | uint32_t(effects) << 16; }
+
 static bool message_box(SDL_MessageBoxFlags flags, const char *title, const std::string &msg)
 {
 	if (getenv("VF2_HIDDEN")) { fprintf(stderr, "(hidden: no dialog) %s\n", msg.c_str()); return false; }
@@ -2526,18 +2532,21 @@ int main(int argc, char **argv)
 			[&](int d) {
 				cfg.volume = std::clamp(cfg.volume + 10 * d, 0, 100); cfg_dirty = true;
 				m.set_level(LEVEL * cfg.volume / 100.0f);
+				g_match_volumes = pack_volumes(cfg.volume, cfg.music, cfg.effects);
 			} });
 		p.items.push_back({ "Music", "The music's volume, within the overall volume.",
 			[&] { return std::to_string(cfg.music) + "%"; },
 			[&](int d) {
 				cfg.music = std::clamp(cfg.music + 10 * d, 0, 100); cfg_dirty = true;
 				m.set_volumes(cfg.music / 100.0f, cfg.effects / 100.0f);
+				g_match_volumes = pack_volumes(cfg.volume, cfg.music, cfg.effects);
 			} });
 		p.items.push_back({ "Effects and voices", "Hits, voices and the announcer, within the overall volume.",
 			[&] { return std::to_string(cfg.effects) + "%"; },
 			[&](int d) {
 				cfg.effects = std::clamp(cfg.effects + 10 * d, 0, 100); cfg_dirty = true;
 				m.set_volumes(cfg.music / 100.0f, cfg.effects / 100.0f);
+				g_match_volumes = pack_volumes(cfg.volume, cfg.music, cfg.effects);
 			} });
 		p.items.push_back(back_item());
 		return p;
@@ -2805,8 +2814,7 @@ int main(int argc, char **argv)
 		b.set_sound(true);
 		b.set_sound_only(true);
 		b.set_byte_link(true);
-		b.set_volumes(cfg.music / 100.0f, cfg.effects / 100.0f);
-		b.set_level(LEVEL * cfg.volume / 100.0f);
+		g_match_volumes = pack_volumes(cfg.volume, cfg.music, cfg.effects);
 		b.reset();
 		{ std::lock_guard<std::mutex> lk(msound.mx); msound.in.clear(); }
 		SDL_ClearAudioStream(audio);
@@ -2814,6 +2822,15 @@ int main(int argc, char **argv)
 		msound.th = std::thread([&, target, bp, boot = online.adapter.boot_sound] {
 			model2a &b = *bp;
 			std::vector<uint8_t> bytes;
+			uint32_t volumes = ~0u;   // (the volumes it plays at: the Sound page's, as they change mid-match)
+			auto take_volumes = [&] {
+				const uint32_t v = g_match_volumes;
+				if (v == volumes) return;
+				volumes = v;
+				b.set_volumes(float((v >> 8) & 0xff) / 100.0f, float((v >> 16) & 0xff) / 100.0f);
+				b.set_level(LEVEL * float(v & 0xff) / 100.0f);
+			};
+			take_volumes();
 			// (booted as the match's board booted, a frame for each of its, unheard: its program started and set up
 			// before the match's first frame, as the arcade's, so a Start pressed at once is heard, the select's
 			// music after it)
@@ -2826,6 +2843,7 @@ int main(int argc, char **argv)
 			while (!msound.quit) {
 				if (SDL_GetAudioStreamQueued(audio) >= target) { SDL_DelayNS(1000000); continue; }
 				{ std::lock_guard<std::mutex> lk(msound.mx); bytes.swap(msound.in); }
+				take_volumes();
 				b.sound_bytes(bytes.data(), bytes.size());
 				bytes.clear();
 				b.run_frame();
@@ -2939,6 +2957,7 @@ int main(int argc, char **argv)
 		// notices as their play style has them (the secret character and the ring: boot's)
 		m.set_sound(sound);
 		m.set_scenery_culling(m.side_columns() ? 2 : 0);
+		if (!skip_boot()) m.restore_warning();   // (the match's shortened WARNING: whole again for a boot that's seen)
 		apply_play_style();
 		menu.set_title("PAUSED");
 		reset_game();

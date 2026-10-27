@@ -94,9 +94,13 @@ struct i960_rec
 	static I960_FI double lit_f(C &c, int idx) { return idx < 4 ? c.m_fp[idx] : idx == 0x16 ? 1.0 : 0.0; }
 	static I960_FI double get_1_rif(C &c, u32 op) { return !(op & 0x800) ? double(u2f(c.m_r[op & 0x1f])) : lit_f(c, op & 0x1f); }
 	static I960_FI double get_2_rif(C &c, u32 op) { return !(op & 0x1000) ? double(u2f(c.m_r[(op >> 14) & 0x1f])) : lit_f(c, (op >> 14) & 0x1f); }
+	// (a NaN stored as one pattern, x86's own: an invalid operation's NaN is negative on x86, positive on ARM, and
+	// a Mac and a PC in a match must store the same bits)
+	static I960_FI double nan_fixed(double v) { return v != v ? u2d(0xfff8000000000000ull) : v; }
 	static I960_FI void set_rif(C &c, u32 op, double v)
 	{
-		if (!(op & 0x2000)) c.m_r[(op >> 19) & 0x1f] = f2u(float(v));
+		v = nan_fixed(v);
+		if (!(op & 0x2000)) c.m_r[(op >> 19) & 0x1f] = v != v ? 0xffc00000u : f2u(float(v));
 		else if (!(op & 0x00e00000)) c.m_fp[(op >> 19) & 3] = v;
 		else fatalerror("I960: %x: set_rif on literal?\n", c.m_PIP);
 	}
@@ -112,6 +116,7 @@ struct i960_rec
 	}
 	static I960_FI void set_rifl(C &c, u32 op, double v)
 	{
+		v = nan_fixed(v);
 		if (!(op & 0x2000)) { const u64 b = d2u(v); c.m_r[(op >> 19) & 0x1e] = u32(b); c.m_r[((op >> 19) & 0x1e) + 1] = u32(b >> 32); }
 		else if (!(op & 0x00e00000)) c.m_fp[(op >> 19) & 3] = v;
 		else fatalerror("I960: %x: set_rifl on literal?\n", c.m_PIP);
