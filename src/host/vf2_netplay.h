@@ -54,15 +54,18 @@ constexpr int MATCH_CULLING = 2;
 inline int scene_byte(const model2a &board) { return board.game_mode(); }
 inline bool in_select(const model2a &board) { return scene_byte(board) == 7; }
 
-// The fight's stage: work RAM 0x64 (0-9 the ten fighters' stages, 10 and 11 Dural's), which the game sets at the
-// select from its count of fights (0x5b) and the scene tools force (VF2_STAGE). A cold start counts from 0: every
-// match's first fight was on the same stage. A match's stages go on from the host's random place (the blob's last
-// byte), set through a versus's select and VS screen (Adapter::advance). The count is what's set, not the stage:
-// the game loads the stage's textures from the count partway through the select, and the stage alone set gave
-// one stage's shapes in another's textures (Wolf's fence black). Each one from the last fight's stage (LAST_STAGE,
-// the same all through the select), so setting the count doesn't move it; a 2P select alone (VERSUS: 1 there, 0
-// in a 1P game's, whose count is the CPU's ladder)
-constexpr uint32_t STAGE = 0x64, FIGHTS = 0x5b, LAST_STAGE = 0x3058, VERSUS = 0x56;
+// The fight's stage: work RAM 0x64 (0-9 the ten fighters' stages, 11 Dural's), which the game sets at each select
+// from its count of fights (0x5b: Start sets it to 0, each select moves it on by one, 10 is Dural's stage and the
+// next is 0 again) and the scene tools force (VF2_STAGE). A cold start counts from 0: every match's first fight was
+// on the same stage. A match's count starts at the host's random place (the blob's last byte), set once, through
+// the first select after Start (Adapter::advance), the count and the stage both; the game counts on from there.
+// (Set through every select, each a frame after the game had moved the count on, a later select's stage had the
+// textures the game had already started loading for its own: one stage's shapes in another's textures, which put
+// themselves right over a few seconds.) The first select's are loaded later, so its setting holds. Its count is
+// 0 from Start, and no one has won yet (STREAK, the champion's wins: 0 only there; the count is 0 again after
+// Dural's stage, the game's own). A 2P select only (VERSUS: 1 there, 0 in a 1P game's, whose count is the CPU's
+// ladder). Checked over a 30,000-frame versus of 8 fights in vf2net: 3 (the place), 4 ... 9, Dural's; in step
+constexpr uint32_t STAGE = 0x64, FIGHTS = 0x5b, STREAK = 0xa2, VERSUS = 0x56;
 constexpr int STAGES = 10;
 
 // The score between the two players, read from the game's own RAM after each frame (as Fightcade's detectors do):
