@@ -114,42 +114,55 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 	int p1_first = 0, p2_last = 0;
 	if (!fight_hud(tiles, p1_first, p2_last)) return false;
 	constexpr int Y0 = 6 * 8, Y1 = Y0 + 15;
+	// each game's box (player 1's in columns 2-7, player 2's in 54-59: its ends, the frame's) and its checker: two plain
+	// columns (its two phases) next to each other, the first after the left end's frame. A name whose letters leave no
+	// two plain columns (JEFFRY: the J's hook against the frame, black between the letters) has the checker made as the
+	// game's is: black above, the light line below, between them black and see-through by turns, its frame a pixel
+	int box0[2] = { -1, -1 }, box1[2] = { -1, -1 }, plain[2] = { -1, -1 };
+	uint32_t col[2][2][16];
 	for (int p = 0; p < 2; p++) {
-		if (names[p].empty()) continue;
-		// the game's box: its columns (player 1's in columns 2-7, player 2's in 54-59), the frame's at its ends
-		const int c0 = p ? 54 : 2, x_from = ox + c0 * 8, x_to = x_from + 6 * 8 - 1;
-		int bx0 = -1, bx1 = -1;
+		const int x_from = ox + (p ? 54 : 2) * 8, x_to = x_from + 6 * 8 - 1;
 		for (int x = x_from; x <= x_to; x++)
 			for (int y = Y0; y <= Y1; y++)
-				if (top.pix(y, x)) { if (bx0 < 0) bx0 = x; bx1 = x; break; }
-		if (bx0 < 0 || bx1 - bx0 < 12) continue;
-		// two plain columns (the checker's two phases) next to each other, the first after the left end's frame
-		int fill = -1;
-		for (int x = bx0 + 1; x + 1 < bx1; x++)
-			if (plain_column(top, x, Y0, Y1) && plain_column(top, x + 1, Y0, Y1) && top.pix(Y0 + 4, x) != top.pix(Y0 + 4, x + 1)) { fill = x; break; }
-		if (fill < 0) continue;
+				if (top.pix(y, x)) { if (box0[p] < 0) box0[p] = x; box1[p] = x; break; }
+		if (box0[p] < 0 || box1[p] - box0[p] < 12) { box0[p] = -1; continue; }
+		for (int x = box0[p] + 1; x + 1 < box1[p]; x++)
+			if (plain_column(top, x, Y0, Y1) && plain_column(top, x + 1, Y0, Y1) && top.pix(Y0 + 4, x) != top.pix(Y0 + 4, x + 1)) { plain[p] = x; break; }
+		if (plain[p] >= 0)
+			for (int y = 0; y < 16; y++) { col[p][0][y] = top.pix(Y0 + y, plain[p]); col[p][1][y] = top.pix(Y0 + y, plain[p] + 1); }
+		else {
+			plain[p] = box0[p] + 1;
+			const uint32_t line = top.pix(Y1, (box0[p] + box1[p]) / 2);
+			for (int k = 0; k < 2; k++)
+				for (int y = 0; y < 16; y++)
+					col[p][k][y] = y == 0 ? 0xFF000000u : y == 15 ? line : (plain[p] + k + Y0 + y) & 1 ? 0 : 0xFF000000u;
+		}
+	}
+	for (int p = 0; p < 2; p++) {
+		if (names[p].empty() || box0[p] < 0) continue;
+		const int bx0 = box0[p], bx1 = box1[p], fill = plain[p];
 		const int left = fill - bx0, right = std::max(1, left);   // (the frame's columns at each end)
-		uint32_t col[2][16], edge_l[8][16], edge_r[8][16];
+		uint32_t edge_l[8][16], edge_r[8][16];
 		for (int y = 0; y < 16; y++) {
-			col[0][y] = top.pix(Y0 + y, fill);
-			col[1][y] = top.pix(Y0 + y, fill + 1);
 			for (int k = 0; k < left && k < 8; k++) edge_l[k][y] = top.pix(Y0 + y, bx0 + k);
 			for (int k = 0; k < right && k < 8; k++) edge_r[k][y] = top.pix(Y0 + y, bx1 - right + 1 + k);
 		}
-		// the name (and its flag, out from the middle, if it fits short of the round markers) and the box it needs
+		// the name (and its flag, out from the middle) and the box it needs, short of the round markers: closer together
+		// if it's tight (a long name, the most rounds), the name alone only if even that won't fit
 		const int tw = text_width(names[p]);
 		const Flag *fl = flags && flags[p] && flags[p]->w > 0 && flags[p]->h <= 12 ? flags[p] : nullptr;
-		const int gap = 3, pad = 3;
-		int inner = tw + (fl ? fl->w + gap : 0);
 		const int limit = p ? ox + (p2_last + 1) * 8 + 2 : ox + p1_first * 8 - 3;   // (the box never into the markers)
-		int need = std::max(bx1 - bx0 + 1, left + pad + inner + pad + right);
-		int nx0 = p ? bx1 - need + 1 : bx0, nx1 = p ? bx1 : bx0 + need - 1;
-		if (fl && (p ? nx0 < limit : nx1 > limit)) {   // (no room for the flag: the name alone)
-			fl = nullptr;
-			inner = tw;
+		int gap = 3, pad = 3, inner = 0, need = 0, nx0 = 0, nx1 = 0;
+		auto fit = [&] {
+			inner = tw + (fl ? fl->w + gap : 0);
 			need = std::max(bx1 - bx0 + 1, left + pad + inner + pad + right);
 			nx0 = p ? bx1 - need + 1 : bx0;
 			nx1 = p ? bx1 : bx0 + need - 1;
+			return !fl || (p ? nx0 >= limit : nx1 <= limit);
+		};
+		if (!fit()) {
+			gap = pad = 2;
+			if (!fit()) { gap = pad = 3; fl = nullptr; fit(); }
 		}
 		nx0 = std::max(nx0, 0);
 		nx1 = std::min(nx1, top.width() - 1);
@@ -159,7 +172,7 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 				uint32_t c;
 				if (x - nx0 < left) c = edge_l[x - nx0][y];
 				else if (nx1 - x < right) c = edge_r[right - 1 - (nx1 - x)][y];
-				else c = col[(x - fill) & 1][y];
+				else c = col[p][(x - fill) & 1][y];
 				top.pix(Y0 + y, x) = c;
 			}
 		// the name in it: player 1's from the left, player 2's to the right
