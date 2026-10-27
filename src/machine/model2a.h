@@ -325,6 +325,7 @@ public:
 	// the frames after it are no longer MAME's. False if the program isn't the one known. Before
 	// the boot reaches it (frame 85).
 	bool shorten_warning();
+	void restore_warning();   // (shorten_warning undone)
 	// Secret characters: the player select's Akira (either player's) is the fighter with this
 	// number instead: 9 Dural, 11 MUE and 12 KOJAC (Lion's body in Akira's moves, from the debug
 	// menu), 0 Akira himself. The select shows the fighter's portrait with Akira's name and
