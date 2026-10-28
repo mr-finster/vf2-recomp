@@ -64,6 +64,7 @@ int main(int argc, char **argv)
 	vfnet::SimWire::Params p{ 40, 8, 0 };
 	int delay = 2;
 	int stage = -1;
+	int vs_rounds = 0;   // --vs-rounds N: the host's Rounds to win (vs player), set before the match (tests: the guest plays it)
 	const char *hashes_path = nullptr;
 	bool interp = false, soft = false, synthetic = false;   // soft: each side's clock a little slower while ahead, as the game's
 	const char *usage = "usage: vf2net <vf2.zip> [--script FILE | --random SEED] [--frames N] [--latency MS] [--jitter MS] [--loss PERCENT] [--delay D] [--interp] [--soft]\n"
@@ -78,6 +79,7 @@ int main(int argc, char **argv)
 		else if (a == "--loss" && i + 1 < argc) p.loss = atof(argv[++i]) / 100;
 		else if (a == "--delay" && i + 1 < argc) delay = atoi(argv[++i]);
 		else if (a == "--stage" && i + 1 < argc) stage = atoi(argv[++i]);
+		else if (a == "--vs-rounds" && i + 1 < argc) vs_rounds = atoi(argv[++i]);
 		else if (a == "--hashes" && i + 1 < argc) hashes_path = argv[++i];
 		else if (a == "--interp") interp = true;
 		else if (a == "--soft") soft = true;
@@ -110,6 +112,11 @@ int main(int argc, char **argv)
 
 	// (the host's NVRAM: a fresh board's, as on a first run; the made-up ROM's with the settings in it)
 	if (synthetic) synthetic::settings(A.m->backup_ram());
+	if (vs_rounds) {   // (the host's settings as its own game wrote them, then the round count changed, as the menu does)
+		for (int i = 0; i < 600 && A.m->assignment(model2a::game_assignment::match_vs) < 0; i++) A.m->run_frame();
+		A.m->set_assignment(model2a::game_assignment::match_vs, vs_rounds);
+		printf("the host's Rounds to win (vs player): %d\n", A.m->assignment(model2a::game_assignment::match_vs));
+	}
 	std::vector<uint8_t> blob = vf2net::start_blob(*A.m);
 	if (stage >= 0) blob.back() = uint8_t(stage % vf2net::STAGES);
 	const uint64_t content = vf2net::content_hash(*A.m);
@@ -143,6 +150,7 @@ int main(int argc, char **argv)
 		if (!connected && sa.state() == vfnet::Session::State::running && sb.state() == vfnet::Session::State::running) {
 			connected = true;
 			printf("connected (both boots run) after %.1f s\n", std::chrono::duration<double>(Clock::now() - t0).count());
+			if (vs_rounds) printf("the guest's board plays Rounds to win (vs player): %d\n", B.m->assignment(model2a::game_assignment::match_vs));
 		}
 		if (t >= next_a) {
 			const auto s0 = Clock::now();
