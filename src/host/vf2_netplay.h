@@ -54,6 +54,12 @@ constexpr int MATCH_CULLING = 2;
 inline int scene_byte(const model2a &board) { return board.game_mode(); }
 inline bool in_select(const model2a &board) { return scene_byte(board) == 7; }
 
+// The select in lockstep (Session::set_lockstep) or not: off, the select played on guesses, as VF3's every public
+// release. On, it waited for the other side's inputs in the select, and after blips of its byte mid-match: VF3's
+// v0.1.11-alpha check (28 Oct, 180 ms through a relay) dropped fights to 40 fps where guessing held 57.5. The inputs
+// are the same either way (each side's own choice): the game, and the online version, unchanged
+constexpr bool SELECT_LOCKSTEP = false;
+
 // The fight's stage: work RAM 0x64 (0-9 the ten fighters' stages, 11 Dural's), which the game sets at each select
 // from its count of fights (0x5b: Start sets it to 0, each select moves it on by one, 10 is Dural's stage and the
 // next is 0 again) and the scene tools force (VF2_STAGE). A cold start counts from 0: every match's first fight was
