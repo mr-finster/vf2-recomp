@@ -5,7 +5,10 @@
 // state at every checkpoint. Reports the rollbacks and what a frame cost each side (the wall time of a session's
 // step: its rollback, its save and its frame). VF3's vf3net, for VF2.
 //   vf2net <vf2.zip> [--script FILE | --random SEED] [--frames N] [--latency MS] [--jitter MS] [--loss PERCENT]
-//          [--delay D] [--interp] [--soft]
+//          [--delay D] [--interp] [--soft] [--stage N] [--hashes FILE]
+// --stage N: the host's place in the stages' list (else a random one, as a match has). --hashes FILE: the straight
+// board's state hash every 30 frames ("frame hash", hex): a release's file against the last online release's says
+// whether the two play each other (docs: the online version); with --stage and --random, the same every run
 //   vf2net --synthetic ...: no ROM, the made-up one (tools/synthetic_rom.h), on the interpreter
 #include "../src/host/input_script.h"
 #include "../src/host/vf2_netplay.h"
@@ -60,6 +63,8 @@ int main(int argc, char **argv)
 	uint32_t seed = 1;
 	vfnet::SimWire::Params p{ 40, 8, 0 };
 	int delay = 2;
+	int stage = -1;
+	const char *hashes_path = nullptr;
 	bool interp = false, soft = false, synthetic = false;   // soft: each side's clock a little slower while ahead, as the game's
 	const char *usage = "usage: vf2net <vf2.zip> [--script FILE | --random SEED] [--frames N] [--latency MS] [--jitter MS] [--loss PERCENT] [--delay D] [--interp] [--soft]\n"
 	                    "       vf2net --synthetic [--frames N] ...\n";
@@ -72,6 +77,8 @@ int main(int argc, char **argv)
 		else if (a == "--jitter" && i + 1 < argc) p.jitter_ms = atof(argv[++i]);
 		else if (a == "--loss" && i + 1 < argc) p.loss = atof(argv[++i]) / 100;
 		else if (a == "--delay" && i + 1 < argc) delay = atoi(argv[++i]);
+		else if (a == "--stage" && i + 1 < argc) stage = atoi(argv[++i]);
+		else if (a == "--hashes" && i + 1 < argc) hashes_path = argv[++i];
 		else if (a == "--interp") interp = true;
 		else if (a == "--soft") soft = true;
 		else if (a == "--synthetic") synthetic = interp = true;
@@ -103,7 +110,8 @@ int main(int argc, char **argv)
 
 	// (the host's NVRAM: a fresh board's, as on a first run; the made-up ROM's with the settings in it)
 	if (synthetic) synthetic::settings(A.m->backup_ram());
-	const std::vector<uint8_t> blob = vf2net::start_blob(*A.m);
+	std::vector<uint8_t> blob = vf2net::start_blob(*A.m);
+	if (stage >= 0) blob.back() = uint8_t(stage % vf2net::STAGES);
 	const uint64_t content = vf2net::content_hash(*A.m);
 	if (content != vf2net::content_hash(*B.m)) { fprintf(stderr, "vf2net: the two boards' ROM hashes differ\n"); return 1; }
 
@@ -163,7 +171,7 @@ int main(int argc, char **argv)
 		auto pc = std::make_unique<Board>();
 		Board &C = *pc;
 		if (!C.open(load(), interp, error) || !C.adapter->begin(blob)) { fprintf(stderr, "vf2net: the straight board didn't start\n"); return 1; }
-		C.adapter->checkpoint_every = 300;
+		C.adapter->checkpoint_every = hashes_path ? 30 : 300;
 		C.adapter->sound_out = [&](const std::vector<uint8_t> &b) { straight_sound.insert(straight_sound.end(), b.begin(), b.end()); };
 		for (uint32_t f = 0; f < n; f++) {
 			const uint16_t in[2] = { sa.inputs(0)[f], sa.inputs(1)[f] };
@@ -180,8 +188,14 @@ int main(int argc, char **argv)
 				failed = true;
 				break;
 			}
+		if (hashes_path) {
+			FILE *hf = fopen(hashes_path, "w");
+			if (!hf) { fprintf(stderr, "vf2net: can't write %s\n", hashes_path); return 1; }
+			for (auto &[f, h] : C.adapter->checkpoints) if (f <= n) fprintf(hf, "%u %016llx\n", f, (unsigned long long)h);
+			fclose(hf);
+		}
 		for (auto &[f, h] : C.adapter->checkpoints) {
-			if (f > n) break;
+			if (f > n || f % 300) continue;
 			if (A.adapter->checkpoints[f] != h) { printf("the host's board differs from a straight run after frame %u\n", f); failed = true; break; }
 			if (B.adapter->checkpoints[f] != h) { printf("the guest's board differs from a straight run after frame %u\n", f); failed = true; break; }
 			checked++;
