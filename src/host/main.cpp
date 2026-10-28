@@ -559,9 +559,12 @@ struct settings
 	// settings.ini's version: 2 from v0.1.2 (none before). Its upgrades, once, as it's read:
 	//   2: the old default music volume, 20, to the new one, 50 (the music's stereo reverb mended:
 	//      at 20 it's now too quiet); a 20 chosen later is kept (the file then says version 2)
-	static constexpr int VERSION = 3;   // (3: GPU failures saved by older builds forgotten once)
+	//   4: Rounds to win (vs player) 2 (the factory's, every player's until now) to 3, VF3's and the tournaments' (in the
+	//      game's own settings, as the boot starts: vs_rounds_to_3); a 2 chosen later is kept
+	static constexpr int VERSION = 4;   // (3: GPU failures saved by older builds forgotten once)
 	int version = VERSION;
 	bool upgraded = false;   // (an upgrade made as it was read: saved at once)
+	bool vs_rounds_to_3 = false;   // (version 4's, for the boot: the game's settings aren't read yet)
 	// the 3D's renderer (Display > 3D renderer): 0 the CPU, 1 the GPU, 2 Auto (whichever is faster
 	// here); the GPU's quality (0 exact, 1 fast); and Auto's choices so far on this machine, by
 	// scale and antialiasing ("3x1:g 2x1:c": a start there starts on that one, then checks it)
@@ -610,6 +613,7 @@ struct settings
 			music = 50; upgraded = true;
 			fprintf(stderr, "settings: the music volume 20 (the old default) moved to 50, the new one\n");
 		}
+		if (version < 4) { vs_rounds_to_3 = true; upgraded = true; }
 		version = VERSION;
 		num("effects_volume", effects, 0, 100);
 		num("screen_filter", filter, 0, 2);
@@ -1013,6 +1017,17 @@ int main(int argc, char **argv)
 			// player's own choice after that (the menu's Version, the test mode) is kept. (The
 			// MAME comparisons are vf2run's, from MAME's own factory settings, not this.)
 			if (m.assignment(model2a::game_assignment::version) == 0) m.set_assignment(model2a::game_assignment::version, 1);
+			// and two players' matches first to 3 rounds, as VF3's and SEGA's tournaments (the factory's is 2); the
+			// player's choice after that kept
+			m.set_assignment(model2a::game_assignment::match_vs, 3);
+		}
+		// (settings.ini from before version 4: a 2, the old default, to 3 once, as a new player's)
+		if (cfg.vs_rounds_to_3) {
+			cfg.vs_rounds_to_3 = false;
+			if (m.assignment(model2a::game_assignment::match_vs) == 2 && m.set_assignment(model2a::game_assignment::match_vs, 3)) {
+				fprintf(stderr, "settings: Rounds to win (vs player) 2 (the old default) moved to 3, the new one\n");
+				save_nvram(false);
+			}
 		}
 		m.set_ring_width(cfg.ring);
 		if (!m.set_secret_character(cfg.secret)) fprintf(stderr, "secret character: not the program known\n");
