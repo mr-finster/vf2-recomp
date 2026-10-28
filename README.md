@@ -14,7 +14,7 @@ recompiled to native code, with render scales up to 6x, widescreen and smooth mo
 <p align="center">
   <a href="https://vf2-recomp.pages.dev/">Play</a> ·
   <a href="https://github.com/mr-finster/vf2-recomp/releases/latest">Download</a> ·
-  <a href="https://youtu.be/mpaUiJwlYu8">Trailer</a> ·
+  <a href="https://youtu.be/cUXXvIGlZ2c">Trailer</a> ·
   <a href="#status">Status</a> ·
   <a href="#controls">Controls</a> ·
   <a href="https://github.com/mr-finster/vf2-recomp/issues">Report a bug</a>
@@ -25,8 +25,8 @@ recompiled to native code, with render scales up to 6x, widescreen and smooth mo
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/mpaUiJwlYu8"><img src="https://img.youtube.com/vi/mpaUiJwlYu8/maxresdefault.jpg" alt="Watch the trailer" width="560"></a>
-  <br><sub>Trailer (click to watch on YouTube)</sub>
+  <a href="https://youtu.be/cUXXvIGlZ2c"><img src="https://img.youtube.com/vi/cUXXvIGlZ2c/maxresdefault.jpg" alt="Watch the trailer" width="560"></a>
+  <br><sub>The online trailer (click to watch on YouTube)</sub>
 </p>
 
 > [!IMPORTANT]
