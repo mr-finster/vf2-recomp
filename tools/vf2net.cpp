@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 	// (the host's NVRAM: a fresh board's, as on a first run; the made-up ROM's with the settings in it)
 	if (synthetic) synthetic::settings(A.m->backup_ram());
 	if (vs_rounds) {   // (the host's settings as its own game wrote them, then the round count changed, as the menu does)
-		for (int i = 0; i < 600 && A.m->assignment(model2a::game_assignment::match_vs) < 0; i++) A.m->run_frame();
+		if (!A.adapter->begin(vf2net::start_blob(*A.m))) { fprintf(stderr, "vf2net: the host's board didn't start\n"); return 1; }   // (its first boot writes its settings)
 		A.m->set_assignment(model2a::game_assignment::match_vs, vs_rounds);
 		printf("the host's Rounds to win (vs player): %d\n", A.m->assignment(model2a::game_assignment::match_vs));
 	}
