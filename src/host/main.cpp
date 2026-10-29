@@ -6,6 +6,7 @@
 //   vf2 [vf2.zip] [--arcade] [--fullscreen | --window] [--no-sound] [--music N] [--effects N]
 //       [--volume N] [--scale N] [--aspect fit|4:3|16:10|16:9|21:9] [--show-boot] [--no-scene-sync]
 //       [--interp] [--roms <folder>]
+//       [--host [--port N] | --join ADDRESS[:PORT]]   (online by address: a LAN or a VPN, as Online > Play by address)
 //
 // The game's i960 code is recompiled to native code from the player's ROM as it starts (src/rec,
 // tens of milliseconds); --interp (or VF2_INTERP=1) runs it on MAME's interpreter instead, the
@@ -811,6 +812,11 @@ int main(int argc, char **argv)
 	bool arg_arcade = false, sound = true, show_boot = false, no_scene_sync = false, arg_interp = false;
 	int arg_music = -1, arg_effects = -1, arg_volume = -1, arg_scale = 0, arg_aspect = -1, arg_full = -1;
 	std::string arg_roms;   // --roms <folder>: where the player's vf2.zip is (over VF2_ROMS and settings.ini's roms_folder)
+	// Playing by address from the command line (a LAN, a VPN): --host waits for a player, --join ADDRESS joins one;
+	// --port N the host's UDP port (7700); as Online > Play by address, started as the game is up
+	bool arg_host = false;
+	std::string arg_join;
+	int arg_port = 0;
 	for (int i = 1; i < argc; i++) {
 		const std::string a = argv[i];
 		if (a == "--arcade") arg_arcade = true;
@@ -830,6 +836,11 @@ int main(int argc, char **argv)
 		}
 		else if (a == "--show-boot") show_boot = true;
 		else if (a == "--no-scene-sync") no_scene_sync = true;
+		else if (a == "--host") arg_host = true;
+		else if (a == "--join" && i + 1 < argc) arg_join = argv[++i];
+		else if (a.rfind("--join=", 0) == 0) arg_join = a.substr(7);
+		else if (a == "--port" && i + 1 < argc) arg_port = std::clamp(atoi(argv[++i]), 1024, 65535);
+		else if (a.rfind("--port=", 0) == 0) arg_port = std::clamp(atoi(a.c_str() + 7), 1024, 65535);
 		else if (a.rfind("--", 0) == 0) { fprintf(stderr, "unknown option %s\n", a.c_str()); return 2; }
 		else if (a.rfind("-psn_", 0) == 0) {}   // (an old macOS's Finder adds its process number)
 		else {
@@ -3264,6 +3275,22 @@ int main(int argc, char **argv)
 		marker_done(false);
 		// (tests: a room hosted, or joined with its code, or a random opponent looked for, as the menu would, once the
 		// game's past its start)
+		if ((arg_host || !arg_join.empty()) && pass == 60) {   // (--host, --join: by address, the Online screen showing it)
+			online_page();   // (the identity, as opening the Online page sets it)
+			OnlineSettings os = cfg.online;
+			if (os.name.empty()) os.name = "PLAYER";   // (no name asked for: the command line's)
+			if (arg_port) os.port = arg_port;
+			if (!arg_join.empty()) os.address = online_menu::clean_address(arg_join);
+			std::string err;
+			if (!(arg_host ? online.host(os, err) : online.join(os, err))) fprintf(stderr, "online: %s: %s\n", arg_host ? "--host" : "--join", err.c_str());
+			else fprintf(stderr, "online: %s from the command line\n", arg_host ? "hosting by address" : ("joining " + os.address).c_str());
+			if (menu.ready()) {
+				if (menu.is_open()) menu.close();
+				menu.open(main_page());
+				menu.select_row(5);   // (Online)
+				menu.push(online_page());
+			}
+		}
 		static const char *test_host_room = getenv("VF2_HOST_ROOM"), *test_join_code = getenv("VF2_JOIN_CODE"), *test_random = getenv("VF2_RANDOM");
 		if ((test_host_room || test_join_code || test_random) && pass == 60) {
 			online_page();   // (the identity, as opening the Online page sets it)
