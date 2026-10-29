@@ -3816,7 +3816,7 @@ int main(int argc, char **argv)
 		crt_paint.draw(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, cfg.crt_colours, cfg.brightness, cfg.gamma);   // (CRT colours, brightness, gamma: the picture only)
 		draw_hud_flags();
 		draw_filter();
-		menu.render();
+		menu.render(true);   // (the FPS too: set_fps above leaves it empty while Show FPS is off)
 		pace.blit += SDL_GetTicksNS() - tb;
 		if (!running && gpu_pic.check_every) gpu_pic.report();
 		if (!running && g3.check_every)
