@@ -3280,7 +3280,7 @@ int main(int argc, char **argv)
 			OnlineSettings os = cfg.online;
 			if (os.name.empty()) os.name = "PLAYER";   // (no name asked for: the command line's)
 			if (arg_port) os.port = arg_port;
-			if (!arg_join.empty()) os.address = online_menu::clean_address(arg_join);
+			if (!arg_join.empty()) os.address = cfg.online.address = online_menu::clean_address(arg_join);   // (the Online screen says where)
 			std::string err;
 			if (!(arg_host ? online.host(os, err) : online.join(os, err))) fprintf(stderr, "online: %s: %s\n", arg_host ? "--host" : "--join", err.c_str());
 			else fprintf(stderr, "online: %s from the command line\n", arg_host ? "hosting by address" : ("joining " + os.address).c_str());
