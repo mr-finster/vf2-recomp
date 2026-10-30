@@ -199,6 +199,8 @@ Open the menu (Esc, or View / Select on a controller) and choose **Online**. The
 - It finds whoever else is searching, the nearest first (the best connection), and widens the search the longer you wait. **Stop** gives up.
 - You can play solo while you wait. The match takes over as soon as someone's found.
 - After a match, **New opponent** searches again.
+- **Random: max ping** (Online > Settings): Any, or 80 to 250 ms. A random opponent's ping is measured as you connect, before the match starts; over your limit, the game leaves and looks for someone else (and the two of you aren't matched again for 10 minutes). Room codes and addresses play whatever the ping.
+- **Match found chime** (Online > Settings): On (the default) plays a chime when an online match is found, and the game's window flashes in the taskbar or the Dock if it isn't the one in front, so you can wait for an opponent in another window.
 
 **HOST / JOIN: play a friend**
 1. One player picks **HOST**. It shows a 6-letter room code like `FR7-W25`. **Copy code** puts it on the clipboard: send it to your friend.

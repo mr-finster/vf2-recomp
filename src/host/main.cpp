@@ -152,6 +152,7 @@
 #include "menu.h"
 #include "crt_colours.h"
 #include "online.h"
+#include "chime.h"
 #include "flags.h"
 #include "controls.h"
 #include "sysinfo.h"
@@ -603,6 +604,8 @@ struct settings
 		num("online_port", online.port, 1024, 65535);
 		num("online_connection", online.show_connection, 0, 2);
 		flag("online_hide_ip", online.hide_ip);
+		num("online_max_ping", online.max_ping, 0, 1000);
+		flag("online_chime", online.chime);
 		num("picture_shape", aspect, 0, N_ASPECTS - 1);
 		num("volume", volume, 0, 100);
 		num("antialiasing", aa, 0, 3);   // 1 off, 0 Low (the 3D's edges smoothed: older builds read 0 as off), 2 and 3 drawn larger
@@ -696,7 +699,7 @@ struct settings
 				online.show_connection, online.port);
 		if (!online.address.empty()) fprintf(f, "online_address = %s\n", online.address.c_str());
 		if (!online.lobby.empty()) fprintf(f, "online_lobby = %s\n", online.lobby.c_str());
-		fprintf(f, "online_hide_ip = %d\n", int(online.hide_ip));
+		fprintf(f, "online_hide_ip = %d\nonline_max_ping = %d\nonline_chime = %d\n", int(online.hide_ip), online.max_ping, int(online.chime));
 		for (int p = 0; p < 2; p++) ctl[p].save(f, p);
 		const bool flushed = flush_to_disk(f);
 		if (fclose(f) == 0 && flushed && replace_file(path, tmp)) return true;
@@ -2103,6 +2106,7 @@ int main(int argc, char **argv)
 	};
 
 	SDL_AudioStream *audio = nullptr;
+	SDL_AudioStream *chime_stream = nullptr;   // (the match found chime's: opened the first time)
 	if (sound) {
 		SDL_AudioSpec spec{ SDL_AUDIO_S16, 2, model2a::SOUND_RATE };
 		audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
@@ -3025,6 +3029,7 @@ int main(int argc, char **argv)
 		Online::Notice n;
 		while (online.next_notice(n)) {
 			if (n.kind == Online::Notice::joined) {
+				if (cfg.online.chime) chime::play(chime_stream, win, audio && !hidden ? float(cfg.volume) / 100.0f : 0.0f);
 				match_on = true;
 				match_sound_start();
 				{   // the players' names under the energy bars (the name the other side was sent; theirs as the HUD can show it)
@@ -4203,6 +4208,7 @@ int main(int argc, char **argv)
 	save_nvram(true);
 	if (cfg_dirty && (quit_after < 0 || test_saves)) save_settings();
 	for (auto &[id, j] : vpads) { if (j) SDL_CloseJoystick(j); SDL_DetachVirtualJoystick(id); }
+	if (chime_stream) SDL_DestroyAudioStream(chime_stream);
 	crt_paint.release();
 	g3_free();
 	g3.dev.reset();   // (the GPU's 3D before the renderer whose device it may share)
