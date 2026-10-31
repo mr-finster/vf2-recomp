@@ -34,6 +34,8 @@
 #include <vector>
 #include <mutex>
 
+class random_fighters;
+
 class model2a : public mame_bus32
 {
 public:
@@ -332,6 +334,22 @@ public:
 	// profile. Takes effect as a cursor next moves onto him: set before the game starts (the
 	// menu restarts it). False for another number, or if the program isn't the one known.
 	bool set_secret_character(int fighter);
+	// Cheats' random fighters (random_fighter.cpp). Each player's fighter: "" the select as ever, "*" a random
+	// fighter, a new one each game, or a name's (as on its energy bar: a seed's, the same fighter on any machine).
+	// Anything but "" is picked for that player at the select: three of the cast made one, its head, body and limbs
+	// from the three, its commands dealt from them a button at a time, its stance and voice the first's, its name
+	// theirs blended. False (nothing changed) for a name no seed gives. Random opponents: every computer opponent
+	// a random fighter, made afresh for each match. Applied by apply_random_fighters (the menu restarts the game).
+	static constexpr uint32_t RANDOM_SEEDS = 32768;
+	bool set_random_player(int pl, const std::string &setting);
+	void set_random_opponents(bool on);
+	// The settings into the game's tables: the ROMs as loaded when none is on. The program changed (made again) when
+	// the first goes on or the last off. False if the program isn't the one known (then all off). Before a reset.
+	bool apply_random_fighters();
+	void random_fighters_off();   // (online play: all off, the ROMs as loaded, until the next apply)
+	const std::map<std::string, uint32_t> &random_fighter_names();   // (every name, its seed; made once)
+	bool random_fighters_on() const;
+	std::string random_fighter_name(int pl);   // (a player's fighter's now, "" none: the energy bar's)
 
 	// Milestones (TGP upload, IRQs, first scheduler dispatch...) as they happen, to stderr.
 	std::function<void(const std::string &)> on_milestone;
@@ -712,6 +730,14 @@ private:
 
 	// M2COMM link board (no link)
 	u8 m_m2comm_cn = 0, m_m2comm_fg = 0;
+
+	// Cheats' random fighters (random_fighter.cpp): made when first set, run after each frame while any is on
+	friend class random_fighters;
+	struct random_deleter { void operator()(random_fighters *) const; };
+	std::unique_ptr<random_fighters, random_deleter> m_random;
+	random_fighters &randoms();
+	void random_frame();
+	std::string m_random_hud[2];   // (the names under the energy bars offline: hud_names, under m_hud_mx)
 
 	// handlers by dword, for everything that isn't plain memory
 	u32 dev_read(u32 a, u32 mem_mask);

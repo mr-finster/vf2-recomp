@@ -42,7 +42,7 @@ FORCE:
 # runtime (src/rec: the code found with the address map, src/rec/vf2_map.cpp, made native at start-up)
 CORE = third_party/mame/i960/i960.cpp third_party/mame/i960/i960dis.cpp src/core/mame_shim.cpp src/core/mb86233.cpp \
 	src/core/i960_device.cpp src/rec/i960_rec.cpp src/rec/i960_analyse.cpp src/rec/i960_native.cpp src/rec/vf2_map.cpp
-MACHINE = src/machine/model2a.cpp src/machine/hud_names.cpp src/machine/model2_video.cpp src/machine/model2_smooth.cpp src/machine/scsp.cpp src/machine/scspdsp.cpp
+MACHINE = src/machine/model2a.cpp src/machine/random_fighter.cpp src/machine/hud_names.cpp src/machine/model2_video.cpp src/machine/model2_smooth.cpp src/machine/scsp.cpp src/machine/scspdsp.cpp
 # MAME's 68000 (the sound board's CPU): the generated instruction handlers, unchanged
 M68000 = third_party/mame/m68000/m68000.cpp third_party/mame/m68000/m68000-decode.cpp \
 	third_party/mame/m68000/m68000-sdf.cpp third_party/mame/m68000/m68000-sdp.cpp
@@ -154,6 +154,11 @@ $(BIN)/vf2soak: $(call objs,tools/vf2soak.cpp src/host/vf2_netplay.cpp src/host/
 
 # vf2net: two boards, each with its own session, through a simulated network, checked against a straight run
 $(BIN)/vf2net: $(call objs,tools/vf2net.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+
+# vf2random: Cheats' random fighters headless (a script's shots with each side's fighter and name; the seed book)
+$(BIN)/vf2random: $(call objs,tools/vf2random.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 

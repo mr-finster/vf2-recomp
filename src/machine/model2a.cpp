@@ -1180,6 +1180,7 @@ void model2a::run_frame()
 	take_audio();
 	m_scroll_hist[f % SCROLL_HIST] = { int64_t(f), m_tiles.tile_r(0x5002), m_tiles.tile_r(0x5006) };   // (smooth motion's backdrop)
 	record_scroll_input(f);
+	if (m_random) random_frame();   // (Cheats' random fighters: random_fighter.cpp)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2267,11 +2268,13 @@ void model2a::draw_2d(bool polygons, bool parts)
 		}
 	});
 	m_tiles.m_ox = 0;
-	{   // (online play: the players' names in place of their fighters', in the picture only)
+	{   // (online play: the players' names in place of their fighters', in the picture only; offline, a random fighter's)
 		std::lock_guard<std::mutex> lk(m_hud_mx);
-		if (!m_hud_names[0].empty() || !m_hud_names[1].empty()) {
+		const bool online = !m_hud_names[0].empty() || !m_hud_names[1].empty();
+		const std::string *names = online ? m_hud_names : m_random_hud;
+		if (!names[0].empty() || !names[1].empty()) {
 			const m2hud::Flag *fl[2] = { &m_hud_flags[0], &m_hud_flags[1] };
-			if (!m2hud::draw(m_tiles, m_sys24_top, e, m_hud_names, fl, m_hud_flag_at))
+			if (!m2hud::draw(m_tiles, m_sys24_top, e, names, online ? fl : nullptr, m_hud_flag_at))
 				for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
 		} else
 			for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;

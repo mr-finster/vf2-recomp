@@ -1,0 +1,40 @@
+# Random fighters (tools/vf2random, free play): both players start, take the fighter under their cursor (the
+# random ones are picked for them), then player 1 punches, kicks and walks in while player 2 stands
+at 900
+press start1 6
+wait 30
+press start2 6
+wait 60
+shot select
+wait 120
+press p1punch 4
+wait 10
+press p2punch 4
+wait 60
+shot picked
+wait 140
+shot vs
+wait 120
+shot stand
+wait 60
+hold p1right
+wait 40
+release p1right
+press p1punch 4
+wait 8
+shot punch
+wait 30
+press p1kick 4
+wait 10
+shot kick
+wait 40
+press p1punch+p1kick 4
+wait 12
+shot pk
+wait 60
+press p1down 4
+press p1kick 4
+wait 12
+shot lowkick
+wait 120
+shot later
