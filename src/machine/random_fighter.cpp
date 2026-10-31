@@ -25,7 +25,7 @@
 // Colours: a side's texture set is loaded with the fighter's number (0x142bc: ldob 1b0(g7), g2), which picks the
 // costume's colours; a random fighter's are its torso's. That read takes block +1b4 instead (+08's first byte), and
 // every record is given a copy of itself whose +08 names its own number: the cast's colours as they were.
-// Every byte changed is kept as it was (m_undo): off, the ROMs as loaded.
+// Every byte changed is kept as it was (undo): off, the ROMs as loaded.
 #include "model2a.h"
 #include <algorithm>
 #include <chrono>
@@ -80,12 +80,10 @@ public:
 	u32 rng = 0;
 	bool picking[2] = { false, false };
 	int cpu_made[2] = { -1, -1 };   // (the fighter number each side's computer opponent was made random on)
-	int human_base[2] = { -1, -1 }; // (each player's fighter's number without the costume, as last seen in a match)
 	bool at_select[2] = { false, false }, fighting[2] = { false, false }, from_select = false;   // (who's playing: frame)
 
 	// the ROMs: an address as the i960 sees it
 	u8 *at(u32 a) { return a < 0x200000 ? &prog[a] : &data[a - 0x02000000]; }
-	u32 rd(u32 a) { u32 v; memcpy(&v, at(a), 4); return v; }
 	const u8 *at0(u32 a, u32 n) const   // (as loaded: the part kept, else zeros)
 	{
 		static const u8 none[4] = {};
@@ -101,9 +99,8 @@ public:
 
 	u32 next(u32 n) { u32 &x = rng; if (!x) x = 1; x ^= x << 13; x ^= x >> 17; x ^= x << 5; return n ? x % n : 0; }
 
-	// a fighter number's record, its parts' list, the parts' others
+	// a fighter number's record (as loaded)
 	u32 record(int f) const { return rd0(RECORDS + 4 * u32(f)); }
-	u32 part(int f, int slot) const { return rd0(rd0(record(f)) + 4 * u32(slot)); }
 	int size_of(int f) const   // (its torso's length, the skeleton's second joint: 0 small (Pai, Sarah), 1, 2 big (Wolf, Jeffry))
 	{
 		float x; const u32 v = rd0(rd0(record(f) + 4) + 12); memcpy(&x, &v, 4);
@@ -126,7 +123,7 @@ public:
 	static std::string blend_name(const std::map<std::string, int> &made_of);
 	void build(int f, const plan &p);   // (fighter number f made the plan's fighter)
 	void own(int f);                    // (... and its own again)
-	void base_layer(bool on_now);
+	void base_layer();
 	void off();
 	void frame();
 	void code_changed();   // (the program's patched instructions: made again)
@@ -155,7 +152,7 @@ random_fighters::random_fighters(model2a &board)
 		{ ROUND_MOVES, 4 * 11 }, { BAR_NAMES_AT[0] - 4, 4 }, { BAR_NAMES_AT[1] - 4, 4 }, { BAR_NAMES[0], 4 * 22 } };
 	u32 crc = 0;
 	for (const auto &[a, n] : SPANS) crc = u32(::crc32(crc, a < 0x200000 ? &prog[a] : &data[a - 0x02000000], uInt(n)));
-	known = crc == KNOWN_CRC && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; });
+	known = crc == KNOWN_CRC && rd0(COLOUR_AT) == COLOUR_WAS && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; });
 	for (int b = 0; b < 13; b++)
 		for (u32 a = rd0(COMMANDS + 4 * u32(b)); a + 7 <= prog0.size() && prog0[a] == 0x0e && disp[b].size() < 200; a += 7)
 			disp[b].push_back({ u16(prog0[a + 1] | prog0[a + 2] << 8), rd0(a + 3) });
@@ -258,11 +255,10 @@ std::string random_fighters::blend_name(const std::map<std::string, int> &made_o
 // The base layer, while any random fighter is on: every record a copy of itself naming its own colours (+08), the
 // colours' read moved to it, and the voices, the round's end moves and the words a table of 13 (MUE's and KOJAC's
 // places read past the end of 11: what they read kept)
-void random_fighters::base_layer(bool on_now)
+void random_fighters::base_layer()
 {
-	if (on_now == base_on) return;
-	base_on = on_now;
-	if (!on_now) return;   // (off: all undone by off())
+	if (base_on) return;
+	base_on = true;
 	for (int f = 0; f < N_RECORDS; f++) {
 		const u32 copy = COPIES + HEADER * u32(f), colour = COLOURS + 0x40 * u32(f);
 		for (u32 k = 0; k < HEADER; k += 4) put32(copy + k, rd0(record(f) + k));
@@ -458,7 +454,6 @@ void random_fighters::frame()
 	for (int pl = 0; pl < 2; pl++) {
 		const bool human = match && (game == 8 && from_select ? at_select[pl] : game == 7 ? at_select[pl] : fighting[pl]);
 		const int bl = block(pl);
-		if (human && bl >= 0 && game == 9) human_base[pl] = ram[bl + 0x1b1];
 		// Random opponents: the computer's fighter made random on its own number at the VS screen (8), or on a match's
 		// first frame (round state 31 0: the next opponent of a 1P run, its number just set), as its match is about to
 		// load it (the next frame), never once it has (half one and half the other); not one a player has, nor the
@@ -544,11 +539,10 @@ bool model2a::apply_random_fighters()
 	if (!r.on) { r.off(); return !any; }
 	random_fighter_names();   // (made now, as the game boots unseen: a quarter of a second, a hitch at a select)
 	// (staying on: the fighters made undone, the base layer kept, so the program isn't made again)
-	if (!r.base_on) { r.off(); r.base_layer(true); }
+	if (!r.base_on) { r.off(); r.base_layer(); }
 	for (int f = 0; f < N_RECORDS; f++) if (!r.name_of[f].empty()) r.own(f);
 	r.picking[0] = r.picking[1] = false;
 	r.cpu_made[0] = r.cpu_made[1] = -1;
-	r.human_base[0] = r.human_base[1] = -1;
 	r.at_select[0] = r.at_select[1] = r.fighting[0] = r.fighting[1] = r.from_select = false;
 	// (each player's fighter made now too, for a match that starts without a select: a seed's as it plays)
 	for (int pl = 0; pl < 2; pl++)

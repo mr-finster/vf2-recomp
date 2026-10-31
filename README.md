@@ -57,8 +57,34 @@ screen's refresh rate.
 | The 3D drawn on the GPU (Display > 3D renderer: Auto, GPU or CPU) | Working on macOS (Metal), Windows (Direct3D 12 or Vulkan) and Linux / Steam Deck (Vulkan): the same picture as the CPU's, checked when the game starts; Auto uses the GPU unless it's clearly slower, and any difference or error falls back to the CPU |
 | Stereo reverb (the sound board's DSP) | Working: wide stereo, as on the cabinet (fixed in v0.1.2) |
 | Portable mode, your own ROM folder | Working |
+| Random fighters (Menu > Cheats): three of the cast made one, for a player or every computer opponent | Working (new: offline only for now) |
 | Secret characters (Menu > Cheats): Dural, MUE and KOJAC | Working |
 | Online play | Experimental: rollback netplay, a random opponent or a friend by room code, no setup (see [Online play](#online-play-experimental)) |
+
+## Random fighters
+
+Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
+
+- **Random:** a new fighter every game, made of three of the cast: its head, body and limbs from the three, and its
+  moves dealt from them a button at a time (its Punch moves one's, its Kick moves another's, its throws a third's, and
+  so on), so it plays like a mix of them, at the game's own timings. Its stance and voice are the first's, its colours
+  its torso's, and it gets a name made of theirs on the energy bar (SHUNWOLFGE, AKILAUPAI).
+- **Seed:** type a fighter's name, as seen on an energy bar, to get that fighter again: the same build and the same
+  moves on any machine.
+
+Anything but Normal is picked for you at the select (whoever you choose). **Random opponents** makes every computer
+opponent a random fighter, made afresh for each match (not your own fighter's mirror match). Changing them restarts
+the game. Not online yet: an online match plays the game as it is on both sides.
+
+**How it works.** VF2 loads a fighter by its number from tables: its record (its body's 16 parts, skeleton, sizes,
+textures), its faces, its commands, its voices. A random fighter is a record of its own, its parts taken from the three
+fighters' records, and the tables pointed at the three's entries: player 1's is made in MUE's place (fighter 11) and
+player 2's in KOJAC's (12), which the select never gives, and the player's pick is changed to it once they've chosen.
+The commands are a dispatch on the buttons pressed, each to a program of checks ending in a move; moves are numbered
+for the whole game, so a random fighter's dispatch can send each button to a different fighter's program. A side's
+colours are loaded by the fighter's number: one instruction of the game's now reads them from the fighter's record,
+each of the cast's records naming its own, so a random fighter wears its torso's. The game's code is otherwise
+untouched, and every byte changed is put back when they're off.
 
 ## Secret characters
 
@@ -87,7 +113,8 @@ for either player, in any mode.
 | KOJAC | Lion's portrait; Akira's name and profile | JACKY | Lion's body in a white vest, with Akira's moves and voice but Lion's stance and walk |
 
 They take Akira's place, so Akira can't be picked while one is on; the computer's own fighters, Dural at the end of
-arcade mode included, are unchanged.
+arcade mode included, are unchanged. MUE and KOJAC are off while a player's fighter is Random or Seed (those are made
+in their places).
 
 The arcade's own Dural code works too, the arcade way (Menu > Game > Play style): on Version 2.1 (the default), hold
 Start while you pick any fighter. The PC way, Start is a tap, so a pick confirmed or a menu closed with Start never
@@ -359,7 +386,9 @@ The release packages: `tools/mac/package.sh` (Mac), `tools/win/build.sh` (Window
 
 `build/bin/vf2run` runs the board headless (pictures, RAM dumps, raw sound, an input script such as
 `tools/scripts/start_game.txt`); `tools/compare.py` and `tools/sound_compare.py` compare its output with MAME's.
-The address map is made from coverage runs (`vf2run --cov`, then `make map`). `make rec` also recompiles the
+`make build/bin/vf2random` builds the random fighters' headless runner: a script's shots with each side's fighter and
+its name (`tools/scripts/random_versus.txt`, `random_1p.txt`), the seed book (`--names`) and a check that an online
+match starts with them off (`--online`). The address map is made from coverage runs (`vf2run --cov`, then `make map`). `make rec` also recompiles the
 program to C++ (into `build/`, from your `roms/vf2.zip`: never committed) for `build/bin/vf2lock`, which runs the
 interpreter and the recompiled code side by side and compares the CPU's whole state, the clocks, the RAMs and the
 pictures as they go. `vf2 --interp` and `vf2run --interp` run the interpreter.

@@ -1,0 +1,71 @@
+# Random fighters (tools/vf2random, free play): player 1 alone loses (--ko 1@F), continues and picks again: a
+# Random player's fighter is new at each select, a Seed's the same
+at 900
+press start1 6
+wait 90
+press p1punch 4
+wait 400
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
+press start1 6
+wait 70
+press p1punch 4
+wait 70
