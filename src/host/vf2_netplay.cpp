@@ -108,6 +108,7 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	// uses, the host's secret character, the WARNING shortened), the FREE PLAY notices hidden, the sound board
 	// held and the byte link (they cut the CPUs' time differently)
 	// (each only on the program known: the ROMs' hashes being the same, both sides patch alike)
+	board.random_fighters_off();   // (Cheats' random fighters: not online yet, the ROMs as loaded on both sides)
 	board.set_scenery_culling(MATCH_CULLING);
 	board.set_secret_character(secret);
 	board.shorten_warning();

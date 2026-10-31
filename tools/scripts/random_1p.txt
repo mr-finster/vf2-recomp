@@ -1,0 +1,20 @@
+# Random fighters (tools/vf2random, free play), one player against the computer: start, take the fighter under the
+# cursor (a random one is picked for the player), then stand while --ko 2@F wins each round; Start now and then
+# for any screen that waits for it
+at 900
+press start1 6
+wait 90
+shot select
+wait 30
+press p1punch 4
+wait 60
+shot picked
+wait 3000
+press start1 6
+wait 3000
+press start1 6
+wait 3000
+press start1 6
+wait 3000
+press start1 6
+wait 3000

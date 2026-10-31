@@ -1,0 +1,18 @@
+# Random fighters (tools/vf2random, free play): player 1 starts alone (a random fighter picked for them), fights the
+# computer; player 2 comes in as a challenger, picks, and the two fight: player 1 keeps their fighter
+at 900
+press start1 6
+wait 90
+press p1punch 4
+wait 400
+shot alone
+wait 200
+press start2 6
+wait 90
+shot challenger
+wait 30
+press p2punch 4
+wait 300
+shot versus
+wait 200
+shot versus2

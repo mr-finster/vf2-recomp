@@ -682,6 +682,9 @@ struct settings
 	int crt_colours = 0, brightness = 100, gamma = 100;   // the picture's colours: an arcade monitor's (crt::PRESETS), the player's brightness and gamma (%)
 	int pipelined_at = 0;
 	int secret = 0;   // Cheats > Secret character: the fighter in Akira's place (model2a::set_secret_character), 0 none
+	std::string random_player[2];   // Cheats: each player's fighter: "" the select as ever, "*" a random one each game, or a name's (model2a::set_random_player)
+	std::string random_named[2];    // (each player's last name typed: Left / Right come back to it)
+	bool random_cpu = false;        // Cheats: Random opponents, every computer opponent a random fighter
 	// settings.ini's version: 2 from v0.1.2 (none before). Its upgrades, once, as it's read:
 	//   2: the old default music volume, 20, to the new one, 50 (the music's stereo reverb mended:
 	//      at 20 it's now too quiet); a 20 chosen later is kept (the file then says version 2)
@@ -780,6 +783,12 @@ struct settings
 		num("arcade_coins", arcade_coin, -2, 0x18);
 		num("secret_character", secret, 0, 12);
 		if (secret != 9 && secret != 11 && secret != 12) secret = 0;
+		auto trimmed = [](std::string v) { while (!v.empty() && isspace(uint8_t(v.back()))) v.pop_back(); return v; };   // (a value edited by hand: "* ")
+		for (int p = 0; p < 2; p++) {
+			if (auto it = kv.find(p ? "random_p2" : "random_p1"); it != kv.end()) random_player[p] = trimmed(it->second) == "normal" ? std::string() : trimmed(it->second);
+			if (auto it = kv.find(p ? "random_p2_name" : "random_p1_name"); it != kv.end()) random_named[p] = trimmed(it->second);
+		}
+		flag("random_opponents", random_cpu);
 		if (ring && (ring < 1300 || ring % 100)) ring = 0;   // 0: by difficulty
 		flag("fullscreen", fullscreen);
 		flag("frame_timings", timings);
@@ -821,6 +830,12 @@ struct settings
 		if (!log) fprintf(f, "log = 0\n");
 		fprintf(f, "renderer_3d = %d\ngpu_quality = %d\nauto_3d = %s\n", renderer3d, gpu_quality, auto3d.c_str());
 		fprintf(f, "secret_character = %d\n", secret);
+		for (int p = 0; p < 2; p++) {
+			// (Normal written as "normal": an empty value isn't read back)
+			fprintf(f, "random_p%d = %s\n", p + 1, random_player[p].empty() ? "normal" : random_player[p].c_str());
+			if (!random_named[p].empty()) fprintf(f, "random_p%d_name = %s\n", p + 1, random_named[p].c_str());
+		}
+		if (random_cpu) fprintf(f, "random_opponents = 1\n");
 		fprintf(f, "crt_colours = %d\nbrightness = %d\ngamma = %d\n", crt_colours, brightness, gamma);
 		if (graphics) fprintf(f, "graphics = %d\n", graphics);
 		if (!gpu3d_failed.empty()) fprintf(f, "gpu_3d_failed = %s\n", gpu3d_failed.c_str());
@@ -1200,7 +1215,20 @@ int main(int argc, char **argv)
 			}
 		}
 		m.set_ring_width(cfg.ring);
-		if (!m.set_secret_character(cfg.secret)) fprintf(stderr, "secret character: not the program known\n");
+		// Cheats' fighters (random_fighter.cpp): each player's; a name no seed gives now plays as Random. A player's
+		// random fighter is made in MUE's or KOJAC's place, so the Secret character's MUE and KOJAC are off meanwhile
+		for (int p = 0; p < 2; p++)
+			if (!m.set_random_player(p, cfg.random_player[p])) {
+				if (cfg.random_named[p] == cfg.random_player[p]) cfg.random_named[p].clear();
+				cfg.random_player[p] = "*";
+				m.set_random_player(p, "*");
+				cfg_dirty = true;
+			}
+		m.set_random_opponents(cfg.random_cpu);
+		const bool random_players = !cfg.random_player[0].empty() || !cfg.random_player[1].empty();
+		const int secret = random_players && (cfg.secret == 11 || cfg.secret == 12) ? 0 : cfg.secret;
+		if (!m.set_secret_character(secret)) fprintf(stderr, "secret character: not the program known\n");
+		if (!m.apply_random_fighters()) fprintf(stderr, "random fighters: not the program known\n");
 		// The PC way plays free: the arcade's coin setting is kept (settings.ini's arcade_coins) before
 		// FREE PLAY replaces it, and the arcade way gives it back. Free play the PC way set before it
 		// was kept (earlier builds) gives back the factory's (a coin a credit); FREE PLAY the player
@@ -2594,7 +2622,7 @@ int main(int argc, char **argv)
 	// Reset (the menu, F3): the menu closes, a paused game unpauses, and the screen goes black at
 	// once while the boot runs unseen, not the last picture held.
 	// the arcade settings as their page opened (and the ring): see arcade_page
-	std::optional<std::array<int, 9>> assign_before;
+	std::optional<std::array<int, 11>> assign_before;
 	auto reset_game = [&] {
 		// (never on a match's board: the host's settings booted, the same on both sides; end_match gives this player's
 		// back first)
@@ -2792,12 +2820,14 @@ int main(int argc, char **argv)
 	// starts, so closing the menu after changing one restarts it (only if something is different) ----
 	using ga = model2a::game_assignment;
 	constexpr int N_ASSIGN = 7;
-	static_assert(std::tuple_size_v<decltype(assign_before)::value_type> == N_ASSIGN + 2);
+	static_assert(std::tuple_size_v<decltype(assign_before)::value_type> == N_ASSIGN + 4);
 	auto assignments_now = [&] {
-		std::array<int, N_ASSIGN + 2> v;
+		std::array<int, N_ASSIGN + 4> v;
 		for (int i = 0; i < N_ASSIGN; i++) v[i] = m.assignment(ga(i));
 		v[N_ASSIGN] = cfg.ring;
 		v[N_ASSIGN + 1] = cfg.secret;   // (Cheats: the select sets the fighter as it opens, so it restarts too)
+		v[N_ASSIGN + 2] = cfg.random_cpu;   // (and the random fighters: each player's, Random opponents)
+		v[N_ASSIGN + 3] = int(std::hash<std::string>{}(cfg.random_player[0] + "/" + cfg.random_player[1]));
 		return v;
 	};
 	auto arcade_page = [&] {
@@ -2836,14 +2866,106 @@ int main(int argc, char **argv)
 		p.items.push_back(back_item());
 		return p;
 	};
-	// ---- cheats: the secret characters (in Akira's place) ----
-	auto cheats_page = [&] {
+	// ---- cheats: each player's fighter (random fighters), Random opponents, the secret characters (in Akira's place) ----
+	// Each player's fighter's row state: typing a seed in it, what was typed, a mistake; and where the page put the
+	// rows (to make it again with the same one selected)
+	struct seed_entry { bool typing = false, pending = false; std::string typed, error; };   // (pending: Seed chosen, none typed yet: plays as Random)
+	std::shared_ptr<seed_entry> seed_st[2] = { std::make_shared<seed_entry>(), std::make_shared<seed_entry>() };
+	int fighter_row[2] = { 0, 0 }, fighter_sub[2] = { -1, -1 };
+	std::function<menu_page()> cheats_page;
+	// (out here: the rows' functions outlive the page's making)
+	auto kind_of = [&](int pl) { const std::string &v = cfg.random_player[pl]; return v.empty() ? 0 : v == "*" ? 1 : 2; };
+	static const char *KINDS[] = { "Normal", "Random", "Seed" };
+	auto rebuild = [&](int pl, bool sub) { menu_page pg = cheats_page(); menu.replace(std::move(pg), sub && fighter_sub[pl] >= 0 ? fighter_sub[pl] : fighter_row[pl]); };
+	cheats_page = [&] {
 		if (!assign_before) assign_before = assignments_now();
 		menu_page p{ "Cheats: a change restarts the game when the menu closes", "", {} };
+		auto heading = [&](const char *t) { menu_item h{ t, "", {}, {}, {}, true }; h.heading = true; p.items.push_back(h); };
+		heading("FIGHTERS");
+		// Each player's fighter (Normal, Random, Seed), and under it, when it's Seed, a row of its own for the seed
+		// (typed right in it, a mistake said under it). Anything but Normal is picked for that player at the select
+		for (int pl = 0; pl < 2; pl++) {
+			auto st = seed_st[pl];
+			auto entry = std::make_shared<std::function<bool(const SDL_Event &)>>();
+			static const char *HINT = "Letters type   Backspace delete   Enter play it   Esc cancel   "
+									  "(a pad: Up / Down the letter, Right the next, Left delete, A play it, B cancel)";
+			auto set_kind = [&, pl](const std::string &v) { cfg.random_player[pl] = v; if (v != "" && v != "*") cfg.random_named[pl] = v; cfg_dirty = true; };
+			auto start_typing = [&, pl, st, entry] {
+				st->typing = true; st->typed.clear(); st->error.clear();
+				rebuild(pl, true);
+				menu.capture(HINT, *entry, [&, pl, st] { st->typing = false; st->error.clear(); rebuild(pl, false); });
+			};
+			*entry = [&, pl, st, set_kind](const SDL_Event &e) {
+				bool enter = false;
+				if (e.type == SDL_EVENT_KEY_DOWN) {
+					const SDL_Scancode sc = e.key.scancode;
+					SDL_Keycode k = e.key.key;   // (the letter on the key, the keyboard's layout: AZERTY's A is the scancode's Q)
+					if (k == SDLK_UNKNOWN && sc >= SDL_SCANCODE_A && sc <= SDL_SCANCODE_Z) k = SDLK_A + (sc - SDL_SCANCODE_A);   // (none given: by its place)
+					if (k >= SDLK_A && k <= SDLK_Z) { if (st->typed.size() < 12) st->typed += char('A' + (k - SDLK_A)); }
+					else if (sc == SDL_SCANCODE_BACKSPACE) { if (!st->typed.empty()) st->typed.pop_back(); }
+					else if (sc == SDL_SCANCODE_RETURN || sc == SDL_SCANCODE_KP_ENTER) enter = true;
+					else return false;
+				} else if (e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+					std::string &t = st->typed;
+					auto turn = [&](int d) { if (t.empty()) t.push_back('A'); else t.back() = char('A' + ((t.back() - 'A' + d) % 26 + 26) % 26); };
+					switch (e.gbutton.button) {
+					case SDL_GAMEPAD_BUTTON_EAST: st->typing = false; st->error.clear(); rebuild(pl, false); return true;   // (B: as it was)
+					case SDL_GAMEPAD_BUTTON_SOUTH: enter = true; break;
+					case SDL_GAMEPAD_BUTTON_DPAD_UP: turn(+1); break;
+					case SDL_GAMEPAD_BUTTON_DPAD_DOWN: turn(-1); break;
+					case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: if (t.size() < 12) t.push_back(t.empty() ? 'A' : t.back()); break;
+					case SDL_GAMEPAD_BUTTON_DPAD_LEFT: if (!t.empty()) t.pop_back(); break;
+					default: return false;
+					}
+				} else
+					return false;
+				st->error.clear();
+				if (enter) {
+					if (st->typed.empty()) st->error = "Type a seed: a random fighter's name, from its energy bar";
+					else if (!m.random_fighter_names().count(st->typed)) st->error = "No fighter has the seed " + st->typed;
+					else { set_kind(st->typed); st->typing = st->pending = false; rebuild(pl, true); return true; }
+				}
+				menu.refresh();
+				return false;
+			};
+			fighter_row[pl] = int(p.items.size());
+			p.items.push_back({ pl ? "Player 2 fighter" : "Player 1 fighter",
+				"Normal: pick at the select. Random: a new fighter every game, made of three of the cast: head, body and limbs "
+				"from the three, its moves dealt from them. Seed: one such fighter by its name, the same on any machine. Anything "
+				"but Normal is picked for you at the select (in MUE's and KOJAC's places: Secret character's MUE and KOJAC are off meanwhile).",
+				[&, pl, st] { return std::string(KINDS[st->typing || st->pending ? 2 : kind_of(pl)]); },
+				[&, pl, st, set_kind](int d) {
+					const int k = wrap((st->pending ? 2 : kind_of(pl)) + d, 3);
+					st->typing = st->pending = false; st->error.clear();
+					if (k == 0) set_kind("");
+					else if (k == 1) set_kind("*");
+					else if (!cfg.random_named[pl].empty() && m.random_fighter_names().count(cfg.random_named[pl])) set_kind(cfg.random_named[pl]);
+					else { st->pending = true; set_kind("*"); }   // (no seed yet: Random until one is typed in its row)
+					rebuild(pl, false);
+				},
+				{}, false,
+				[&, pl, st, set_kind] { st->typing = st->pending = false; set_kind(""); rebuild(pl, false); } });
+			fighter_sub[pl] = -1;
+			if ((st->typing || st->pending ? 2 : kind_of(pl)) == 2) {
+				fighter_sub[pl] = int(p.items.size());
+				menu_item it{ "Seed",
+					"A random fighter's name, from its energy bar: the same seed is the same fighter, looks and moves, on any machine. Enter: type a new one.",
+					[&, pl, st] { return st->typing ? st->typed + "_" : st->pending ? std::string("Enter to type a seed (Random till then)") : cfg.random_player[pl]; },
+					{}, start_typing };
+				it.below = [st] { return st->typing ? st->error : std::string(); };
+				it.sub = true;
+				p.items.push_back(it);
+			}
+		}
+		p.items.push_back({ "Random opponents",
+			"Every computer opponent a random fighter, looks and moves, made afresh for each match (not one you're playing as).",
+			[&] { return on_off(cfg.random_cpu); },
+			[&](int) { cfg.random_cpu = !cfg.random_cpu; cfg_dirty = true; } });   // (applied as the game restarts)
+		heading("SECRET CHARACTERS");
 		static const int SECRET[] = { 0, 9, 11, 12 };
 		static const char *SECRET_NAMES[] = { "Off", "Dural", "MUE", "KOJAC" };
 		p.items.push_back({ "Secret character",
-			"Puts a fighter the arcade never let you pick in Akira's spot on the player select, for either player: Dural, the final boss, or MUE and KOJAC, two unused fighters left in the game (Lion's body with Akira's moves, from its debug menu). The select shows their portrait with Akira's name and profile.",
+			"Puts a fighter the arcade never let you pick in Akira's spot on the player select, for either player: Dural, the final boss, or MUE and KOJAC, two unused fighters left in the game (Lion's body with Akira's moves, from its debug menu). The select shows their portrait with Akira's name and profile. MUE and KOJAC are off while a player's fighter is Random or Seed.",
 			[&] { return std::string(SECRET_NAMES[std::find(std::begin(SECRET), std::end(SECRET), cfg.secret) - std::begin(SECRET)]); },
 			[&](int d) {
 				const int i = int(std::find(std::begin(SECRET), std::end(SECRET), cfg.secret) - std::begin(SECRET));
@@ -3341,7 +3463,7 @@ int main(int argc, char **argv)
 							[&] { menu.push(arcade_page()); } });
 		p.items.push_back({ "Online", "Play someone over the network: a random opponent, or a friend with a room code.", {}, {}, [&] { menu.push(online_page()); } });
 		p.items.push_back({ "Controls", "Each player's controller, keys and buttons.", {}, {}, [&] { menu.push(controls_page()); } });
-		p.items.push_back({ "Cheats", "Play as Dural, or as MUE or KOJAC, unused fighters left in the game. Changing it restarts the game.", {}, {}, [&] { menu.push(cheats_page()); } });
+		p.items.push_back({ "Cheats", "Random fighters (three of the cast made one, for you or every computer opponent), or play as Dural, MUE or KOJAC, unused fighters left in the game. Changing them restarts the game.", {}, {}, [&] { menu.push(cheats_page()); } });
 		p.items.push_back({ "Quit", "Saves and closes the game.", {}, {}, [&] { running = false; } });
 		return p;
 	};

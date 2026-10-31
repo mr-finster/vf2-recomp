@@ -35,6 +35,9 @@
 namespace {
 
 constexpr u32 RECORDS = 0x0200620c, FACE_LISTS = 0x02006278, COMMANDS = 0x0001d1fc, ATTACH = 0x00061cfc;
+// the select's portrait: its head from this face table by fighter (0x31c94), its textures by the slot's (0x33e90, from
+// the slot table 33e4c): a random fighter's head in another's portrait textures. At the select, the slot's own face
+constexpr u32 PORTRAIT_FACES = 0x020063a4, SLOTS = 0x00033e4c;
 constexpr u32 VOICES = 0x0201e44c, ROUND_MOVES = 0x0201cc04, ROUND_MOVES_AT = 0x0003b38c, WORDS_PTR = 0x0201cba8;
 constexpr u32 COLOUR_AT = 0x000142bc, COLOUR_WAS = 0x8095e1b0, COLOUR_NOW = 0x8095e1b4;   // ldob 0x1b0(g7),g2 -> 0x1b4
 // the energy bars' names, a picture each (player 1's side's 201e044, player 2's 201e070, 11 each: KOJAC's on player 2's
@@ -73,10 +76,12 @@ public:
 	std::map<u32, u8> undo;         // (each byte changed, by its address as the i960 sees it: as it was)
 	std::map<std::string, u32> names;
 	std::string name_of[N_RECORDS];  // (each fighter number's random fighter, "" none)
+	int head_of[N_RECORDS] = {};     // (... and its head's base number)
 	u32 rng = 0;
 	bool picking[2] = { false, false };
 	int cpu_made[2] = { -1, -1 };   // (the fighter number each side's computer opponent was made random on)
 	int human_base[2] = { -1, -1 }; // (each player's fighter's number without the costume, as last seen in a match)
+	bool at_select[2] = { false, false }, fighting[2] = { false, false }, from_select = false;   // (who's playing: frame)
 
 	// the ROMs: an address as the i960 sees it
 	u8 *at(u32 a) { return a < 0x200000 ? &prog[a] : &data[a - 0x02000000]; }
@@ -392,6 +397,7 @@ void random_fighters::build(int f, const plan &p)
 	// (its energy bar's name: the first's picture, the box the name is drawn in over it, hud_names)
 	for (int side = 0; side < 2; side++) put32(BAR_COPIES + 0x40 * u32(side) + 4 * u32(b), rd0(BAR_NAMES[side] + 4 * u32(p.three[0])));
 	name_of[f] = p.name;
+	head_of[f] = p.head;
 	if (f >= 11 && f <= 12) name_of[f + 13] = p.name;
 	if (getenv("VF2_RANDLOG")) {   // TESTONLY
 		fprintf(stderr, "MADE %d %s: %s+%s+%s head %s torso %d arms %d/%d hands %d legs %d/%d/%d keys %zu share %d%%\n", f, p.name.c_str(),
@@ -426,37 +432,47 @@ void random_fighters::frame()
 	auto block = [&](int pl) -> int { const u32 b = rd_ram(0x804 + 4 * u32(pl)); return b >= 0x500000 && b - 0x500000 + 0x200 < ram.size() ? int(b - 0x500000) : -1; };
 	const u8 game = ram[0x2b];
 	// (the select's objects, player 1's at [50083c], player 2's at [500840]: +4 the side, the first word's bit 31
-	// on, 3 in, 1 picking (clear once picked))
+	// on, 3 in (kept after the select), 1 picking (clear once picked))
 	for (int pl = 0; pl < 2; pl++) {
 		const u32 o = rd_ram(pl ? 0x840 : 0x83c);
 		const bool there = game == 7 && o >= 0x500000 && o - 0x500000 + 8 < ram.size() && ram[o - 0x500000 + 4] == pl;
 		const u32 flags = there ? rd_ram(o - 0x500000) : 0;
 		const bool in = (flags >> 31) && (flags & 8), now_picking = in && (flags & 2);
+		if (game == 7) at_select[pl] = (flags & 8) != 0;   // (bit 31 goes on the select's last frame, 3 stays)
 		if (!mode[pl]) { picking[pl] = false; continue; }
 		const int carrier = 11 + pl;
 		if (now_picking && !picking[pl]) { build(carrier, make_plan(seed_for(pl))); }
 		picking[pl] = now_picking;
 		const int bl = block(pl);
 		if (in && !now_picking && bl >= 0) { ram[bl + 0x1b0] = u8(carrier); ram[bl + 0x1b1] = u8(carrier); }
+		// (its portrait: the slot's own face while the select's up (the slot its object's +6), its own after)
+		const u8 slot = there ? ram[o - 0x500000 + 6] : 0xff;
+		const int face = slot < 11 ? prog[SLOTS + slot] % 13 : head_of[carrier];
+		if (!name_of[carrier].empty()) put32(PORTRAIT_FACES + 4 * u32(carrier), rd0(PORTRAIT_FACES + 4 * u32(face)));
 	}
-	// the players in a match: work RAM 4c, 2 both, 1 player 2 alone, 0 player 1 alone (in a select or a fight)
+	// Who's playing: work RAM 4c in a fight (2 both, 1 player 2 alone, 0 player 1 alone; set as it starts), and
+	// at the VS screen (8) the select's just over, else the last fight's
+	if (game == 7) from_select = true;
+	if (game == 9) { from_select = false; for (int pl = 0; pl < 2; pl++) fighting[pl] = ram[0x4c] == 2 || ram[0x4c] == (pl ? 1 : 0); }
 	const bool match = game >= 7 && game <= 9;
-	const u8 who = ram[0x4c];
 	for (int pl = 0; pl < 2; pl++) {
-		const bool human = match && (who == 2 || who == (pl ? 1 : 0));
+		const bool human = match && (game == 8 && from_select ? at_select[pl] : game == 7 ? at_select[pl] : fighting[pl]);
 		const int bl = block(pl);
-		if (human && bl >= 0) human_base[pl] = ram[bl + 0x1b1];
-		// Random opponents: the computer's fighter, in a match's VS screen or fight, made random on its own number
-		// (not one a player has, nor the fighter's own number when a player is that fighter: a mirror match's)
+		if (human && bl >= 0 && game == 9) human_base[pl] = ram[bl + 0x1b1];
+		// Random opponents: the computer's fighter made random on its own number at the VS screen (8), or on a match's
+		// first frame (round state 31 0: the next opponent of a 1P run, its number just set), as its match is about to
+		// load it (the next frame), never once it has (half one and half the other); not one a player has, nor the
+		// number of a fighter a player is (a mirror match's other costume: the tables by fighter are both costumes')
 		if (!cpu || human || bl < 0) {
 			if (cpu_made[pl] >= 0 && (!match || human)) { own(cpu_made[pl]); cpu_made[pl] = -1; }
 			continue;
 		}
-		const int f = (game == 8 || game == 9) ? ram[bl + 0x1b0] : -1;
-		if (f < 0 || f >= N_RECORDS || f == cpu_made[pl]) continue;
+		if (game != 8 && !(game == 9 && ram[0x31] == 0)) continue;
+		const int f = ram[bl + 0x1b0];
+		if (f >= N_RECORDS || f == cpu_made[pl]) continue;
 		if (cpu_made[pl] >= 0) { own(cpu_made[pl]); cpu_made[pl] = -1; }
-		const int other = human_base[pl ^ 1];
-		if (f % 13 >= 11 || f % 13 == other) continue;
+		const int other = bl >= 0 && block(pl ^ 1) >= 0 ? ram[block(pl ^ 1) + 0x1b1] : -1;
+		if (f % 13 >= 11 || f % 13 == other % 13) continue;
 		build(f, make_plan(random_named()));
 		cpu_made[pl] = f;
 	}
@@ -526,12 +542,14 @@ bool model2a::apply_random_fighters()
 	const bool any = r.mode[0] || r.mode[1] || r.cpu;
 	r.on = any && r.known;
 	if (!r.on) { r.off(); return !any; }
+	random_fighter_names();   // (made now, as the game boots unseen: a quarter of a second, a hitch at a select)
 	// (staying on: the fighters made undone, the base layer kept, so the program isn't made again)
 	if (!r.base_on) { r.off(); r.base_layer(true); }
 	for (int f = 0; f < N_RECORDS; f++) if (!r.name_of[f].empty()) r.own(f);
 	r.picking[0] = r.picking[1] = false;
 	r.cpu_made[0] = r.cpu_made[1] = -1;
 	r.human_base[0] = r.human_base[1] = -1;
+	r.at_select[0] = r.at_select[1] = r.fighting[0] = r.fighting[1] = r.from_select = false;
 	// (each player's fighter made now too, for a match that starts without a select: a seed's as it plays)
 	for (int pl = 0; pl < 2; pl++)
 		if (r.mode[pl]) r.build(11 + pl, r.make_plan(r.seed_for(pl)));

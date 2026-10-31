@@ -158,7 +158,7 @@ $(BIN)/vf2net: $(call objs,tools/vf2net.cpp src/host/vf2_netplay.cpp src/host/st
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 # vf2random: Cheats' random fighters headless (a script's shots with each side's fighter and name; the seed book)
-$(BIN)/vf2random: $(call objs,tools/vf2random.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000)) $(SLJIT_OBJ)
+$(BIN)/vf2random: $(call objs,tools/vf2random.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 

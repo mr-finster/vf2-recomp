@@ -1,13 +1,21 @@
 // vf2random: Cheats' random fighters headless (src/machine/random_fighter.cpp). Boots on free play, sets each
 // player's fighter and Random opponents, plays an input script (src/host/input_script.h) and writes its shots
 // (each with its frame's fighters: their numbers and the names on their energy bars). --names: the seed book's
-// size and its first names; --check SEED,...: each seed's name, made twice, the same.
-//   vf2random <vf2.zip> <script> [--out dir] [--p1 SETTING] [--p2 SETTING] [--opponents] [--scale N]
+// size and its first names. --online: a board that played with random fighters on, and one that never had them,
+// each started as an online match (vf2net::Adapter::begin: all off), then given the same random inputs for --frames
+// frames (default 3000): their states the same at every 60th.
+// --ko P@F: from frame F on, player P (1 or 2) knocked out in every round (as vf2run's: a 1P run through its
+// matches); each match's fight is shot too, 150 frames in (matchN.png), with its fighters. --every N: a shot every
+// N frames too (fNNNNNN.png).
+//   vf2random <vf2.zip> <script> [--out dir] [--p1 SETTING] [--p2 SETTING] [--opponents] [--scale N] [--ko P@F]
 //   vf2random <vf2.zip> --names
+//   vf2random <vf2.zip> --online [--frames N]
 // SETTING: "" (Normal), "*" (Random) or a name (a Seed). The pictures are ROM-derived: never commit them.
 #include "../src/machine/model2a.h"
 #include "../src/host/png.h"
 #include "../src/host/input_script.h"
+#include "../src/host/vf2_netplay.h"
+#include "random_players.h"
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -21,7 +29,10 @@ int main(int argc, char **argv)
 		return 2;
 	}
 	std::string script_path, out = "build/random", setting[2];
-	bool opponents = false, list_names = false;
+	bool opponents = false, list_names = false, online = false;
+	long frames = 3000;
+	int ko = 0, every = 0;
+	uint64_t ko_from = 0;
 	int scale = 1;
 	for (int i = 2; i < argc; i++) {
 		const std::string a = argv[i];
@@ -32,6 +43,10 @@ int main(int argc, char **argv)
 		else if (a == "--opponents") opponents = true;
 		else if (a == "--scale") scale = atoi(next().c_str());
 		else if (a == "--names") list_names = true;
+		else if (a == "--online") online = true;
+		else if (a == "--frames") frames = atol(next().c_str());
+		else if (a == "--every") every = atoi(next().c_str());
+		else if (a == "--ko") { const std::string v = next(); ko = atoi(v.c_str()); const size_t at = v.find('@'); ko_from = at == std::string::npos ? 0 : strtoull(v.c_str() + at + 1, nullptr, 10); }
 		else if (a[0] != '-' && script_path.empty()) script_path = a;
 		else { fprintf(stderr, "vf2random: %s?\n", a.c_str()); return 2; }
 	}
@@ -46,6 +61,44 @@ int main(int argc, char **argv)
 		for (const auto &[name, seed] : names)
 			if (n++ < 40) printf("%-10s seed %u\n", name.c_str(), seed);
 		return names.empty() ? 1 : 0;
+	}
+	if (online) {
+		// (the second board: the same ROMs, never a random fighter)
+		romset::result roms2 = romset::load(argv[1]);
+		auto pb = std::make_unique<model2a>(std::move(roms2));
+		model2a &b = *pb;
+		m.set_draw_3d(false); b.set_draw_3d(false);
+		m.set_random_player(0, "*"); m.set_random_player(1, "AKILAUPAI"); m.set_random_opponents(true);
+		m.reset();
+		for (int i = 0; i < 120 && !m.force_free_play() && !m.free_play(); i++) m.run_frame();
+		m.apply_random_fighters();
+		m.reset();
+		players::Random warm(7);
+		for (int f = 0; f < 3000; f++) {   // (a game on the first: the random fighters made, picked and fought)
+			const players::Ports p = warm.next(uint64_t(f));
+			m.m_in0 = uint8_t(~p.in0); m.m_in1 = uint8_t(~p.in1); m.m_in2 = uint8_t(~p.in2);
+			m.run_frame();
+		}
+		printf("before: random fighters %s, names [%s] [%s]\n", m.random_fighters_on() ? "on" : "off", m.random_fighter_name(0).c_str(), m.random_fighter_name(1).c_str());
+		vf2net::Adapter ad(m), bd(b);
+		const std::vector<uint8_t> blob = vf2net::start_blob(b);
+		if (!ad.begin(blob) || !bd.begin(blob)) { fprintf(stderr, "vf2random: a match's start failed\n"); return 1; }
+		players::Random rnd(1);
+		std::vector<uint8_t> sa, sb;
+		int checked = 0;
+		for (long f = 0; f < frames; f++) {
+			const players::Ports p = rnd.next(uint64_t(f));
+			const uint16_t in[2] = { vf2net::pack(uint8_t(~p.in0), uint8_t(~p.in1), 0), vf2net::pack(uint8_t(~p.in0), uint8_t(~p.in2), 1) };
+			ad.advance(in, false);
+			bd.advance(in, false);
+			if (f % 60 == 59) {
+				ad.save(sa); bd.save(sb);
+				if (ad.hash(sa) != bd.hash(sb)) { printf("online: the states differ at frame %ld\n", f); return 1; }
+				checked++;
+			}
+		}
+		printf("online: the same, %d states checked over %ld frames (random fighters %s)\n", checked, frames, m.random_fighters_on() ? "on" : "off");
+		return 0;
 	}
 	input_script script;
 	std::string err;
@@ -62,18 +115,37 @@ int main(int argc, char **argv)
 	m.reset();
 	std::filesystem::create_directories(out);
 	uint8_t ports[input_script::N_PORTS];
+	auto shoot = [&](const std::string &name, uint64_t f) {
+		const bitmap_rgb32 &b = m.render(true);
+		const std::string path = out + "/" + name + ".png";
+		write_png(path.c_str(), b.data(), b.width(), b.height());
+		u32 blk[2] = { m.peek32(0x500804), m.peek32(0x500808) };
+		printf("%s (frame %llu, mode %u): fighters %u %u, names [%s] [%s]\n", path.c_str(), (unsigned long long)f, m.game_mode(),
+			blk[0] ? m.read_byte(blk[0] + 0x1b0) : 0xffu, blk[1] ? m.read_byte(blk[1] + 0x1b0) : 0xffu,
+			m.random_fighter_name(0).c_str(), m.random_fighter_name(1).c_str());
+		fflush(stdout);
+	};
+	int matches = 0, was_mode = -1, was_fighters = -1;
+	uint64_t match_shot = UINT64_MAX;
 	for (uint64_t f = 0; f <= script.end; f++) {
 		m.run_frame();
 		auto [first, last] = script.shots.equal_range(f);
-		for (auto it = first; it != last; ++it) {
-			const bitmap_rgb32 &b = m.render(true);
-			const std::string path = out + "/" + it->second + ".png";
-			write_png(path.c_str(), b.data(), b.width(), b.height());
-			u32 blk[2] = { m.peek32(0x500804), m.peek32(0x500808) };
-			printf("%s (frame %llu, mode %u): fighters %u %u, names [%s] [%s]\n", path.c_str(), (unsigned long long)f, m.game_mode(),
-				blk[0] ? m.read_byte(blk[0] + 0x1b0) : 0xffu, blk[1] ? m.read_byte(blk[1] + 0x1b0) : 0xffu,
-				m.random_fighter_name(0).c_str(), m.random_fighter_name(1).c_str());
-			fflush(stdout);
+		for (auto it = first; it != last; ++it) shoot(it->second, f);
+		// (each match's first fight: shot 150 frames in; a match after a VS screen, or the next of a 1P run, its
+		// opponent's number new)
+		const u32 b2 = m.peek32(0x500808), b1 = m.peek32(0x500804);
+		const int fighters = (b1 ? m.read_byte(b1 + 0x1b0) : 0xff) << 8 | (b2 ? m.read_byte(b2 + 0x1b0) : 0xff);
+		if (m.game_mode() == 9 && (was_mode == 8 || (fighters != was_fighters && match_shot == UINT64_MAX))) match_shot = f + 150;
+		was_mode = m.game_mode();
+		was_fighters = fighters;
+		if (f == match_shot) { shoot("match" + std::to_string(++matches), f); match_shot = UINT64_MAX; }
+		if (every > 0 && f % uint64_t(every) == 0) { char n[32]; snprintf(n, sizeof n, "f%06llu", (unsigned long long)f); shoot(n, f); }
+		if (ko && f >= ko_from && m.workram()[0x2b] == 9 && m.workram()[0x31] == 9) {   // (vf2run's --ko)
+			const u32 block = ko == 1 ? 0x510980 : 0x512980;
+			if (int16_t(m.peek32(block + 0x1ac)) > 0 && !(m.peek32(block) & 0x20)) {
+				m.write_word(block + 0x1ac, 0);
+				m.write_dword(block, m.peek32(block) | 0x20);
+			}
 		}
 		script.apply(f, ports);
 		m.m_in0 = ports[input_script::IN0]; m.m_in1 = ports[input_script::IN1];
