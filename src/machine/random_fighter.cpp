@@ -508,6 +508,32 @@ std::string model2a::random_fighter_name(int pl)
 	return m_random_hud[pl];
 }
 
+std::string model2a::random_fighter_makeup(const std::string &name)
+{
+	const auto &all = random_fighter_names();
+	const auto it = all.find(name);
+	if (it == all.end()) return "";
+	random_fighters &r = randoms();
+	const u32 was = r.rng;
+	const random_fighters::plan p = r.make_plan(it->second);
+	r.rng = was;
+	auto who = [](int rec) { std::string n = NAME[rec % 13]; for (size_t i = 1; i < n.size(); i++) n[i] = char(tolower(u8(n[i]))); return n; };
+	auto list = [&](std::initializer_list<int> recs) {
+		std::string out;
+		for (int rec : recs) if (out.find(who(rec)) == std::string::npos) out += (out.empty() ? "" : ", ") + who(rec);
+		return out;
+	};
+	std::string moves;
+	static const char *const BUTTON[8] = { "none", "P", "K", "P+K", "G", "P+G", "K+G", "P+K+G" };
+	for (int i = 0; i < 3; i++) {
+		std::string mine;
+		for (const auto &[g, giver] : p.giver) if (giver == i) mine += std::string(mine.empty() ? "" : " ") + (g < 8 ? BUTTON[g] : "other");
+		moves += (i ? "; " : "") + who(p.three[i]) + (mine.empty() ? "" : " " + mine);
+	}
+	return who(p.head) + "|" + list({ p.rec[0] }) + "|" + list({ p.rec[1], p.rec[2] }) + "|" + list({ p.rec[3] }) + "|" +
+		list({ p.rec[4], p.rec[5], p.rec[6] }) + "|" + moves + "|" + who(p.three[0]);
+}
+
 void model2a::random_frame()
 {
 	if (m_random && m_random->on) m_random->frame();

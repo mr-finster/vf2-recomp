@@ -9,6 +9,7 @@
 // N frames too (fNNNNNN.png).
 //   vf2random <vf2.zip> <script> [--out dir] [--p1 SETTING] [--p2 SETTING] [--opponents] [--scale N] [--ko P@F]
 //   vf2random <vf2.zip> --names
+//   vf2random <vf2.zip> --book            (every name, what it's made of: head, torso, arms, hands, legs, moves, voice)
 //   vf2random <vf2.zip> --online [--frames N]
 // SETTING: "" (Normal), "*" (Random) or a name (a Seed). The pictures are ROM-derived: never commit them.
 #include "../src/machine/model2a.h"
@@ -29,7 +30,7 @@ int main(int argc, char **argv)
 		return 2;
 	}
 	std::string script_path, out = "build/random", setting[2];
-	bool opponents = false, list_names = false, online = false;
+	bool opponents = false, list_names = false, online = false, book = false;
 	long frames = 3000;
 	int ko = 0, every = 0;
 	uint64_t ko_from = 0;
@@ -44,6 +45,7 @@ int main(int argc, char **argv)
 		else if (a == "--scale") scale = atoi(next().c_str());
 		else if (a == "--names") list_names = true;
 		else if (a == "--online") online = true;
+		else if (a == "--book") book = true;
 		else if (a == "--frames") frames = atol(next().c_str());
 		else if (a == "--every") every = atoi(next().c_str());
 		else if (a == "--ko") { const std::string v = next(); ko = atoi(v.c_str()); const size_t at = v.find('@'); ko_from = at == std::string::npos ? 0 : strtoull(v.c_str() + at + 1, nullptr, 10); }
@@ -61,6 +63,17 @@ int main(int argc, char **argv)
 		for (const auto &[name, seed] : names)
 			if (n++ < 40) printf("%-10s seed %u\n", name.c_str(), seed);
 		return names.empty() ? 1 : 0;
+	}
+	if (book) {
+		printf("| Seed | Head | Torso | Arms | Hands | Legs | Moves (stance first; button groups dealt) | Voice |\n|---|---|---|---|---|---|---|---|\n");
+		for (const auto &[name, seed] : m.random_fighter_names()) {
+			std::string row = m.random_fighter_makeup(name);
+			for (char &c : row) if (c == '|') c = '\x01';
+			std::string cells;
+			for (char c : row) cells += c == '\x01' ? std::string(" | ") : std::string(1, c);
+			printf("| %s | %s |\n", name.c_str(), cells.c_str());
+		}
+		return 0;
 	}
 	if (online) {
 		// (the second board: the same ROMs, never a random fighter)

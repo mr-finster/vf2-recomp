@@ -350,6 +350,8 @@ public:
 	const std::map<std::string, uint32_t> &random_fighter_names();   // (every name, its seed; made once)
 	bool random_fighters_on() const;
 	std::string random_fighter_name(int pl);   // (a player's fighter's now, "" none: the energy bar's)
+	// What a seed's fighter is made of, by whose: "head|torso|arms|hands|legs|moves (button groups)|voice" ("" none)
+	std::string random_fighter_makeup(const std::string &name);
 
 	// Milestones (TGP upload, IRQs, first scheduler dispatch...) as they happen, to stderr.
 	std::function<void(const std::string &)> on_milestone;
