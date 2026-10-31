@@ -19,27 +19,26 @@
 //   - 61cfc, what swings from the head (Akira's headband's ends, braids); 201e44c, the voices (18 kinds, 11
 //     fighters each); 201cc04 a move at a round's end, and 201cbee a word, each by fighter
 // MUE and KOJAC are Lion's record with Akira's commands, and so free: player 1's random fighter is made as fighter
-// 11, player 2's as 12, and picked for them at the select once they've chosen. The computer's random opponent is
+// 11, player 2's as 12, and picked for them as the select ends (the VS screen). The computer's random opponent is
 // made on its own fighter's tables as its match loads (not one a player has picked).
 //
 // Colours: a side's texture set is loaded with the fighter's number (0x142bc: ldob 1b0(g7), g2), which picks the
-// costume's colours; a random fighter's are its torso's. That read takes block +1b4 instead (+08's first byte), and
-// every record is given a copy of itself whose +08 names its own number: the cast's colours as they were.
+// costume's colours (the skin, the clothes' main colour, the faces' textures: hair, belts and shoes are shared colours).
+// That read takes block +1b4 instead (+08's first byte), and every record is given a copy of itself whose +08 names
+// its own number: the cast's colours as they were. A random fighter's are its head's (its face, hair and skin as
+// they are), its clothes' main colour and the textures' recoloured each game (colours), in a table of its own.
 // Every byte changed is kept as it was (undo): off, the ROMs as loaded.
 #include "model2a.h"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <zlib.h>
 
 namespace {
 
 constexpr u32 RECORDS = 0x0200620c, FACE_LISTS = 0x02006278, COMMANDS = 0x0001d1fc, ATTACH = 0x00061cfc;
-// the select's portrait: its head from this face table by fighter (0x31c94), its textures by the slot's (0x33e90, from
-// the slot table 33e4c): a random fighter's head in another's portrait textures. At the select, the slot's own face
-constexpr u32 PORTRAIT_FACES = 0x020063a4, SLOTS = 0x00033e4c;
 constexpr u32 VOICES = 0x0201e44c, ROUND_MOVES = 0x0201cc04, ROUND_MOVES_AT = 0x0003b38c, WORDS_PTR = 0x0201cba8;
-constexpr u32 COLOUR_AT = 0x000142bc, COLOUR_WAS = 0x8095e1b0, COLOUR_NOW = 0x8095e1b4;   // ldob 0x1b0(g7),g2 -> 0x1b4
 // the energy bars' names, a picture each (player 1's side's 201e044, player 2's 201e070, 11 each: KOJAC's on player 2's
 // side read past the end, and had no box), read by two ld's (their addresses' words)
 constexpr u32 BAR_NAMES[2] = { 0x0201e044, 0x0201e070 }, BAR_NAMES_AT[2] = { 0x0002ccac, 0x0002ccbc };
@@ -49,6 +48,51 @@ constexpr u32 FREE_AT = 0x1c0000, FREE_END = 0x1fef00;
 constexpr u32 COPIES = FREE_AT, COLOURS = FREE_AT + 0x1000, VOICE_COPIES = FREE_AT + 0x2000;
 constexpr u32 ROUND_COPY = FREE_AT + 0x2800, WORDS_COPY = FREE_AT + 0x2900, BAR_COPIES = FREE_AT + 0x2a00;
 constexpr u32 MADE_AT = FREE_AT + 0x4000, MADE = 0x1000;
+// A side's colours, loaded by the colour's number n (block +1b4, COLOUR_AT): seven rows of 16 (the faces' and details'
+// textures) from 2105800 + n * 0x2a0 (0x754), and two ramps of 64, the skin and the main colour (the clothes, shaded),
+// from 2101000 + n * 0x300 (0x8e0; and 0x7a0 two rows of 16 lighter from them); a second costume's from 2107780 and
+// 0x2400 on (by the block's +1b0, the costume). Each channel a level, 116 black to 255, through the colour adjust's
+// table (544000). Relocated: a table each, one entry a number (0-25 the cast's as read, then the random fighters'),
+// the costumes' split gone; the reloads by the block's number (Shun's drinks, 0x4772c) by the colour's
+constexpr u32 FLAT = 0x02105800, FLAT2 = 0x02107780, RAMPS = 0x02101000, FLAT_SIZE = 0x2a0, RAMP_SIZE = 0x300;
+constexpr u32 FLAT_NEW = 0x1e0000, RAMP_NEW = 0x1e6000, COLOUR_AT = 0x000142bc;
+constexpr u32 COLOUR_NUMBER[3] = { 26, 27, 28 };   // (player 1's random fighter's, player 2's, the computer's)
+struct patch { u32 at, was, now; };
+constexpr patch PATCHES[] = {
+	{ 0x000142bc, 0x8095e1b0, 0x8095e1b4 },        // (the texture set's colours: ldob 0x1b0(g7),g2 -> 0x1b4)
+	{ 0x00000778, FLAT, FLAT_NEW },                 // (lda 2105800,g3)
+	{ 0x00000784, 0x316ba014, 0x08000014 },        // (cmpobg 13,r14: a second costume's table -> b, never)
+	{ 0x000007ac, RAMPS + 0x20, RAMP_NEW + 0x20 },  // (lda 2101020,g3: the lighter rows)
+	{ 0x000007c4, RAMPS + 0x1a0, RAMP_NEW + 0x1a0 },
+	{ 0x00000900, 0x316ba00c, 0x0800000c },        // (the ramps' cmpobg 13,r14 -> b)
+	{ 0x00000980, RAMPS, RAMP_NEW },                // (lda 2101000(r3),r7)
+	{ 0x00000c2c, 0x8088e1b0, 0x8088e1b4 },        // (Shun's drinks' reload: ldob 0x1b0(r3),g1 -> 0x1b4)
+	{ 0x00000c5c, 0x8088e1b0, 0x8088e1b4 },
+	{ 0x0004775c, 0x8088e1b0, 0x8088e1b4 },        // (both sides' ramps again, 0x4772c)
+	{ 0x00047770, 0x8088e1b0, 0x8088e1b4 } };
+
+// the colour levels as 0-1, and as hue, saturation, value
+float level(u16 v) { return std::clamp((float(v) - 116.f) / 139.f, 0.f, 1.f); }
+u16 raw(float x) { return u16(std::lround(116.f + std::clamp(x, 0.f, 1.f) * 139.f)); }
+struct hsv { float h = 0, s = 0, v = 0; };
+hsv to_hsv(float r, float g, float b)
+{
+	const float mx = std::max({ r, g, b }), mn = std::min({ r, g, b }), d = mx - mn;
+	hsv c{ 0, mx > 0 ? d / mx : 0, mx };
+	if (d > 0) { c.h = mx == r ? (g - b) / d : mx == g ? 2 + (b - r) / d : 4 + (r - g) / d; c.h /= 6; if (c.h < 0) c.h += 1; }
+	return c;
+}
+void to_rgb(const hsv &c, float &r, float &g, float &b)
+{
+	const float h = std::fmod(c.h + 1, 1.f), x = c.v * c.s * (1 - std::fabs(std::fmod(h * 6, 2.f) - 1)), m = c.v - c.v * c.s, k = c.v * c.s;
+	r = g = b = 0;
+	switch (int(h * 6) % 6) { case 0: r = k, g = x; break; case 1: r = x, g = k; break; case 2: g = k, b = x; break; case 3: g = x, b = k; break; case 4: r = x, b = k; break; default: r = k, b = x; }
+	r += m; g += m; b += m;
+}
+// (VF1's: skin, eyes and teeth (white or light grey), a mouth's full red)
+bool is_skin(const hsv &c) { return c.h > 0.015f && c.h < 0.13f && c.s > 0.15f && c.s < 0.75f && c.v > 0.45f; }
+// the clothes' themes, VF1's: a turn round the colour wheel most; black and white, black and gold the rare ones
+enum { THEME_TURN, THEME_BW, THEME_BLACK_GOLD, THEME_COOL, THEME_WARM, THEME_OPPOSITE, THEME_NEON, THEME_PASTEL, THEMES };
 // (the program and its tables as known: a CRC of the spans this reads and changes)
 constexpr u32 KNOWN_CRC = 0xc4b50cfa;
 // the cast random fighters are made of (by number: Akira to Shun, and Lion), and Dural, whose looks are anyone's now and then
@@ -76,7 +120,7 @@ public:
 	std::map<u32, u8> undo;         // (each byte changed, by its address as the i960 sees it: as it was)
 	std::map<std::string, u32> names;
 	std::string name_of[N_RECORDS];  // (each fighter number's random fighter, "" none)
-	int head_of[N_RECORDS] = {};     // (... and its head's base number)
+	int head_of[N_RECORDS] = {};     // (... and its head's fighter, without the costume)
 	u32 rng = 0;
 	bool picking[2] = { false, false };
 	int cpu_made[2] = { -1, -1 };   // (the fighter number each side's computer opponent was made random on)
@@ -93,6 +137,7 @@ public:
 	}
 	u32 rd0(u32 a) const { u32 v; memcpy(&v, at0(a, 4), 4); return v; }
 	u16 rd0_16(u32 a) const { u16 v; memcpy(&v, at0(a, 2), 2); return v; }
+	u16 rd16(u32 a) { u16 v; memcpy(&v, at(a), 2); return v; }   // (the ROMs as they are: the colours, never changed)
 	void put8(u32 a, u8 v) { u8 &b = *at(a); if (b == v) return; undo.emplace(a, b); b = v; }
 	void put32(u32 a, u32 v) { for (int k = 0; k < 4; k++) put8(a + k, u8(v >> (8 * k))); }
 	void put16(u32 a, u16 v) { put8(a, u8(v)); put8(a + 1, u8(v >> 8)); }
@@ -127,6 +172,9 @@ public:
 	void off();
 	void frame();
 	void code_changed();   // (the program's patched instructions: made again)
+	u32 colour_rng = 0;    // (the colours' draw: the clock's, new each game; not the seed's)
+	u32 next_colour(u32 n);
+	void colours(u32 n, int giver);   // (colour number n: the giver's colours, recoloured)
 	u32 seed_for(int pl);
 	u32 random_named();
 };
@@ -152,7 +200,7 @@ random_fighters::random_fighters(model2a &board)
 		{ ROUND_MOVES, 4 * 11 }, { BAR_NAMES_AT[0] - 4, 4 }, { BAR_NAMES_AT[1] - 4, 4 }, { BAR_NAMES[0], 4 * 22 } };
 	u32 crc = 0;
 	for (const auto &[a, n] : SPANS) crc = u32(::crc32(crc, a < 0x200000 ? &prog[a] : &data[a - 0x02000000], uInt(n)));
-	known = crc == KNOWN_CRC && rd0(COLOUR_AT) == COLOUR_WAS && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; });
+	known = crc == KNOWN_CRC && std::all_of(std::begin(PATCHES), std::end(PATCHES), [&](const patch &k) { return rd0(k.at) == k.was; }) && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; });
 	for (int b = 0; b < 13; b++)
 		for (u32 a = rd0(COMMANDS + 4 * u32(b)); a + 7 <= prog0.size() && prog0[a] == 0x0e && disp[b].size() < 200; a += 7)
 			disp[b].push_back({ u16(prog0[a + 1] | prog0[a + 2] << 8), rd0(a + 3) });
@@ -168,7 +216,8 @@ random_fighters::plan random_fighters::make_plan(u32 s)
 	for (int i = 0; i < 3; i++)
 		do p.three[i] = CAST[next(u32(n_cast))]; while ((i > 0 && p.three[i] == p.three[0]) || (i == 2 && p.three[2] == p.three[1]));
 	auto costume = [&](int base) { return base + (next(2) ? 13 : 0); };
-	// who gives each group of its looks: each of the three at least once; one in four anyone's (Dural's too)
+	// who gives each group of its looks: each of the three at least once; one in four anyone's (never Dural's: her
+	// limbs are chrome, dark in another's colours; the group's owner's then, the draws as they were)
 	int owner[7];
 	for (int &o : owner) o = int(next(3));
 	for (int who = 0; who < 3; who++)
@@ -180,7 +229,8 @@ random_fighters::plan random_fighters::make_plan(u32 s)
 	std::map<std::string, int> made_of, look;   // (its name's weights, and its looks' by whose they are)
 	for (int g = 0; g < 7; g++) {
 		const bool anyone = g != G_TORSO && next(4) == 0;
-		const int base = anyone ? (next(12) == 0 ? DURAL : CAST[next(u32(n_cast))]) : p.three[owner[g]];
+		int base = p.three[owner[g]];
+		if (anyone && next(12) != 0) base = CAST[next(u32(n_cast))];
 		p.rec[g] = costume(base);
 		if (!anyone) made_of[NAME[base]] += g == G_TORSO ? 2 : 1;
 		look[NAME[base]] += g == G_TORSO ? 3 : 1;
@@ -284,16 +334,22 @@ void random_fighters::base_layer()
 		for (u32 k = 0; k < 13; k++) put32(copy + 4 * k, rd0(BAR_NAMES[side] + 4 * k));
 		put32(BAR_NAMES_AT[side], copy);
 	}
-	put32(COLOUR_AT, COLOUR_NOW);
+	// (the colours: a table each, an entry a number, as the loader read them; the patches)
+	for (u32 n = 0; n < N_RECORDS; n++) {
+		const u32 flat = n < 13 ? FLAT + FLAT_SIZE * n : FLAT2 + FLAT_SIZE * (n - 13), ramp = RAMPS + RAMP_SIZE * (n < 13 ? n : n - 1);
+		for (u32 k = 0; k < FLAT_SIZE; k += 2) put16(FLAT_NEW + FLAT_SIZE * n + k, rd16(flat + k));
+		for (u32 k = 0; k < RAMP_SIZE; k += 2) put16(RAMP_NEW + RAMP_SIZE * n + k, rd16(ramp + k));
+	}
+	for (const patch &k : PATCHES) put32(k.at, k.now);
 	code_changed();
 }
 
 void random_fighters::code_changed()
 {
 	if (!m.m_rec) return;
-	m.m_rec->code_changed(COLOUR_AT, 4);
 	m.m_rec->code_changed(ROUND_MOVES_AT, 8);
 	for (u32 a : BAR_NAMES_AT) m.m_rec->code_changed(a - 4, 8);
+	for (const patch &k : PATCHES) m.m_rec->code_changed(k.at & ~7u, 8);   // (an instruction's word, or an lda's address)
 }
 
 void random_fighters::off()
@@ -334,15 +390,18 @@ void random_fighters::build(int f, const plan &p)
 {
 	const int b = f % 13, torso = p.rec[G_TORSO];
 	const u32 at_ = MADE_AT + MADE * u32(f), hdr = at_, colour = at_ + 0x50, blk = at_ + 0x100, far34 = at_ + 0x440, far44 = at_ + 0x480, cmds = at_ + 0x500;
-	// the record: the torso's (its skeleton, sizes and weight, texture set, torso and its swinging parts, the rest
-	// of its body's), its own parts' list, colours named after the torso's record
+	// the record: the torso's (its skeleton, sizes and weight, torso and its swinging parts, the rest of its body's),
+	// its own parts' list, the head's texture set, colours of its own
 	const u32 t_rec = record(torso);
 	for (u32 k = 0; k < HEADER; k += 4) put32(hdr + k, rd0(t_rec + k));
 	for (u32 k = 0; k < BLOCK; k += 4) put32(blk + k, rd0(rd0(t_rec) + k));
 	put32(hdr + 0x00, blk);
 	put32(hdr + 0x08, colour);
 	for (u32 k = 0; k < 0x40; k += 4) put32(colour + k, rd0(k));
-	put8(colour, u8(torso));
+	// (its colours its head's: the face's skin all over, the hair and the face as they are; Dural's her own)
+	const u32 n = COLOUR_NUMBER[f == 11 ? 0 : f == 12 ? 1 : 2];
+	colours(n, p.head + (f >= 13 ? 13 : 0));
+	put8(colour, u8(n));
 	int slot_rec[16];
 	for (int g = 0; g < 7; g++) for (int s : GROUPS[g]) slot_rec[s] = p.rec[g];
 	slot_rec[2] = p.head + (f >= 13 && p.head != DURAL ? 13 : 0);
@@ -355,6 +414,7 @@ void random_fighters::build(int f, const plan &p)
 	put32(hdr + 0x34, far34);
 	put32(hdr + 0x44, far44);
 	put32(hdr + 0x14, rd0(record(p.three[0]) + 0x14));   // (the first's basic moves: its stance and walk)
+	put32(hdr + 0x30, rd0(record(slot_rec[2]) + 0x30));   // (the head's texture set: its hair and face's textures; the others' textured parts take them)
 	put32(hdr + 0x3c, rd0(record(p.rec[G_HANDS]) + 0x3c));
 	put32(hdr + 0x40, rd0(record(slot_rec[2]) + 0x40));
 	put32(RECORDS + 4 * u32(f), hdr);
@@ -403,6 +463,82 @@ void random_fighters::build(int f, const plan &p)
 	}
 }
 
+u32 random_fighters::next_colour(u32 n)
+{
+	u32 &x = colour_rng;
+	if (!x && getenv("VF2_COLOUR_SEED")) x = u32(atoi(getenv("VF2_COLOUR_SEED")));   // TESTONLY
+	if (!x) x = u32(std::chrono::steady_clock::now().time_since_epoch().count()) * 2654435761u ^ 0x85ebca6bu;
+	x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+	return n ? x % n : 0;
+}
+
+// A random fighter's colours, new each game (VF1's random_fighter_colour and its renderer's, on VF2's colour table):
+// the giver's, its skin ramp as it is; its clothes' main colour (the other ramp, a colour shaded in 64) turned round
+// the colour wheel, or given a theme (cool, warm, two opposite colours, neon, pastel, black and white, black and
+// gold), its brightest level put in it and every level moved with it, so its shading stays; the textures' cool colours
+// each the same way (their warm ones are faces); skin, greys, black and white as they are; a dark yellow or
+// brown a turn makes (olive, khaki: muddy) lifted to a clean gold or orange
+void random_fighters::colours(u32 n, int giver)
+{
+	static const int WEIGHT[THEMES] = { 6, 1, 1, 4, 4, 4, 3, 3 };
+	int w = int(next_colour(26)), theme = 0;
+	while (theme < THEMES - 1 && w >= WEIGHT[theme]) w -= WEIGHT[theme++];
+	float turn = float(next_colour(1000)) / 1000.f;
+	if (const char *t = getenv("VF2_THEME")) theme = std::clamp(atoi(t), 0, THEMES - 1);   // TESTONLY
+	if (const char *t = getenv("VF2_OUTFIT")) turn = float(atof(t));                     // TESTONLY
+	auto themed = [&](const hsv &c, bool light) {
+		hsv t = c;
+		const float h0 = c.h;
+		switch (theme) {
+		case THEME_BW: t.s = 0; t.v = light ? 0.95f : 0.12f; break;
+		case THEME_BLACK_GOLD: if (!light) { t.s = 0; t.v = 0.12f; } else { t.h = 0.125f; t.s = 0.75f; t.v = 0.92f; } break;
+		case THEME_COOL: t.h = 0.47f + 0.3f * h0; t.s = std::max(c.s, 0.6f); break;                       // (teal, blue, violet)
+		case THEME_WARM: t.h = std::fmod(0.97f + 0.17f * h0, 1.f); t.s = std::max(c.s, 0.65f); t.v = std::max(c.v, 0.45f); break;   // (red, orange, gold)
+		case THEME_OPPOSITE: t.h = std::fmod(turn + (h0 < 0.5f ? 0 : 0.5f), 1.f); t.s = std::max(c.s, 0.65f); break;
+		case THEME_NEON: t.h = std::fmod(h0 + turn, 1.f); t.s = 1; t.v = std::max(c.v, 0.9f); break;
+		case THEME_PASTEL: t.h = std::fmod(h0 + turn, 1.f); t.s = 0.32f; t.v = std::max(c.v, 0.85f); break;
+		default:
+			t.h = std::fmod(h0 + turn, 1.f);
+			if (t.h > 0.07f && t.h < 0.28f && c.v < 0.7f) { t.v = std::min(1.f, c.v * 0.4f + 0.6f); t.s = std::max(c.s, 0.7f); }
+		}
+		return t;
+	};
+	auto light_of = [](const hsv &c) { float r, g, b; to_rgb(c, r, g, b); return 0.3f * r + 0.59f * g + 0.11f * b > 0.45f; };
+	// (kept: the main colour if skin, grey, black or white; in the textures, which are mostly faces, every warm colour
+	// too (skin in all its shades, lips, cheeks, beards, browns and golds): only their cool ones (greens, blues and
+	// purples: Pai's patterns, Wolf's bands) are clothes for sure)
+	auto kept = [](const hsv &c) { return is_skin(c) || c.s <= 0.28f || c.v <= 0.12f; };
+	auto face = [&](const hsv &c) { return kept(c) || c.h <= 0.18f || c.h >= 0.93f; };
+	const u32 sf = FLAT_NEW + FLAT_SIZE * u32(giver), sr = RAMP_NEW + RAMP_SIZE * u32(giver);
+	const u32 df = FLAT_NEW + FLAT_SIZE * n, dr = RAMP_NEW + RAMP_SIZE * n;
+	auto get = [&](u32 a, u32 step) { return to_hsv(level(rd16(a)), level(rd16(a + step)), level(rd16(a + 2 * step))); };
+	auto put = [&](u32 a, u32 step, const hsv &c) { float r, g, b; to_rgb(c, r, g, b); put16(a, raw(r)); put16(a + step, raw(g)); put16(a + 2 * step, raw(b)); };
+	auto copy = [&](u32 a, u32 step, u32 from) { for (u32 k = 0; k < 3; k++) put16(a + k * step, rd16(from + k * step)); };
+	for (u32 k = 0; k < 0x180; k += 2) put16(dr + k, rd16(sr + k));   // (the skin)
+	hsv lv[64];
+	int top = 0;
+	for (int i = 0; i < 64; i++) { lv[i] = get(sr + 0x180 + 2 * u32(i), 0x80); if (lv[i].v > lv[top].v) top = i; }
+	const hsv ref = lv[top];
+	int lit = 0;   // (light or dark, for black and white or gold: by its levels' brightness on the whole, not its brightest)
+	for (const hsv &c : lv) lit += light_of(c);
+	const hsv t = themed(ref, lit > 32);
+	for (int i = 0; i < 64; i++) {
+		const u32 a = dr + 0x180 + 2 * u32(i);
+		if (kept(ref)) { copy(a, 0x80, sr + 0x180 + 2 * u32(i)); continue; }
+		hsv c = t;
+		c.s = std::clamp(ref.s > 0 ? t.s * lv[i].s / ref.s : t.s, 0.f, 1.f);
+		c.v = std::clamp(lv[i].v * t.v / ref.v, 0.f, 1.f);
+		put(a, 0x80, c);
+	}
+	for (u32 row = 0; row < 7; row++)
+		for (u32 i = 0; i < 16; i++) {
+			const u32 a = row * 0x60 + 2 * i;
+			const hsv c = get(sf + a, 0x20);
+			if (face(c)) copy(df + a, 0x20, sf + a); else put(df + a, 0x20, themed(c, light_of(c)));
+		}
+	if (getenv("VF2_RANDLOG")) fprintf(stderr, "COLOURS %u from %d: theme %d turn %.3f, main h%.2f s%.2f v%.2f -> h%.2f s%.2f v%.2f\n", n, giver, theme, turn, ref.h, ref.s, ref.v, t.h, t.s, t.v);   // TESTONLY
+}
+
 // Random's: one of the named fighters (the first seed of each name), so its name, typed as a seed, is that same
 // fighter; Seed's, its own. (Random's draw from the clock: a new one each game)
 u32 random_fighters::seed_for(int pl) { return mode[pl] == 2 ? seed[pl] : random_named(); }
@@ -418,8 +554,8 @@ u32 random_fighters::random_named()
 	return it->second;
 }
 
-// After each frame: at the select, a random player's fighter made as they start picking and picked for them once
-// they have (their block's +1b0 and +1b1: the carrier's number); the computer's random opponent made as its match
+// After each frame: at the select, a random player's fighter made as they start picking, and theirs from the VS
+// screen on (their block's +1b0 and +1b1: the carrier's number); the computer's random opponent made as its match
 // loads; the names under the energy bars
 void random_fighters::frame()
 {
@@ -439,12 +575,14 @@ void random_fighters::frame()
 		const int carrier = 11 + pl;
 		if (now_picking && !picking[pl]) { build(carrier, make_plan(seed_for(pl))); }
 		picking[pl] = now_picking;
+		// (while the select's up, the fighter the select has: a picking player's cursor's (its portrait, colours and
+		// name as ever); one already playing, at a challenger's select, the random fighter's head's (the portrait its
+		// face, in the textures loaded for the fight, its head's). The random fighter's from the VS screen (8) on, as
+		// the fight is about to load it)
 		const int bl = block(pl);
-		if (in && !now_picking && bl >= 0) { ram[bl + 0x1b0] = u8(carrier); ram[bl + 0x1b1] = u8(carrier); }
-		// (its portrait: the slot's own face while the select's up (the slot its object's +6), its own after)
-		const u8 slot = there ? ram[o - 0x500000 + 6] : 0xff;
-		const int face = slot < 11 ? prog[SLOTS + slot] % 13 : head_of[carrier];
-		if (!name_of[carrier].empty()) put32(PORTRAIT_FACES + 4 * u32(carrier), rd0(PORTRAIT_FACES + 4 * u32(face)));
+		if (bl < 0) continue;
+		if ((flags & 8) && ram[bl + 0x1b0] == carrier) ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(head_of[carrier]);
+		if (game == 8 && from_select && at_select[pl]) ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier);
 	}
 	// Who's playing: work RAM 4c in a fight (2 both, 1 player 2 alone, 0 player 1 alone; set as it starts), and
 	// at the VS screen (8) the select's just over, else the last fight's

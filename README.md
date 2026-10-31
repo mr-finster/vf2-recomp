@@ -67,8 +67,12 @@ Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
 
 - **Random:** a new fighter every game, made of three of the cast: its head, body and limbs from the three, and its
   moves dealt from them a button at a time (its Punch moves one's, its Kick moves another's, its throws a third's, and
-  so on), so it plays like a mix of them, at the game's own timings. Its stance and voice are the first's, its colours
-  its torso's, and it gets a name made of theirs on the energy bar (SHUNWOLFGE, AKILAUPAI).
+  so on), so it plays like a mix of them, at the game's own timings. Its stance and voice are the first's, and it
+  gets a name made of theirs on the energy bar (SHUNWOLFGE, AKILAUPAI).
+- **Colours:** new every game (not part of a seed). A random fighter wears its head's colours, so its face, hair and
+  skin are right and its skin is one tone all over; its clothes' main colour is turned round the colour wheel, or
+  given a theme: cool, warm, two opposite colours, neon, pastel, black and white, black and gold. Hair, belts and
+  shoes keep their colours (VF2 shares those between its fighters).
 - **Seed:** type a fighter's name, as seen on an energy bar, to get that fighter again: the same build and the same
   moves on any machine.
 
@@ -79,12 +83,13 @@ the game. Not online yet: an online match plays the game as it is on both sides.
 **How it works.** VF2 loads a fighter by its number from tables: its record (its body's 16 parts, skeleton, sizes,
 textures), its faces, its commands, its voices. A random fighter is a record of its own, its parts taken from the three
 fighters' records, and the tables pointed at the three's entries: player 1's is made in MUE's place (fighter 11) and
-player 2's in KOJAC's (12), which the select never gives, and the player's pick is changed to it once they've chosen.
+player 2's in KOJAC's (12), which the select never gives, and the player's pick is changed to it as the VS screen comes up.
 The commands are a dispatch on the buttons pressed, each to a program of checks ending in a move; moves are numbered
 for the whole game, so a random fighter's dispatch can send each button to a different fighter's program. A side's
 colours are loaded by the fighter's number: one instruction of the game's now reads them from the fighter's record,
-each of the cast's records naming its own, so a random fighter wears its torso's. The game's code is otherwise
-untouched, and every byte changed is put back when they're off.
+each of the cast's records naming its own, and the colour tables are moved to tables of their own, an entry a number,
+so a random fighter has colours of its own: its head's, recoloured. The game's code is otherwise untouched, and every
+byte changed is put back when they're off.
 
 ## Secret characters
 
