@@ -184,6 +184,10 @@ LB guard + kick, RT all three, Start to start. View (tap), L3 + R3 or the touchp
 moved in Controls); View + LB / RB change the render scale / picture shape. In Arcade mode, set Coin in Controls (View
 works) for a coin button.
 
+Arcade sticks the game doesn't know (DirectInput sticks such as HORI's Virtua Stick High Grade or the Astro City
+Mini) get a fighting stick's layout; Controls > Player 1 (or 2) > Set up buttons sets theirs by pressing each in turn. A
+`gamecontrollerdb.txt` (SDL's mappings) in the data folder or beside the program is read too.
+
 ## Online play (experimental)
 
 Rollback netcode, as modern fighting games and Virtua Fighter 3 Recomp have it: find a random opponent in one click, or send a friend a room code. There's nothing to set up and no ports to forward. The game runs at the Model 2 board's own 57.5 fps online too: input delay and rollback absorb the connection, so it never slows down to wait for it.
