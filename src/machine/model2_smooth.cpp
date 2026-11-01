@@ -634,6 +634,7 @@ void model2_video::replay_into(const moment &mo, std::vector<drawn_poly> &drawn)
 	std::copy(b->log_ram.begin(), b->log_ram.end(), ra.log_ram);
 	m_replay = true;
 	m_replay_obj = m_replay_light = m_replay_focal = 0;
+	m_build_frame = b->frame;   // (the random fighters' build: as at that frame)
 	geo_run(const_cast<u32 *>(b->list.data()), b->start, m_geo_r.get(), m_raster_r.get());
 	m_replay = false;
 	build_drawn(m_raster_r.get(), drawn);

@@ -286,6 +286,19 @@ public:
 	int cpu_made[2] = { -1, -1 };   // (the fighter number each side's computer opponent was made random on)
 	bool at_select[2] = { false, false }, fighting[2] = { false, false }, from_select = false;   // (who's playing: frame)
 	u32 select_at = 0;   // (the frame number of a select's first frame after it: its picks' pace, select_inputs)
+	// The round-1 build (model2_video's m_build_parts): each fighter number's models' groups (0 feet ... 8 head), a
+	// random fighter's as made (build), a cast one's as it is; the frame after a match's intro began (its round state
+	// 2 or 3), -1 none; the build's sides as given to the video (each side's fighter, its first frame)
+	std::map<u32, u8> part_groups[N_RECORDS];
+	void groups_of(const int slot_rec[16], int hands, int torso, std::map<u32, u8> &out) const;
+	const std::map<u32, u8> &groups(int f);
+	int64_t intro_at = -1;
+	bool build_side[2] = { false, false };   // (this intro's: the side's fighter built)
+	std::string built[2];                    // (each side's random fighter built since the last select: not again)
+	int build_fighter[2] = { -1, -1 };
+	int64_t build_start[2] = { -1, -1 };
+	void build_frame(int game);
+	void build_stop();
 	// The select's object for a player (game 7, as frame() reads it): its offset in work RAM, -1 none; its flags
 	int select_object(int pl) const;
 	u32 select_flags(int pl) const;
@@ -728,6 +741,8 @@ void random_fighters::off()
 	if (code) code_changed();
 	base_on = false;
 	for (auto &n : name_of) n.clear();
+	for (auto &g : part_groups) g.clear();
+	build_stop();
 	picking[0] = picking[1] = false;
 	cpu_made[0] = cpu_made[1] = -1;
 	made[0] = made[1] = made_key{};
@@ -755,6 +770,7 @@ void random_fighters::own(int f)
 	for (int side = 0; side < 2; side++) put32(BAR_COPIES + 0x40 * u32(side) + 4 * u32(b), rd0(BAR_NAMES[side] + 4 * u32(b)));
 	name_of[f].clear();
 	if (f >= 11 && f <= 12) name_of[f + 13].clear();
+	part_groups[f].clear();
 	for (int side = 0; side < 2; side++)
 		if (tex[side].fighter == f) { set_rewrites(side, false); tex[side].fighter = -1; }
 }
@@ -783,6 +799,7 @@ void random_fighters::build(int f, const plan &p, int side)
 	int slot_rec[16];
 	for (int g = 0; g < 7; g++) for (int s : GROUPS[g]) slot_rec[s] = p.rec[g];
 	slot_rec[2] = p.head + ((f >= 13 || p.head_costume) && p.head != DURAL ? 13 : 0);
+	groups_of(slot_rec, p.rec[G_HANDS], torso, part_groups[f]);
 	for (int s = 0; s < 16; s++) {
 		const u32 r = record(slot_rec[s]);
 		put32(blk + 4 * u32(s), rd0(rd0(r) + 4 * u32(s)));
@@ -1405,6 +1422,7 @@ void random_fighters::frame()
 		if (!idle) t.busy = true;
 		else if (!t.applied || t.busy) apply_textures(side);
 	}
+	build_frame(game);
 	std::string hud[2];
 	if (game == 9)
 		for (int pl = 0; pl < 2; pl++)
@@ -1412,6 +1430,98 @@ void random_fighters::frame()
 	std::lock_guard<std::mutex> lk(m.m_hud_mx);
 	m.m_random_hud[0] = hud[0];
 	m.m_random_hud[1] = hud[1];
+}
+
+// The round-1 build (model2_video's): a fighter's models by group, feet up as VF1 Recomp's: 0 the feet, 1 the shins, 2
+// the thighs, 3 the hips and waist, 4 the torso (and its other torsos, +38), 5 the upper arms, 6 the forearms, 7 the
+// hands (and their poses), 8 the head; each part's at every distance (+34, +44), and what swings from it with it
+namespace {
+constexpr u8 SLOT_GROUP[16] = { 3, 3, 8, 5, 6, 7, 5, 6, 7, 4, 2, 1, 0, 2, 1, 0 };
+constexpr int BUILD_DELAY = 3;   // (frames after a match's intro began: as the camera starts to sweep in)
+}
+
+void random_fighters::groups_of(const int slot_rec[16], int hands, int torso, std::map<u32, u8> &out) const
+{
+	out.clear();
+	auto put = [&](u32 mdl, u8 g) { if (mdl && mdl < 0x2000) out.emplace(mdl, g); };
+	for (int s = 0; s < 16; s++) {
+		const u32 r = record(slot_rec[s]);
+		for (u32 o : { 0u, 0x34u, 0x44u }) if (const u32 q = rd0(r + o)) put(rd0(q + 4 * u32(s)), SLOT_GROUP[s]);
+		for (u32 mdl : worn_models(slot_rec[s], { s })) put(mdl, SLOT_GROUP[s]);
+	}
+	if (const u32 q = rd0(record(torso) + 0x38)) for (u32 k = 0; k < 4; k++) put(rd0(q + 4 * k), 4);
+	const u32 b = rd0(record(hands));
+	for (u32 k = 0x40; k < 0xc0; k += 4) put(rd0(b + k), 7);
+	for (u32 k = 0x1c0; k < 0x240; k += 4) put(rd0(b + k), 7);
+}
+
+const std::map<u32, u8> &random_fighters::groups(int f)
+{
+	if (part_groups[f].empty() && name_of[f].empty()) {   // (a cast fighter's: its own parts)
+		int slot_rec[16];
+		for (int &r : slot_rec) r = f;
+		groups_of(slot_rec, f, f, part_groups[f]);
+	}
+	return part_groups[f];
+}
+
+// After each frame: a match's intro (round state 2 or 3, its first round's: the next rounds start at 4) starts the
+// build of each side's random fighter, unless it's one built since the last select (a 1P run's next match: its new
+// opponent's only); the fight's start (8), or anything but a fight, ends it (none half built)
+void random_fighters::build_frame(int game)
+{
+	auto &ram = m.m_workram;
+	const u8 round = ram[0x31];
+	if (game == 7) built[0].clear(), built[1].clear();
+	const bool was = intro_at >= 0;
+	if (game == 9 && (round == 2 || round == 3)) intro_at = int64_t(m.m_frame_number);
+	if (game != 9 || round >= 8) intro_at = -1;
+	int want[2] = { -1, -1 };
+	int64_t start[2] = { -1, -1 };
+	if (intro_at >= 0)
+		for (int pl = 0; pl < 2; pl++) {
+			u32 b;
+			memcpy(&b, &ram[0x804 + 4 * pl], 4);
+			if (b < 0x500000 || b - 0x500000 + 0x200 >= ram.size()) continue;
+			const int f = ram[b - 0x500000 + 0x1b0];
+			if (f >= N_RECORDS) continue;
+			want[pl] = f;
+			if (!was) {   // (the intro's first frame: whose)
+				build_side[pl] = !name_of[f].empty() && name_of[f] != built[pl];
+				if (build_side[pl]) built[pl] = name_of[f];
+			}
+			if (build_side[pl]) start[pl] = intro_at + BUILD_DELAY;
+		}
+	if (start[0] < 0 && start[1] < 0) { build_stop(); return; }
+	if (want[0] == build_fighter[0] && want[1] == build_fighter[1] && start[0] == build_start[0] && start[1] == build_start[1]) return;
+	m.render_wait();
+	model2_video &v = *m.m_video;
+	v.m_build_parts.clear();
+	for (int pl = 0; pl < 2; pl++) {
+		build_fighter[pl] = want[pl];
+		build_start[pl] = v.m_build_start[pl] = start[pl];
+		if (want[pl] < 0) continue;
+		for (const auto &[mdl, g] : groups(want[pl])) {
+			const u32 oba = rdl(MODELS + 16 * mdl + 8), n = rdl(MODELS + 16 * mdl + 12) & 0xffff;
+			if (!oba) continue;
+			model2_video::build_part &bp = v.m_build_parts[oba];
+			bp.sides |= u8(1 << pl);
+			bp.group[pl] = g;
+			bp.polys = u16(std::min<u32>(n, 0xffff));
+		}
+	}
+	if (getenv("VF2_RANDLOG")) fprintf(stderr, "BUILD frame %llu: sides %d %d from %lld %lld, %zu models\n", (unsigned long long)m.m_frame_number, want[0], want[1], (long long)start[0], (long long)start[1], v.m_build_parts.size());   // TESTONLY
+}
+
+void random_fighters::build_stop()
+{
+	if (build_fighter[0] < 0 && build_fighter[1] < 0 && build_start[0] < 0 && build_start[1] < 0) return;
+	m.render_wait();
+	model2_video &v = *m.m_video;
+	v.m_build_parts.clear();
+	v.m_build_start[0] = v.m_build_start[1] = -1;
+	build_fighter[0] = build_fighter[1] = -1;
+	build_start[0] = build_start[1] = -1;
 }
 
 // The select, VF1 Recomp's way: a random player's controls let go while it's up and its pick pressed for it, from the
