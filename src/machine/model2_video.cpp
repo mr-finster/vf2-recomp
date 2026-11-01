@@ -2284,6 +2284,9 @@ u32 *model2_video::geo_object_data(geo_state *geo, u32 opcode, u32 *input)
 
 	u32 *obp;                /* Object Pointer */
 
+	// (a random player's select portrait, its cursor on its way: random_fighters::select_cover)
+	if ((m_hide_portrait[0] && geo->matrix[9] < 0) || (m_hide_portrait[1] && geo->matrix[9] > 0)) return input;
+
 	/* push the initial set of data to the 3d rasterizer */
 	model2_3d_push(raster, opcode >> 23);
 	model2_3d_push(raster, tpa);

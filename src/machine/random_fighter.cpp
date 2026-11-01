@@ -306,6 +306,10 @@ public:
 	bool select_hidden() const;
 	void select_inputs(u8 &in1, u8 &in2);
 	int select_slot(int base) const;   // (the select's slot that sets fighter base, -1 none)
+	void select_cover();
+	void attract_frame();
+	u64 hide_until[2] = { 0, 0 };   // (drawing only: a random player's select portrait hidden till this frame)
+	void attract_scenes();   // (the attract intro's scenes' fighters: the random sides' carriers)
 
 	// the ROMs: an address as the i960 sees it
 	u8 *at(u32 a) { return a < 0x200000 ? &prog[a] : &data[a - 0x02000000]; }
@@ -404,6 +408,9 @@ public:
 	bool worn_ops(u32 q, std::vector<worn_op> &ops) const;
 	std::vector<u32> worn_list(const int slot_rec[16]) const;
 	std::vector<u32> worn_models(int rec, const std::vector<int> &slots) const;   // (its strands' from those parts)
+	// A record's portrait hair (+48: a word in a table by fighter at 20061b8, 11 then 10 for the second costumes; drawn
+	// with its head on the select's portrait, not in a fight; none for Kage and Dural): the model, 0 none
+	u32 hair_model(int rec) const { const u32 q = rd0(record(rec) + 0x48); const u32 m = q ? rd0(q) : 0; return m < 0x2000 ? m : 0; }
 	u32 worn_limit = 0;
 	void set_rewrites(int side, bool on);
 	void apply_textures(int side);
@@ -815,6 +822,7 @@ void random_fighters::build(int f, const plan &p, int side)
 	if (!old) for (u32 k = 0x40; k < 0x240; k += 4) put32(blk + k, rd0(rd0(record(p.rec[G_HANDS])) + k));
 	put32(hdr + 0x3c, old ? rd0(record(p.rec[G_HANDS]) + 0x3c) : blk + 0x40);
 	put32(hdr + 0x40, rd0(record(slot_rec[2]) + 0x40));
+	put32(hdr + 0x48, rd0(record(slot_rec[2]) + 0x48));   // (its portrait's hair, hair_model: its head's, not its torso's)
 	if (!old) build_textures(f, p, side, slot_rec, giver, n);
 	put32(RECORDS + 4 * u32(f), hdr);
 	if (f >= 11 && f <= 12) put32(RECORDS + 4 * u32(f + 13), hdr);
@@ -1076,6 +1084,7 @@ void random_fighters::build_textures(int f, const plan &p, int side, const int s
 		for (u32 k = 0; k < count; k++) { hdr h; if (decode(from + 4 * k, h)) tiles(h, [&](int tx, int ty) { who[ty * TW + tx] = s8(ch); }); }
 	};
 	for (u32 mdl : head_models(slot_rec[2])) mark(mdl, H);
+	if (const u32 hair = hair_model(slot_rec[2])) mark(hair, H);
 	// (what swings from the head, WORN; and its shadow's pieces, ATTACH's 15 a costume)
 	for (u32 mdl : worn_models(slot_rec[2], { 2 })) mark(mdl, H);
 	for (int c : { H, H + 13 })
@@ -1372,14 +1381,31 @@ void random_fighters::frame()
 		if (now_picking && !picking[pl]) { build(carrier, make_plan(seed_for(pl)), pl); }
 		picking[pl] = now_picking;
 		// (while the select's up, the fighter the select has: a picking player's cursor's (its portrait, colours and
-		// name as ever); one already playing, at a challenger's select, the random fighter's head's (the portrait its
-		// face, in the textures loaded for the fight, its head's). The random fighter's from the VS screen (8) on, as
-		// the fight is about to load it)
+		// profile as ever: select_inputs puts it on its head's slot); one already playing, at a challenger's select, the
+		// random fighter itself (the portrait its own head and hair, in its colours and textures, as in the fight). The
+		// random fighter's from the VS screen (8) on, as the fight is about to load it. Its name under the portrait
+		// covered (select_cover): the slot's isn't its own)
 		const int bl = block(pl);
 		if (bl < 0) continue;
-		if ((flags & 8) && ram[bl + 0x1b0] == carrier) ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(head_of[carrier]);
 		if (game == 8 && from_select && at_select[pl]) { ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier); texture_set_now(carrier, pl); }
 	}
+	if (game == 7) select_cover();
+	{   // (a random player's portrait hidden while its cursor walks to its head's slot)
+		bool hide[2] = { false, false };
+		if (game == 7 && !select_hidden())
+			for (int pl = 0; pl < 2; pl++) {
+				const int o = select_object(pl);
+				const u32 flags = select_flags(pl);
+				if (!mode[pl] || o < 0 || !(flags >> 31) || (flags & 0xa) != 0xa) continue;
+				const int head = select_slot(head_of[11 + pl]);
+				const int bl = block(pl);   // (and till the select's fighter is the head's, and 6 frames on: the picture's behind)
+				if (head >= 0 && (ram[size_t(o) + 6] != head || (bl >= 0 && ram[bl + 0x1b0] % 13 != head_of[11 + pl]))) hide_until[pl] = m.m_frame_number + 6;
+				hide[pl] = m.m_frame_number <= hide_until[pl];
+			}
+		model2_video &v = *m.m_video;
+		if (hide[0] != v.m_hide_portrait[0] || hide[1] != v.m_hide_portrait[1]) { m.render_wait(); v.m_hide_portrait[0] = hide[0]; v.m_hide_portrait[1] = hide[1]; }
+	}
+	if (game == 3) attract_frame();
 	// Who's playing: work RAM 4c in a fight (2 both, 1 player 2 alone, 0 player 1 alone; set as it starts), and
 	// at the VS screen (8) the select's just over, else the last fight's
 	if (game == 7) from_select = true;
@@ -1424,7 +1450,7 @@ void random_fighters::frame()
 	}
 	build_frame(game);
 	std::string hud[2];
-	if (game == 9)
+	if (game == 9 || game == 3)   // (a fight; the attract's, its demo's bars)
 		for (int pl = 0; pl < 2; pl++)
 			if (const int bl = block(pl); bl >= 0 && ram[bl + 0x1b0] < N_RECORDS) hud[pl] = name_of[ram[bl + 0x1b0]];
 	std::lock_guard<std::mutex> lk(m.m_hud_mx);
@@ -1450,6 +1476,7 @@ void random_fighters::groups_of(const int slot_rec[16], int hands, int torso, st
 		for (u32 mdl : worn_models(slot_rec[s], { s })) put(mdl, SLOT_GROUP[s]);
 	}
 	if (const u32 q = rd0(record(torso) + 0x38)) for (u32 k = 0; k < 4; k++) put(rd0(q + 4 * k), 4);
+	put(hair_model(slot_rec[2]), 8);
 	const u32 b = rd0(record(hands));
 	for (u32 k = 0x40; k < 0xc0; k += 4) put(rd0(b + k), 7);
 	for (u32 k = 0x1c0; k < 0x240; k += 4) put(rd0(b + k), 7);
@@ -1561,6 +1588,69 @@ bool random_fighters::select_hidden() const
 	if (!on || (!mode[0] && !mode[1])) return false;
 	const bool in0 = select_in(0), in1 = select_in(1);
 	return (in0 || in1) && (!in0 || mode[0]) && (!in1 || mode[1]);   // (everyone at it random)
+}
+
+// The select's names under the portraits (tile map 0, rows 30-32: player 1's box columns 8-20, player 2's 41-53, the
+// name font's tiles, b000 its blank): a random player's covered with the blank, as VF1
+// Recomp gilds its own over (the slot's name isn't the random fighter's). Tile RAM is the game's (in the save states:
+// online, alike on both sides), the name drawn again as the select's next scene comes
+void random_fighters::select_cover()
+{
+	if (!on || select_hidden()) return;
+	for (int pl = 0; pl < 2; pl++) {
+		if (!mode[pl] || !select_in(pl)) continue;
+		const int x0 = pl ? 41 : 8;
+		bool box = true;   // (the box as known: the name font's tiles, b0xx)
+		for (int y = 30; y <= 32 && box; y++) for (int x = x0; x <= x0 + 12; x++) box = box && (m.m_tiles.tile_r(u32(y * 64 + x)) >> 8) == 0xb0;
+		if (!box) continue;
+		for (int y = 30; y <= 32; y++)
+			for (int x = x0; x <= x0 + 12; x++)
+				if (m.m_tiles.tile_r(u32(y * 64 + x)) != 0xb000) { m.render_wait(); m.m_tiles.tile_w(u32(y * 64 + x), 0xb000, 0xffff); }
+	}
+}
+
+// The attract (game 3: its intro's scenes and its demo fight), VF1 Recomp's way: a side whose player has a random
+// fighter (Random: a new one for each demo fight; a Seed's: that one), or every side with Random opponents, shows a
+// random fighter in place of the cast member the attract puts there: the side's carrier (11, 12). The intro's scenes
+// take theirs from two lists in the data ROM (attract_scenes: 16 bytes a scene, +0c the fighter, +0a its frame, 0
+// after the last; read by 0x549e8 as the scene starts, its models and textures loaded from it at once), made the
+// carrier's while the side is random; the demo fight's pair (0xbdc8: two of the cast at random) and the first scene
+// after a boot (0xb1ac) are put in its block as the attract sets them (the frame after: the game asks for their
+// textures two or three frames later, loading them by the carrier's record), the carrier made afresh then. From the
+// game's state and the draws alone (online, the match's seed's: alike on both sides); none of it with no random fighter
+namespace {
+constexpr u32 SCENES[2] = { 0x0201f454, 0x0201f258 };   // (player 1's side's, player 2's)
+constexpr u8 SCENE_CAST[2][20] = { { 8, 4, 4, 8, 8, 4, 4, 8, 8, 7, 7, 8, 8, 3, 3, 3, 8, 8, 1, 1 },
+                                   { 6, 6, 6, 2, 2, 2, 5, 5, 5, 10, 10, 10, 10, 0, 0, 0 } };
+constexpr int SCENE_N[2] = { 20, 16 };
+}
+
+void random_fighters::attract_scenes()
+{
+	for (int pl = 0; pl < 2; pl++) {
+		auto was = [&](u32 a) { const auto it = undo.find(a); return it != undo.end() ? it->second : *at(a); };   // (as loaded)
+		bool known = was(SCENES[pl] + 16 * u32(SCENE_N[pl]) + 0xa) == 0 && was(SCENES[pl] + 16 * u32(SCENE_N[pl]) + 0xb) == 0;
+		for (int k = 0; k < SCENE_N[pl] && known; k++) known = was(SCENES[pl] + 16 * u32(k) + 0xc) == SCENE_CAST[pl][k];   // (the lists as known: their fighters, then an end)
+		if (!known) continue;
+		const bool random = mode[pl] || cpu;
+		for (int k = 0; k < SCENE_N[pl]; k++) put8(SCENES[pl] + 16 * u32(k) + 0xc, random ? u8(11 + pl) : SCENE_CAST[pl][k]);
+	}
+}
+
+void random_fighters::attract_frame()
+{
+	auto &ram = m.m_workram;
+	for (int pl = 0; pl < 2; pl++) {
+		if (!mode[pl] && !cpu) continue;
+		u32 b;
+		memcpy(&b, &ram[0x804 + 4 * pl], 4);
+		if (b < 0x500000 || b - 0x500000 + 0x200 >= ram.size()) continue;
+		const u32 bl = b - 0x500000;
+		const int f = ram[bl + 0x1b0], carrier = 11 + pl;
+		if (f >= N_RECORDS || f % 13 >= 11) continue;   // (the carrier already, or none the attract put)
+		build(carrier, make_plan(mode[pl] ? seed_for(pl) : random_named()), pl);
+		ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier);
+	}
 }
 
 int random_fighters::select_slot(int base) const
@@ -1743,9 +1833,11 @@ bool model2a::apply_random_fighters()
 	r.cpu_made[0] = r.cpu_made[1] = -1;
 	r.at_select[0] = r.at_select[1] = r.fighting[0] = r.fighting[1] = r.from_select = false;
 	r.select_at = 0;
-	// (each player's fighter made now too, for a match that starts without a select: a seed's as it plays)
+	// (each player's fighter made now too, for a match that starts without a select: a seed's as it plays; with Random
+	// opponents a side's random one for the attract, attract_frame)
 	for (int pl = 0; pl < 2; pl++)
-		if (r.mode[pl]) r.build(11 + pl, r.make_plan(r.seed_for(pl)), pl);
+		if (r.mode[pl] || r.cpu) r.build(11 + pl, r.make_plan(r.mode[pl] ? r.seed_for(pl) : r.random_named()), pl);
+	r.attract_scenes();
 	return true;
 }
 

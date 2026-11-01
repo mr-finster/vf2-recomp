@@ -199,6 +199,9 @@ public:
 	static constexpr int BUILD_STEP = 4, BUILD_SPAN = 12, BUILD_FLASH = 3, BUILD_COLOUR = 44, BUILD_COLOUR_STEP = 1, BUILD_COLOUR_SPAN = 6;
 	static constexpr int BUILD_FRAMES = BUILD_COLOUR + 8 * BUILD_COLOUR_STEP + BUILD_COLOUR_SPAN + BUILD_FLASH;   // (frames: the build's whole length)
 	bool building() const { return m_build_start[0] >= 0 || m_build_start[1] >= 0; }
+	// (Cheats' random fighters at a select that shows: a side's portrait not drawn while the random player's cursor
+	// walks to its fighter's head's slot, the cast's it passes not shown; player 1's the left (its objects' x below 0))
+	bool m_hide_portrait[2] = { false, false };
 	// The 3D `alpha` (0-1) of the way from the one shown a frame before `frame` to the one shown
 	// at `frame` (the delay as it is now), set up into a picture of its own: `map`, and the
 	// picture to draw_layer() before reading it. -1: none kept (draw the frame as it is).
