@@ -285,6 +285,14 @@ public:
 	bool picking[2] = { false, false };
 	int cpu_made[2] = { -1, -1 };   // (the fighter number each side's computer opponent was made random on)
 	bool at_select[2] = { false, false }, fighting[2] = { false, false }, from_select = false;   // (who's playing: frame)
+	u32 select_at = 0;   // (the frame number of a select's first frame after it: its picks' pace, select_inputs)
+	// The select's object for a player (game 7, as frame() reads it): its offset in work RAM, -1 none; its flags
+	int select_object(int pl) const;
+	u32 select_flags(int pl) const;
+	bool select_in(int pl) const { const u32 f = select_flags(pl); return (f >> 31) && (f & 8); }
+	bool select_hidden() const;
+	void select_inputs(u8 &in1, u8 &in2);
+	int select_slot(int base) const;   // (the select's slot that sets fighter base, -1 none)
 
 	// the ROMs: an address as the i960 sees it
 	u8 *at(u32 a) { return a < 0x200000 ? &prog[a] : &data[a - 0x02000000]; }
@@ -430,6 +438,7 @@ void random_fighters::forget()
 	rng = colour_rng = draw_rng = 0;
 	seeded = false;
 	at_select[0] = at_select[1] = fighting[0] = fighting[1] = from_select = false;
+	select_at = 0;
 	col_theme = THEME_TURN;
 	col_turn = 0;
 	col_plain = false;
@@ -1332,6 +1341,7 @@ void random_fighters::frame()
 	auto rd_ram = [&](u32 o) { u32 v; memcpy(&v, &ram[o], 4); return v; };
 	auto block = [&](int pl) -> int { const u32 b = rd_ram(0x804 + 4 * u32(pl)); return b >= 0x500000 && b - 0x500000 + 0x200 < ram.size() ? int(b - 0x500000) : -1; };
 	const u8 game = ram[0x2b];
+	if (game == 7 && !from_select) select_at = u32(m.m_frame_number);   // (a select's first frame: select_inputs' pace from the next)
 	// (the select's objects, player 1's at [50083c], player 2's at [500840]: +4 the side, the first word's bit 31
 	// on, 3 in (kept after the select), 1 picking (clear once picked))
 	for (int pl = 0; pl < 2; pl++) {
@@ -1402,6 +1412,76 @@ void random_fighters::frame()
 	std::lock_guard<std::mutex> lk(m.m_hud_mx);
 	m.m_random_hud[0] = hud[0];
 	m.m_random_hud[1] = hud[1];
+}
+
+// The select, VF1 Recomp's way: a random player's controls let go while it's up and its pick pressed for it, from the
+// select's state and the frames since it began only (online, under rollback: the same on both sides). Everyone at it
+// random (one player alone, or both, offline or online): the select hidden, the picks at once where the cursors are
+// (who they got a surprise as the fight comes in). A player picking as ever beside a random one: the select shows,
+// theirs as ever, the random one's cursor moved to its fighter's head's slot (the portrait its head's, as the select
+// has it: Dural's none, the cursor stays) and picked at once. A player already in (a challenger's select) isn't
+// picking, and isn't picked again. The select's object: +06 the cursor's slot (0-9, the slots' fighters 0x33e4c's, or
+// the copy the Secret character's put there: the address in the select's first ldib, 32140)
+namespace {
+constexpr u32 SELECT_SLOTS_AT = 0x00032140, SELECT_SLOTS = 0x00033e4c, SELECT_COPY = 0x001fff00;
+constexpr int N_SLOTS = 10;
+constexpr u8 PICK = 0x01, RIGHT = 0x40, LEFT = 0x80;   // (Punch: the pick, the costume as the cursor's)
+}
+
+int random_fighters::select_object(int pl) const
+{
+	const auto &ram = m.m_workram;
+	if (ram.size() < 0x900 || ram[0x2b] != 7) return -1;
+	u32 o;
+	memcpy(&o, &ram[pl ? 0x840 : 0x83c], 4);
+	if (o < 0x500000 || o - 0x500000 + 8 >= ram.size() || ram[o - 0x500000 + 4] != pl) return -1;
+	return int(o - 0x500000);
+}
+
+u32 random_fighters::select_flags(int pl) const
+{
+	const int o = select_object(pl);
+	u32 f = 0;
+	if (o >= 0) memcpy(&f, &m.m_workram[size_t(o)], 4);
+	return f;
+}
+
+bool random_fighters::select_hidden() const
+{
+	if (!on || (!mode[0] && !mode[1])) return false;
+	const bool in0 = select_in(0), in1 = select_in(1);
+	return (in0 || in1) && (!in0 || mode[0]) && (!in1 || mode[1]);   // (everyone at it random)
+}
+
+int random_fighters::select_slot(int base) const
+{
+	u32 table;
+	memcpy(&table, &prog[SELECT_SLOTS_AT], 4);
+	if ((table != SELECT_SLOTS && table != SELECT_COPY) || table + N_SLOTS > prog.size()) return -1;
+	for (int s = 0; s < N_SLOTS; s++) if (prog[table + u32(s)] == base) return s;
+	return -1;
+}
+
+void random_fighters::select_inputs(u8 &in1, u8 &in2)
+{
+	if (!on || (!mode[0] && !mode[1]) || m.m_workram[0x2b] != 7) return;
+	const int64_t f = int64_t(u32(m.m_frame_number) - select_at), ph = f % 40;
+	u8 *const in[2] = { &in1, &in2 };
+	const bool hidden = select_hidden();
+	int k = 0;
+	for (int pl = 0; pl < 2; pl++) {
+		if (!mode[pl]) continue;
+		const int at = k++ ? 30 : 10;   // (the first random player's pick at 10 of every 40 frames, the second's at 30)
+		*in[pl] = 0xff;
+		const int o = select_object(pl);
+		const u32 flags = select_flags(pl);
+		if (o < 0 || !(flags >> 31) || (flags & 0xa) != 0xa) continue;   // (in and picking)
+		const int cursor = m.m_workram[size_t(o) + 6];
+		const int head = hidden ? -1 : select_slot(head_of[11 + pl]);
+		const int to = head < 0 ? cursor : head;
+		if (cursor != to) { if (f % 8 < 3) *in[pl] &= u8(~(to > cursor ? RIGHT : LEFT)); continue; }
+		if (ph >= at && ph < at + 6) *in[pl] &= u8(~PICK);
+	}
 }
 
 // ---- model2a's ----
@@ -1487,6 +1567,13 @@ void model2a::random_frame()
 	if (m_random && m_random->on) m_random->frame();
 }
 
+void model2a::random_select_inputs()
+{
+	if (m_random && m_random->on) m_random->select_inputs(m_in1, m_in2);
+}
+
+bool model2a::random_select_hidden() const { return m_random && m_random->select_hidden(); }
+
 // The carried book (tools/carry_book.py: VF1 Recomp's seed book, its names' recipes)
 static const char *const CARRIED =
 #include "random_book.inc"
@@ -1545,6 +1632,7 @@ bool model2a::apply_random_fighters()
 	r.picking[0] = r.picking[1] = false;
 	r.cpu_made[0] = r.cpu_made[1] = -1;
 	r.at_select[0] = r.at_select[1] = r.fighting[0] = r.fighting[1] = r.from_select = false;
+	r.select_at = 0;
 	// (each player's fighter made now too, for a match that starts without a select: a seed's as it plays)
 	for (int pl = 0; pl < 2; pl++)
 		if (r.mode[pl]) r.build(11 + pl, r.make_plan(r.seed_for(pl)), pl);
@@ -1605,7 +1693,7 @@ constexpr rom_span STATE_SPANS[] = { { FREE_AT, FREE_END - FREE_AT }, { RECORDS,
 constexpr u32 STATE_TAG = 0x52324656;   // "VF2R"
 struct random_host_state {   // (u32s only: no padding in a state)
 	u32 mode[2], seed[2], cpu, picking[2], cpu_made[2], at_select[2], fighting[2], from_select, head_of[N_RECORDS];
-	u32 seeded, draw_rng, colour_rng, made[2][2], tex_fighter[2], tex_applied[2], tex_busy[2], tex_head_set[2];
+	u32 seeded, draw_rng, colour_rng, made[2][2], tex_fighter[2], tex_applied[2], tex_busy[2], tex_head_set[2], select_at;
 };
 }
 
@@ -1624,6 +1712,7 @@ void random_fighters::save(m2::StateWriter &io)
 	h.cpu = cpu; h.from_select = from_select;
 	for (int f = 0; f < N_RECORDS; f++) h.head_of[f] = u32(head_of[f]);
 	h.seeded = seeded; h.draw_rng = draw_rng; h.colour_rng = colour_rng;
+	h.select_at = select_at;
 	io.pod(h);
 }
 
@@ -1658,6 +1747,7 @@ void random_fighters::load(m2::StateReader &io)
 	cpu = h.cpu; from_select = h.from_select;
 	for (int f = 0; f < N_RECORDS; f++) head_of[f] = int(h.head_of[f]);
 	seeded = h.seeded; draw_rng = h.draw_rng; colour_rng = h.colour_rng;
+	select_at = h.select_at;
 }
 
 void model2a::random_state(m2::StateWriter &io) { m_random->save(io); }

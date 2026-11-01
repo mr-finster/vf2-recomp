@@ -81,9 +81,11 @@ Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
   ([docs/SEEDS.md](docs/SEEDS.md); Random draws from the whole book). VF3 Recomp carries this book on in turn
   ([docs/random_book.txt](docs/random_book.txt), `vf2random --recipes`).
 
-Anything but Normal is picked for you at the select (whoever you choose). **Random opponents** makes every computer
-opponent a random fighter, made afresh for each match (not your own fighter's mirror match). Changing them restarts
-the game.
+Anything but Normal is picked for you at the select, as in VF1 Recomp: playing alone, or with both players random
+(offline or online), the select is skipped (who you got is a surprise as the fight comes in); beside a player on
+Normal, it shows, the Normal player picks as ever and the random one is picked at once. A challenger's select doesn't
+pick again for a player already in. **Random opponents** makes every computer opponent a random fighter, made afresh for each match (not your own
+fighter's mirror match). Changing them restarts the game.
 
 **Online**, your fighter is Online > Settings > **Your fighter** (Normal, Random or Seed, as here), whichever side you
 play: your opponent sees it as the match starts (RANDOM, or the seed's name), and both machines make the same fighters

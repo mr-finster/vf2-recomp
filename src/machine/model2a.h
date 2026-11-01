@@ -359,6 +359,9 @@ public:
 	void random_fighters_decode();   // (every texture a random fighter may take decoded now, not as a match goes: a second or so)
 	const std::map<std::string, uint32_t> &random_fighter_names();   // (the book: every name, its place in it from 1; made once)
 	bool random_fighters_on() const;
+	// The player select hidden: everyone at it with a random fighter (one player alone, or both; online too), picked
+	// for them at once: who they got is a surprise as the fight comes in. A player picking as ever there, it shows
+	bool random_select_hidden() const;
 	std::string random_fighter_name(int pl);   // (a player's fighter's now, "" none: the energy bar's)
 	// What a name's fighter is made of, by whose: "head|body|arms|legs|moves (move groups)|voice" ("" none)
 	std::string random_fighter_makeup(const std::string &name);
@@ -757,6 +760,7 @@ private:
 	std::unique_ptr<random_fighters, random_deleter> m_random;
 	random_fighters &randoms();
 	void random_frame();
+	void random_select_inputs();   // (before a frame: the select's presses for a random player, select_inputs)
 	std::string m_random_hud[2];   // (the names under the energy bars offline: hud_names, under m_hud_mx)
 
 	// handlers by dword, for everything that isn't plain memory

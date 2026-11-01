@@ -4403,8 +4403,12 @@ int main(int argc, char **argv)
 		SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
 		SDL_RenderClear(ren);
 		crt_on = cfg.crt_colours || cfg.brightness != 100 || cfg.gamma != 100;
-		crt_paint.draw(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, cfg.crt_colours, cfg.brightness, cfg.gamma);   // (CRT colours, brightness, gamma: the picture only)
-		draw_hud_flags();
+		// (Cheats' random fighters, everyone at the select random: the select they're picked at (a moment) isn't shown,
+		// who they got a surprise as the fight comes in)
+		const bool select_hidden = m.random_select_hidden();
+		if (!select_hidden)
+			crt_paint.draw(ren, gpu.shown ? gpu_pic.target() : tex, nullptr, cfg.crt_colours, cfg.brightness, cfg.gamma);   // (CRT colours, brightness, gamma: the picture only)
+		if (!select_hidden) draw_hud_flags();
 		draw_filter();
 		menu.render(true);   // (the FPS too: set_fps above leaves it empty while Show FPS is off)
 		pace.blit += SDL_GetTicksNS() - tb;

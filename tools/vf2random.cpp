@@ -155,10 +155,12 @@ int main(int argc, char **argv)
 	auto shoot = [&](const std::string &name, uint64_t f, bool quiet = false) {
 		const bitmap_rgb32 &b = m.render(true);
 		const std::string path = out + "/" + name + ".png";
-		write_png(path.c_str(), b.data(), b.width(), b.height());
+		const bool hidden = m.random_select_hidden();   // (as the window shows it: black, the select hidden)
+		if (hidden) { std::vector<uint32_t> black(size_t(b.width()) * b.height(), 0xff000000); write_png(path.c_str(), black.data(), b.width(), b.height()); }
+		else write_png(path.c_str(), b.data(), b.width(), b.height());
 		if (quiet) return;
 		u32 blk[2] = { m.peek32(0x500804), m.peek32(0x500808) };
-		printf("%s (frame %llu, mode %u): fighters %u %u, names [%s] [%s]\n", path.c_str(), (unsigned long long)f, m.game_mode(),
+		printf("%s (frame %llu, mode %u%s): fighters %u %u, names [%s] [%s]\n", path.c_str(), (unsigned long long)f, m.game_mode(), hidden ? ", select hidden" : "",
 			blk[0] ? m.read_byte(blk[0] + 0x1b0) : 0xffu, blk[1] ? m.read_byte(blk[1] + 0x1b0) : 0xffu,
 			m.random_fighter_name(0).c_str(), m.random_fighter_name(1).c_str());
 		fflush(stdout);
