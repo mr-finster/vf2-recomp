@@ -27,7 +27,9 @@
 // That read takes block +1b4 instead (+08's first byte), and every record is given a copy of itself whose +08 names
 // its own number: the cast's colours as they were. A random fighter's are its head's (its face, hair and skin as
 // they are), its clothes' main colour and the textures' recoloured each game (colours), in a table of its own.
-// Every byte changed is kept as it was (undo): off, the ROMs as loaded.
+// Textures: each part in its own fighter's, in a texture set made for the random fighter (build_textures, and the
+// Textures note below). Every byte changed is kept as it was (undo, and the texture ROM's tex_was): off, the ROMs as
+// loaded.
 #include "model2a.h"
 #include <algorithm>
 #include <chrono>
@@ -71,6 +73,41 @@ constexpr patch PATCHES[] = {
 	{ 0x0004775c, 0x8088e1b0, 0x8088e1b4 },        // (both sides' ramps again, 0x4772c)
 	{ 0x00047770, 0x8088e1b0, 0x8088e1b4 } };
 
+// Textures. A fighter's are two sets (record +30 and the next number) in the archive at 2300000: [2300008] a table of
+// descriptor tables (a count, then a word each texture: where it goes), [230000c] a table of sets by number (the
+// descriptor table's number, then each texture's data), uploaded a texture at a time by a background task (0x4bd24)
+// for the requests at 550168 (0x20 each; a side's two at 550188 and 550248, player 2's 5501a8 and 550268). Each
+// texture a block of 256 x 256 (or less) holding many of the fighter's (its face, hair, clothes, belts, boots ...
+// wherever its models' texture headers say), every fighter's in the same places on its side's sheet (player 1's on
+// sheet 1, player 2's on sheet 0; their mipmaps on the right halves, a level on the other sheet in turn), with seven
+// rows of colours of its own (the record's colour entry's, for the faces and details) and the skin and main colour:
+// so a side held one fighter's, and a random fighter's parts drew in its head's. Now each part is drawn in its own
+// fighter's: the side's sheet put together a 32 x 32 tile at a time, each tile from the fighter whose texture is there
+// (the head's where no other's is), a texture where another's is moved to a free place (the part's models' headers
+// moved with it), its blocks decoded by the game's own decompressor (tex_decoder) and written to texture RAM once the
+// side's set is loaded; and the parts' colour rows put in rows of the random fighter's colour entry the head doesn't
+// use (the headers' colour numbers moved with them)
+constexpr u32 ARC_DESCS = 0x02300008, ARC_SETS = 0x0230000c, MODELS = 0x020e0004;
+constexpr u32 ARC_DESCS_WAS = 0x02300420, ARC_SETS_WAS = 0x02300c5c;
+constexpr int N_ARC_SETS = 0x56;
+constexpr int TW = 24, TH = 32;   // (the fighters' part of a sheet, in tiles of 32 x 32: 768 x 1024)
+constexpr u32 SET_REQUEST[2][2] = { { 0x550188, 0x550248 }, { 0x5501a8, 0x550268 } };   // (each side's set's and the next's uploads)
+// Each character's textures drawn as it plays besides its parts' (its faces' expressions, what it wears, its moves'
+// effects: found by playing each, both costumes; a row a word, tiles 0-23 its bits), kept as its head's
+const u32 MISC_TILES[11][TH] = {
+	{ 0x000f00, 0x000f00, 0x000f00, 0x000f00, 0x000f00, 0x000f00, 0x000f00, 0x000f00, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000cf, 0x0000f7, 0x0000f7, 0x0000c3, 0x0000c3, 0x3f0000, 0x3f0000, 0x3f0000, 0x3f0000, 0x00003f, 0x00003f, 0x000000, 0x000000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Akira
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x000000, 0x000000, 0x000000, 0x000000, 0x3f0000, 0x3f0000, 0x3f0000, 0x3f0000, 0x00003f, 0x00003f, 0x000000, 0x000000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Jacky
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x00003f, 0x00001f, 0x00000f, 0x3f000f, 0x3f000f, 0x3f0000, 0x3f0000, 0x00003f, 0x00003f, 0x000000, 0x000000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Sarah
+	{ 0x0f0000, 0x0f0000, 0x0f0000, 0x0f0000, 0x0f0000, 0x0f0000, 0x0f0000, 0x0f0000, 0x0000ff, 0x00c0ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000bf, 0x0000bf, 0x000083, 0x0000cf, 0x0000cf, 0x0000cf, 0x0000cf, 0x30000f, 0x30000f, 0x3f000f, 0x3f000f, 0x000000, 0x000000, 0x300000, 0x300000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Kage
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x0000ff, 0x0000ff, 0x0000cf, 0x0000cf, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x3f0000, 0x3f0000, 0x3f0000, 0x3f0000, 0x00003f, 0x00003f, 0x000000, 0x000000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Lau
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x3f00ff, 0x3f000f, 0x3f000f, 0x3f000f, 0x000000, 0x000000, 0x000000, 0x000000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Jeffry
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x00001f, 0x00001f, 0x0000cf, 0x000003, 0x3f0030, 0x3f0030, 0x3f0030, 0x3f0030, 0x780040, 0x780040, 0x080000, 0x080000, 0x300000, 0x700000, 0xe00000, 0xe00000 },   // Pai
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x00003f, 0x00003f, 0x00003f, 0x3f0000, 0x3f0000, 0x3f0000, 0x3f0000, 0x000000, 0x000000, 0x000000, 0x000000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Wolf
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x0003ff, 0x0003ff, 0x0000ff, 0x00f0ff, 0x0000f7, 0x0000f7, 0x0000f7, 0x0000f7, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x3f003f, 0x3f003f, 0x3f000f, 0x3f000f, 0x0000c0, 0x0000c0, 0x000000, 0x000200, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Shun
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000 },   // Dural
+	{ 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x00000f, 0x00001f, 0x00003f, 0x00003f, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x0000ff, 0x00f0ff, 0x0030ff, 0x3f0000, 0x3f0000, 0x3f0000, 0x3f0000, 0x000000, 0x000000, 0x000000, 0x000000, 0x380000, 0x780000, 0xfc0000, 0xfc0000 },   // Lion
+};
+
 // the colour levels as 0-1, and as hue, saturation, value
 float level(u16 v) { return std::clamp((float(v) - 116.f) / 139.f, 0.f, 1.f); }
 u16 raw(float x) { return u16(std::lround(116.f + std::clamp(x, 0.f, 1.f) * 139.f)); }
@@ -91,6 +128,10 @@ void to_rgb(const hsv &c, float &r, float &g, float &b)
 }
 // (VF1's: skin, eyes and teeth (white or light grey), a mouth's full red)
 bool is_skin(const hsv &c) { return c.h > 0.015f && c.h < 0.13f && c.s > 0.15f && c.s < 0.75f && c.v > 0.45f; }
+bool light_colour(const hsv &c) { float r, g, b; to_rgb(c, r, g, b); return 0.3f * r + 0.59f * g + 0.11f * b > 0.45f; }
+// (kept: the main colour if skin, grey, black or white; in the textures, mostly faces, every warm colour too)
+bool kept(const hsv &c) { return is_skin(c) || c.s <= 0.28f || c.v <= 0.12f; }
+bool face_colour(const hsv &c) { return kept(c) || c.h <= 0.18f || c.h >= 0.93f; }
 // the clothes' themes, VF1's: a turn round the colour wheel most; black and white, black and gold the rare ones
 enum { THEME_TURN, THEME_BW, THEME_BLACK_GOLD, THEME_COOL, THEME_WARM, THEME_OPPOSITE, THEME_NEON, THEME_PASTEL, THEMES };
 // (the program and its tables as known: a CRC of the spans this reads and changes)
@@ -103,6 +144,90 @@ const char *const NAME[13] = { "AKIRA", "JACKY", "SARAH", "KAGE", "LAU", "JEFFRY
 // and textures: its record), the upper arms, the forearms, the hands, the thighs, the shins, the feet
 const std::vector<std::vector<int>> GROUPS = { { 0, 1, 9 }, { 3, 6 }, { 4, 7 }, { 5, 8 }, { 10, 13 }, { 11, 14 }, { 12, 15 } };
 constexpr int G_TORSO = 0, G_HANDS = 3;
+
+// The game's own texture decompressor (0x4c180, 0x4cb64, 0x4cd18: the uploader's, from 0x4be68), run on an i960 of
+// its own over the ROMs, a work RAM of its own and nothing else: a texture block's data as the game would write it
+// to texture RAM at its place in a set (player 1's: level 0 on sheet 1, each mipmap level on the other sheet in
+// turn), each 16-bit unit (2 x 2 texels) written kept. A random fighter's textures are put together from them
+// (random_fighters::apply_textures), so the uploader never loads more than a fighter's set
+class tex_decoder : public mame_bus32
+{
+public:
+	struct unit { u8 sheet; u32 at; u16 v; };   // (a write: sheet, its 16-bit unit's index, the value)
+	tex_decoder(const std::vector<u8> &prog, const std::vector<u8> &data) : m_prog(prog), m_data(data), m_ram(0x100000) {}
+	// a block's data (its word in a set's list) placed at x, y: false if it didn't finish
+	bool decode(u32 data_at, int x, int y, std::vector<unit> &out)
+	{
+		if (!m_cpu) m_cpu = std::make_unique<i960_device>(*this);
+		std::fill(m_ram.begin(), m_ram.end(), 0);
+		m_out = &out;
+		out.clear();
+		put(0x550008, 1000);   // (the time it may take each go: plenty)
+		put(0x55c2f4, 0);      // (the request's flags: player 1's, the whole block, its mipmaps)
+		const u32 stub = 0x5ff000, done = stub + 16;
+		auto call = [](u32 at, u32 to) { return 0x09000000u | ((to - at) & 0x00fffffcu); };
+		const bool raw = rd32(data_at) != 0;   // (the uploader's choice: 0x4be78)
+		put(stub, call(stub, 0x4d16c));
+		put(stub + 4, call(stub + 4, raw ? 0x4c9dc : 0x4c180));
+		put(stub + 8, raw ? 0x08000008u : call(stub + 8, 0x4cb64));
+		put(stub + 12, raw ? 0x08000004u : call(stub + 12, 0x4cd18));
+		put(done, 0x08000000);   // (b .)
+		m_cpu->reset();
+		m_cpu->set_reg(I960_G3, data_at + 4);
+		m_cpu->set_reg(I960_G6, u32(y));
+		m_cpu->set_reg(I960_G7, u32(x));
+		m_cpu->set_reg(I960_G8, 0);
+		m_cpu->set_reg(I960_FP, 0x5fe000);
+		m_cpu->set_reg(I960_SP, 0x5fe040);
+		m_cpu->set_reg(I960_PFP, 0);
+		m_cpu->set_reg(I960_IP, stub);
+		for (int i = 0; i < 4000 && m_cpu->ip() != done; i++) m_cpu->run(100000);
+		m_out = nullptr;
+		return m_cpu->ip() == done;
+	}
+	u8 read_byte(offs_t a) override { const u8 *p = ptr(a); return p ? *p : 0; }
+	u16 read_word(offs_t a) override { return u16(read_byte(a) | read_byte(a + 1) << 8); }
+	u32 read_dword(offs_t a) override
+	{
+		if (a == 0xf00008 || a == 0xf0000c) return 0xfffff;   // (the timer: never late, nothing to wait for)
+		return rd32(a);
+	}
+	void write_byte(offs_t a, u8 v) override { if (a >= 0x500000 && a < 0x600000) m_ram[a - 0x500000] = v; }
+	void write_word(offs_t a, u16 v) override
+	{
+		if (a >= 0x12000000 && a < 0x12800000) { tex(a, v); return; }
+		write_byte(a, u8(v)); write_byte(a + 1, u8(v >> 8));
+	}
+	void write_dword(offs_t a, u32 v) override
+	{
+		if (a >= 0x12000000 && a < 0x12800000) { tex(a, u16(v)); return; }
+		for (int k = 0; k < 4; k++) write_byte(a + u32(k), u8(v >> (8 * k)));
+	}
+	u16 flags(offs_t a) override
+	{
+		const bool burst = a < 0x200000 || (a >= 0x500000 && a < 0x600000) || (a >= 0x02000000 && a < 0x04000000) || (a >= 0x12000000 && a < 0x12820000);
+		return burst ? i960_cpu_device::BURST : 0;
+	}
+private:
+	const std::vector<u8> &m_prog, &m_data;
+	std::vector<u8> m_ram;
+	std::unique_ptr<i960_device> m_cpu;
+	std::vector<unit> *m_out = nullptr;
+	const u8 *ptr(offs_t a) const
+	{
+		if (a < m_prog.size()) return &m_prog[a];
+		if (a >= 0x02000000 && a - 0x02000000 < m_data.size()) return &m_data[a - 0x02000000];
+		if (a >= 0x500000 && a < 0x600000) return &m_ram[a - 0x500000];
+		return nullptr;
+	}
+	u32 rd32(offs_t a) const { u32 v = 0; for (int k = 0; k < 4; k++) if (const u8 *p = ptr(a + u32(k))) v |= u32(*p) << (8 * k); return v; }
+	void put(u32 a, u32 v) { for (int k = 0; k < 4; k++) m_ram[a - 0x500000 + u32(k)] = u8(v >> (8 * k)); }
+	void tex(offs_t a, u16 v)
+	{
+		const bool sheet1 = a >= 0x12400000;
+		if (m_out) m_out->push_back({ u8(sheet1), ((a - (sheet1 ? 0x12400000 : 0x12000000)) & 0x1fffff) >> 2, v });
+	}
+};
 
 } // namespace
 
@@ -159,6 +284,7 @@ public:
 		int three[3] = {};            // (the three, by base number: the first's stance, moves' basics and voice)
 		int rec[7] = {};               // (each group's record: fighter number with its costume)
 		int head = 0;                  // (the head's base number)
+		bool head_costume = false;     // (TESTONLY, VF2_PLAN: its head in its second costume)
 		std::map<u8, int> giver;       // (each button group's commands: which of the three)
 		std::string name;
 		int share = 0;                 // (the most of its looks one character's, in %)
@@ -166,7 +292,7 @@ public:
 	};
 	plan make_plan(u32 seed);
 	static std::string blend_name(const std::map<std::string, int> &made_of);
-	void build(int f, const plan &p);   // (fighter number f made the plan's fighter)
+	void build(int f, const plan &p, int side);   // (fighter number f made the plan's fighter, for a side)
 	void own(int f);                    // (... and its own again)
 	void base_layer();
 	void off();
@@ -175,6 +301,38 @@ public:
 	u32 colour_rng = 0;    // (the colours' draw: the clock's, new each game; not the seed's)
 	u32 next_colour(u32 n);
 	void colours(u32 n, int giver);   // (colour number n: the giver's colours, recoloured)
+	int col_theme = THEME_TURN;       // (... its theme and turn, for the rows put in after)
+	float col_turn = 0;
+	bool col_plain = false;           // (TESTONLY: VF2_NOCOLOUR, the colours as given)
+	hsv themed(const hsv &c, bool light) const;
+	void flat_copy(u32 n, u32 row, u32 from, u32 from_row);   // (a row of colours, recoloured as colours' are)
+
+	// Textures (each side's; see the Textures note)
+	struct tex_side {
+		int fighter = -1;                          // (the fighter number they're made for: its models' headers moved while it's on the side)
+		struct src { int ch = -1, dx = 0, dy = 0; bool operator==(const src &o) const { return ch == o.ch && dx == o.dx && dy == o.dy; } };
+		std::vector<src> tiles;                    // (each tile: whose texels, from how far back; ch -1 the game's)
+		bool applied = false, busy = false;        // (written to texture RAM; the side's set loaded since)
+		std::map<u32, u16> rewrite;                // (the models' texture headers moved: texture ROM u16 index, its value)
+		bool rewritten = false;
+		u32 head_set = 0;                          // (its head's texture set)
+	};
+	tex_side tex[2];
+	std::vector<u8> &texrom;
+	std::map<u32, u16> tex_was;   // (each texture ROM u16 changed, as loaded)
+	u16 trd(u32 i) const { u16 v = 0; if (2 * size_t(i) + 2 <= texrom.size()) memcpy(&v, &texrom[2 * size_t(i)], 2); return v; }
+	u16 trd0(u32 i) const { const auto it = tex_was.find(i); return it != tex_was.end() ? it->second : trd(i); }
+	void twr(u32 i, u16 v) { if (2 * size_t(i) + 2 > texrom.size() || trd(i) == v) return; tex_was.emplace(i, trd(i)); memcpy(&texrom[2 * size_t(i)], &v, 2); }
+	u32 rdl(u32 a) { if (a >= 0x02000000 ? a - 0x02000000 + 4 > data.size() : a + 4 > prog.size()) return 0; u32 v; memcpy(&v, at(a), 4); return v; }   // (as they are)
+	void build_textures(int f, const plan &p, int side, const int slot_rec[16], int giver, u32 n);
+	void set_rewrites(int side, bool on);
+	void apply_textures(int side);
+	void texture_set_now(int f, int side);   // (its record's texture set: the side's as it is, if a fighter's)
+	struct blk { int x, y, w, h; u32 data; };
+	std::map<int, std::vector<blk>> blocks;   // (each character's set's blocks: where they go, their size, their data)
+	const std::vector<blk> &blocks_of(int ch);
+	std::unique_ptr<tex_decoder> decoder;
+	std::map<u32, std::vector<tex_decoder::unit>> decoded;   // (each block's units as the game writes them, by its data)
 	u32 seed_for(int pl);
 	u32 random_named();
 };
@@ -188,7 +346,7 @@ random_fighters &model2a::randoms()
 }
 
 random_fighters::random_fighters(model2a &board)
-	: m(board), prog(board.m_roms.regions[romset::MAINCPU]), data(board.m_roms.regions[romset::MAIN_DATA])
+	: m(board), prog(board.m_roms.regions[romset::MAINCPU]), data(board.m_roms.regions[romset::MAIN_DATA]), texrom(board.m_roms.regions[romset::TEXTURES])
 {
 	// (made before any of this changes them: the secret character's patches don't touch what's read here)
 	if (prog.size() < 0x200000 || data.size() < 0x20000) return;
@@ -200,7 +358,8 @@ random_fighters::random_fighters(model2a &board)
 		{ ROUND_MOVES, 4 * 11 }, { BAR_NAMES_AT[0] - 4, 4 }, { BAR_NAMES_AT[1] - 4, 4 }, { BAR_NAMES[0], 4 * 22 } };
 	u32 crc = 0;
 	for (const auto &[a, n] : SPANS) crc = u32(::crc32(crc, a < 0x200000 ? &prog[a] : &data[a - 0x02000000], uInt(n)));
-	known = crc == KNOWN_CRC && std::all_of(std::begin(PATCHES), std::end(PATCHES), [&](const patch &k) { return rd0(k.at) == k.was; }) && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; });
+	known = crc == KNOWN_CRC && std::all_of(std::begin(PATCHES), std::end(PATCHES), [&](const patch &k) { return rd0(k.at) == k.was; }) && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; })
+		&& data.size() >= 0x2400000 && texrom.size() >= 0x1000000 && rdl(ARC_DESCS) == ARC_DESCS_WAS && rdl(ARC_SETS) == ARC_SETS_WAS;
 	for (int b = 0; b < 13; b++)
 		for (u32 a = rd0(COMMANDS + 4 * u32(b)); a + 7 <= prog0.size() && prog0[a] == 0x0e && disp[b].size() < 200; a += 7)
 			disp[b].push_back({ u16(prog0[a + 1] | prog0[a + 2] << 8), rd0(a + 3) });
@@ -264,6 +423,13 @@ random_fighters::plan random_fighters::make_plan(u32 s)
 	for (size_t i = 0; i < differ.size(); i++) {
 		p.giver[differ[i]] = int((first + i) % 3);
 		made_of[NAME[p.three[p.giver[differ[i]]]]] += 1;
+	}
+	if (const char *o = getenv("VF2_PLAN")) {   // TESTONLY: "leader,head,torso,arms,forearms,hands,thighs,shins,feet" (records)
+		int v[9];
+		if (sscanf(o, "%d,%d,%d,%d,%d,%d,%d,%d,%d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7], &v[8]) == 9) {
+			p.three[0] = v[0]; p.head = v[1] % 13; p.head_costume = v[1] >= 13;
+			for (int g = 0; g < 7; g++) p.rec[g] = v[2 + g];
+		}
 	}
 	p.name = blend_name(made_of);
 	int total = 0, most = 0;
@@ -357,6 +523,9 @@ void random_fighters::off()
 	const bool code = undo.count(COLOUR_AT) > 0;
 	for (const auto &[a, b] : undo) *at(a) = b;
 	undo.clear();
+	for (const auto &[i, v] : tex_was) memcpy(&texrom[2 * size_t(i)], &v, 2);
+	tex_was.clear();
+	for (tex_side &t : tex) t = tex_side();
 	if (code) code_changed();
 	base_on = false;
 	for (auto &n : name_of) n.clear();
@@ -382,11 +551,13 @@ void random_fighters::own(int f)
 	for (int side = 0; side < 2; side++) put32(BAR_COPIES + 0x40 * u32(side) + 4 * u32(b), rd0(BAR_NAMES[side] + 4 * u32(b)));
 	name_of[f].clear();
 	if (f >= 11 && f <= 12) name_of[f + 13].clear();
+	for (int side = 0; side < 2; side++)
+		if (tex[side].fighter == f) { set_rewrites(side, false); tex[side].fighter = -1; }
 }
 
 // Fighter number f made the plan's fighter: its record (in the place for f), and f's entries in the tables by
 // fighter (by its number without the costume: the computer's opponent's both costumes)
-void random_fighters::build(int f, const plan &p)
+void random_fighters::build(int f, const plan &p, int side)
 {
 	const int b = f % 13, torso = p.rec[G_TORSO];
 	const u32 at_ = MADE_AT + MADE * u32(f), hdr = at_, colour = at_ + 0x50, blk = at_ + 0x100, far34 = at_ + 0x440, far44 = at_ + 0x480, cmds = at_ + 0x500;
@@ -400,11 +571,13 @@ void random_fighters::build(int f, const plan &p)
 	for (u32 k = 0; k < 0x40; k += 4) put32(colour + k, rd0(k));
 	// (its colours its head's: the face's skin all over, the hair and the face as they are; Dural's her own)
 	const u32 n = COLOUR_NUMBER[f == 11 ? 0 : f == 12 ? 1 : 2];
-	colours(n, p.head + (f >= 13 ? 13 : 0));
+	int giver = p.head + (f >= 13 || p.head_costume ? 13 : 0);
+	if (getenv("VF2_GIVER")) giver = p.rec[G_TORSO];   // TESTONLY: the torso's colours (to compare a body with its own)
+	colours(n, giver);
 	put8(colour, u8(n));
 	int slot_rec[16];
 	for (int g = 0; g < 7; g++) for (int s : GROUPS[g]) slot_rec[s] = p.rec[g];
-	slot_rec[2] = p.head + (f >= 13 && p.head != DURAL ? 13 : 0);
+	slot_rec[2] = p.head + ((f >= 13 || p.head_costume) && p.head != DURAL ? 13 : 0);
 	for (int s = 0; s < 16; s++) {
 		const u32 r = record(slot_rec[s]);
 		put32(blk + 4 * u32(s), rd0(rd0(r) + 4 * u32(s)));
@@ -414,9 +587,13 @@ void random_fighters::build(int f, const plan &p)
 	put32(hdr + 0x34, far34);
 	put32(hdr + 0x44, far44);
 	put32(hdr + 0x14, rd0(record(p.three[0]) + 0x14));   // (the first's basic moves: its stance and walk)
-	put32(hdr + 0x30, rd0(record(slot_rec[2]) + 0x30));   // (the head's texture set: its hair and face's textures; the others' textured parts take them)
-	put32(hdr + 0x3c, rd0(record(p.rec[G_HANDS]) + 0x3c));
+	put32(hdr + 0x30, rd0(record(slot_rec[2]) + 0x30));   // (the head's texture set; one of its own, build_textures)
+	// (both hands' poses, the hands': in the block, and +3c the first's)
+	const bool old = getenv("VF2_TEXTURES_OLD") != nullptr;   // TESTONLY: as before (the head's set, the hands' first only)
+	if (!old) for (u32 k = 0x40; k < 0x240; k += 4) put32(blk + k, rd0(rd0(record(p.rec[G_HANDS])) + k));
+	put32(hdr + 0x3c, old ? rd0(record(p.rec[G_HANDS]) + 0x3c) : blk + 0x40);
 	put32(hdr + 0x40, rd0(record(slot_rec[2]) + 0x40));
+	if (!old) build_textures(f, p, side, slot_rec, giver, n);
 	put32(RECORDS + 4 * u32(f), hdr);
 	if (f >= 11 && f <= 12) put32(RECORDS + 4 * u32(f + 13), hdr);
 	// the head: its faces (Dural has none: her head is part 2) and what swings from it
@@ -478,6 +655,25 @@ u32 random_fighters::next_colour(u32 n)
 // gold), its brightest level put in it and every level moved with it, so its shading stays; the textures' cool colours
 // each the same way (their warm ones are faces); skin, greys, black and white as they are; a dark yellow or
 // brown a turn makes (olive, khaki: muddy) lifted to a clean gold or orange
+hsv random_fighters::themed(const hsv &c, bool light) const
+{
+	hsv t = c;
+	const float h0 = c.h, turn = col_turn;
+	switch (col_theme) {
+	case THEME_BW: t.s = 0; t.v = light ? 0.95f : 0.12f; break;
+	case THEME_BLACK_GOLD: if (!light) { t.s = 0; t.v = 0.12f; } else { t.h = 0.125f; t.s = 0.75f; t.v = 0.92f; } break;
+	case THEME_COOL: t.h = 0.47f + 0.3f * h0; t.s = std::max(c.s, 0.6f); break;                       // (teal, blue, violet)
+	case THEME_WARM: t.h = std::fmod(0.97f + 0.17f * h0, 1.f); t.s = std::max(c.s, 0.65f); t.v = std::max(c.v, 0.45f); break;   // (red, orange, gold)
+	case THEME_OPPOSITE: t.h = std::fmod(turn + (h0 < 0.5f ? 0 : 0.5f), 1.f); t.s = std::max(c.s, 0.65f); break;
+	case THEME_NEON: t.h = std::fmod(h0 + turn, 1.f); t.s = 1; t.v = std::max(c.v, 0.9f); break;
+	case THEME_PASTEL: t.h = std::fmod(h0 + turn, 1.f); t.s = 0.32f; t.v = std::max(c.v, 0.85f); break;
+	default:
+		t.h = std::fmod(h0 + turn, 1.f);
+		if (t.h > 0.07f && t.h < 0.28f && c.v < 0.7f) { t.v = std::min(1.f, c.v * 0.4f + 0.6f); t.s = std::max(c.s, 0.7f); }
+	}
+	return t;
+}
+
 void random_fighters::colours(u32 n, int giver)
 {
 	static const int WEIGHT[THEMES] = { 6, 1, 1, 4, 4, 4, 3, 3 };
@@ -486,31 +682,10 @@ void random_fighters::colours(u32 n, int giver)
 	float turn = float(next_colour(1000)) / 1000.f;
 	if (const char *t = getenv("VF2_THEME")) theme = std::clamp(atoi(t), 0, THEMES - 1);   // TESTONLY
 	if (const char *t = getenv("VF2_OUTFIT")) turn = float(atof(t));                     // TESTONLY
-	auto themed = [&](const hsv &c, bool light) {
-		hsv t = c;
-		const float h0 = c.h;
-		switch (theme) {
-		case THEME_BW: t.s = 0; t.v = light ? 0.95f : 0.12f; break;
-		case THEME_BLACK_GOLD: if (!light) { t.s = 0; t.v = 0.12f; } else { t.h = 0.125f; t.s = 0.75f; t.v = 0.92f; } break;
-		case THEME_COOL: t.h = 0.47f + 0.3f * h0; t.s = std::max(c.s, 0.6f); break;                       // (teal, blue, violet)
-		case THEME_WARM: t.h = std::fmod(0.97f + 0.17f * h0, 1.f); t.s = std::max(c.s, 0.65f); t.v = std::max(c.v, 0.45f); break;   // (red, orange, gold)
-		case THEME_OPPOSITE: t.h = std::fmod(turn + (h0 < 0.5f ? 0 : 0.5f), 1.f); t.s = std::max(c.s, 0.65f); break;
-		case THEME_NEON: t.h = std::fmod(h0 + turn, 1.f); t.s = 1; t.v = std::max(c.v, 0.9f); break;
-		case THEME_PASTEL: t.h = std::fmod(h0 + turn, 1.f); t.s = 0.32f; t.v = std::max(c.v, 0.85f); break;
-		default:
-			t.h = std::fmod(h0 + turn, 1.f);
-			if (t.h > 0.07f && t.h < 0.28f && c.v < 0.7f) { t.v = std::min(1.f, c.v * 0.4f + 0.6f); t.s = std::max(c.s, 0.7f); }
-		}
-		return t;
-	};
-	auto light_of = [](const hsv &c) { float r, g, b; to_rgb(c, r, g, b); return 0.3f * r + 0.59f * g + 0.11f * b > 0.45f; };
-	// (kept: the main colour if skin, grey, black or white; in the textures, which are mostly faces, every warm colour
-	// too (skin in all its shades, lips, cheeks, beards, browns and golds): only their cool ones (greens, blues and
-	// purples: Pai's patterns, Wolf's bands) are clothes for sure)
-	auto kept = [](const hsv &c) { return is_skin(c) || c.s <= 0.28f || c.v <= 0.12f; };
-	auto face = [&](const hsv &c) { return kept(c) || c.h <= 0.18f || c.h >= 0.93f; };
-	const u32 sf = FLAT_NEW + FLAT_SIZE * u32(giver), sr = RAMP_NEW + RAMP_SIZE * u32(giver);
-	const u32 df = FLAT_NEW + FLAT_SIZE * n, dr = RAMP_NEW + RAMP_SIZE * n;
+	col_theme = theme;
+	col_turn = turn;
+	col_plain = getenv("VF2_NOCOLOUR") != nullptr;                                     // TESTONLY
+	const u32 sr = RAMP_NEW + RAMP_SIZE * u32(giver), dr = RAMP_NEW + RAMP_SIZE * n;
 	auto get = [&](u32 a, u32 step) { return to_hsv(level(rd16(a)), level(rd16(a + step)), level(rd16(a + 2 * step))); };
 	auto put = [&](u32 a, u32 step, const hsv &c) { float r, g, b; to_rgb(c, r, g, b); put16(a, raw(r)); put16(a + step, raw(g)); put16(a + 2 * step, raw(b)); };
 	auto copy = [&](u32 a, u32 step, u32 from) { for (u32 k = 0; k < 3; k++) put16(a + k * step, rd16(from + k * step)); };
@@ -520,24 +695,337 @@ void random_fighters::colours(u32 n, int giver)
 	for (int i = 0; i < 64; i++) { lv[i] = get(sr + 0x180 + 2 * u32(i), 0x80); if (lv[i].v > lv[top].v) top = i; }
 	const hsv ref = lv[top];
 	int lit = 0;   // (light or dark, for black and white or gold: by its levels' brightness on the whole, not its brightest)
-	for (const hsv &c : lv) lit += light_of(c);
+	for (const hsv &c : lv) lit += light_colour(c);
 	const hsv t = themed(ref, lit > 32);
 	for (int i = 0; i < 64; i++) {
 		const u32 a = dr + 0x180 + 2 * u32(i);
-		if (kept(ref)) { copy(a, 0x80, sr + 0x180 + 2 * u32(i)); continue; }
+		if (kept(ref) || col_plain) { copy(a, 0x80, sr + 0x180 + 2 * u32(i)); continue; }
 		hsv c = t;
 		c.s = std::clamp(ref.s > 0 ? t.s * lv[i].s / ref.s : t.s, 0.f, 1.f);
 		c.v = std::clamp(lv[i].v * t.v / ref.v, 0.f, 1.f);
 		put(a, 0x80, c);
 	}
-	for (u32 row = 0; row < 7; row++)
-		for (u32 i = 0; i < 16; i++) {
-			const u32 a = row * 0x60 + 2 * i;
-			const hsv c = get(sf + a, 0x20);
-			if (face(c)) copy(df + a, 0x20, sf + a); else put(df + a, 0x20, themed(c, light_of(c)));
-		}
+	for (u32 row = 0; row < 7; row++) flat_copy(n, row, u32(giver), row);
 	if (getenv("VF2_RANDLOG")) fprintf(stderr, "COLOURS %u from %d: theme %d turn %.3f, main h%.2f s%.2f v%.2f -> h%.2f s%.2f v%.2f\n", n, giver, theme, turn, ref.h, ref.s, ref.v, t.h, t.s, t.v);   // TESTONLY
 }
+
+// A row of the textures' colours (16), from colour number from's row to n's: its cool colours turned as the clothes'
+// main colour was (the warm ones are mostly faces: skin, lips, cheeks, beards, browns and golds; the cool ones, greens,
+// blues and purples, Pai's patterns, Wolf's bands, clothes for sure)
+void random_fighters::flat_copy(u32 n, u32 row, u32 from, u32 from_row)
+{
+	const u32 sf = FLAT_NEW + FLAT_SIZE * from + 0x60 * from_row, df = FLAT_NEW + FLAT_SIZE * n + 0x60 * row;
+	for (u32 i = 0; i < 16; i++) {
+		const u32 a = 2 * i;
+		const hsv c = to_hsv(level(rd16(sf + a)), level(rd16(sf + a + 0x20)), level(rd16(sf + a + 0x40)));
+		if (col_plain || face_colour(c)) { for (u32 k = 0; k < 3; k++) put16(df + a + 0x20 * k, rd16(sf + a + 0x20 * k)); continue; }
+		float r, g, b;
+		to_rgb(themed(c, light_colour(c)), r, g, b);
+		put16(df + a, raw(r)); put16(df + a + 0x20, raw(g)); put16(df + a + 0x40, raw(b));
+	}
+}
+
+// The textures of fighter number f, a random fighter on side side (see the Textures note): its head's set the base,
+// each other fighter's parts' textures where they go in their own set if that's free (not the head's: its head, its
+// faces, what it wears, MISC_TILES; nor another's), else in a free place, moved; their colour rows in rows of colour
+// number n the head doesn't use. Each tile's texels' fighter and how far they're moved (written by apply_textures),
+// and the headers to move (on while f is on the side: frame)
+void random_fighters::build_textures(int f, const plan &p, int side, const int slot_rec[16], int giver, u32 n)
+{
+	tex_side &t = tex[side];
+	set_rewrites(side, false);
+	t.rewrite.clear();
+	t.fighter = f;
+	const int H = p.head;   // (the head's character)
+	auto inside = [](int tx, int ty) { return tx >= 0 && ty >= 0 && tx < TW && ty < TH && (tx >= 8 || ty >= 8); };
+	// a model's texture headers on a side (u16 indexes into the texture ROM): from, count
+	auto headers = [&](u32 model, int sd, u32 &from, u32 &count) {
+		from = count = 0;
+		if (!model || model >= 0x2000) return;
+		const u32 w1 = rdl(MODELS + 16 * model + 4), w3 = rdl(MODELS + 16 * model + 12);
+		count = w3 >> 16;
+		from = w1 + 4 * count * u32(sd);
+		if (count > 0x1000 || 2 * (size_t(from) + 4 * count) > texrom.size()) count = 0;
+	};
+	struct hdr { int x, y, w, h; u16 h1, h3; };
+	auto decode = [&](u32 i, hdr &h) {
+		const u16 h0 = trd0(i), h2 = trd0(i + 2);
+		h = { 32 * (h2 & 0x3f), 32 * ((h2 >> 6) & 0x1f), 32 << (h0 & 7), 32 << ((h0 >> 3) & 7), trd0(i + 1), trd0(i + 3) };
+		return h0 || h2;
+	};
+	// the models drawn of a record's group of parts (and of its head)
+	auto group_models = [&](int rec, int g) {
+		std::vector<u32> ms;
+		const u32 r = record(rec);
+		for (u32 o : { 0u, 0x34u, 0x44u })
+			if (const u32 q = rd0(r + o)) for (int s : GROUPS[g]) ms.push_back(rd0(q + 4 * u32(s)));
+		if (g == G_TORSO) if (const u32 q = rd0(r + 0x38)) for (u32 k = 0; k < 4; k++) ms.push_back(rd0(q + 4 * k));
+		if (g == G_HANDS) {   // (the hands' poses, both hands', in the record's block)
+			const u32 b = rd0(r);
+			for (u32 k = 0x40; k < 0xc0; k += 4) ms.push_back(rd0(b + k));
+			for (u32 k = 0x1c0; k < 0x240; k += 4) ms.push_back(rd0(b + k));
+		}
+		ms.erase(std::remove_if(ms.begin(), ms.end(), [](u32 m) { return !m || m >= 0x2000; }), ms.end());
+		return ms;
+	};
+	auto head_models = [&](int rec) {
+		std::vector<u32> ms;
+		const u32 r = record(rec);
+		for (u32 o : { 0u, 0x34u, 0x44u }) if (const u32 q = rd0(r + o)) ms.push_back(rd0(q + 8));
+		return ms;
+	};
+	// each tile: the character whose textures it keeps (-1 free)
+	std::vector<s8> who(TW * TH, -1);
+	auto tiles = [&](const hdr &h, auto &&fn) {
+		for (int ty = h.y / 32; ty < (h.y + h.h) / 32; ty++)
+			for (int tx = h.x / 32; tx < (h.x + h.w) / 32; tx++) if (inside(tx, ty)) fn(tx, ty);
+	};
+	auto mark = [&](u32 model, int ch) {
+		u32 from, count;
+		headers(model, 0, from, count);
+		for (u32 k = 0; k < count; k++) { hdr h; if (decode(from + 4 * k, h)) tiles(h, [&](int tx, int ty) { who[ty * TW + tx] = s8(ch); }); }
+	};
+	for (u32 mdl : head_models(slot_rec[2])) mark(mdl, H);
+	if (H < int(std::size(MISC_TILES)))
+		for (int ty = 0; ty < TH; ty++) for (int tx = 0; tx < TW; tx++) if (MISC_TILES[H][ty] >> tx & 1) who[ty * TW + tx] = s8(H);
+	for (int g = 0; g < 7; g++) if (p.rec[g] % 13 == H) for (u32 mdl : group_models(p.rec[g], g)) mark(mdl, H);
+	// the others' parts: their textures' rectangles, those that overlap as one
+	struct comp { int ch, x, y, w, h, dx = 0, dy = 0; bool placed = false; };
+	std::vector<comp> comps;
+	for (int g = 0; g < 7; g++) {
+		const int ch = p.rec[g] % 13;
+		if (ch == H) continue;
+		for (u32 mdl : group_models(p.rec[g], g)) {
+			u32 from, count;
+			headers(mdl, 0, from, count);
+			for (u32 k = 0; k < count; k++) {
+				hdr h;
+				if (!decode(from + 4 * k, h)) continue;
+				bool any = false;
+				tiles(h, [&](int, int) { any = true; });
+				if (!any) continue;   // (not the fighter's set: the shared black, ...)
+				comp c{ ch, h.x, h.y, h.w, h.h };
+				for (size_t i = 0; i < comps.size();) {   // (merged with any of its own it overlaps)
+					const comp &o = comps[i];
+					if (o.ch == ch && o.x < c.x + c.w && c.x < o.x + o.w && o.y < c.y + c.h && c.y < o.y + o.h) {
+						const int x1 = std::max(c.x + c.w, o.x + o.w), y1 = std::max(c.y + c.h, o.y + o.h);
+						c.x = std::min(c.x, o.x); c.y = std::min(c.y, o.y); c.w = x1 - c.x; c.h = y1 - c.y;
+						comps.erase(comps.begin() + long(i));
+						i = 0;
+					} else i++;
+				}
+				comps.push_back(c);
+			}
+		}
+	}
+	auto each = [&](const comp &c, int dx, int dy, auto &&fn) {
+		for (int ty = (c.y + dy) / 32; ty < (c.y + dy + c.h) / 32; ty++)
+			for (int tx = (c.x + dx) / 32; tx < (c.x + dx + c.w) / 32; tx++) if (inside(tx, ty)) fn(tx, ty);
+	};
+	// where they go: their own places if free, in the parts' order; else the first free place they fit
+	for (comp &c : comps) {
+		bool free = true;
+		each(c, 0, 0, [&](int tx, int ty) { free = free && who[ty * TW + tx] < 0; });
+		if (!free) continue;
+		each(c, 0, 0, [&](int tx, int ty) { who[ty * TW + tx] = s8(c.ch); });
+		c.placed = true;
+	}
+	int moved = 0, lost = 0;
+	std::vector<comp *> by_size;   // (the biggest first)
+	for (comp &c : comps) if (!c.placed) by_size.push_back(&c);
+	std::stable_sort(by_size.begin(), by_size.end(), [](const comp *a, const comp *b) { return a->w * a->h > b->w * b->h; });
+	for (comp *cp : by_size) {
+		comp &c = *cp;
+		const int w = c.w / 32, h = c.h / 32;
+		for (int ty = 0; ty + h <= TH && !c.placed; ty++)
+			for (int tx = 0; tx + w <= TW && !c.placed; tx++) {
+				const int dx = tx * 32 - c.x, dy = ty * 32 - c.y;
+				bool ok = true;
+				for (int j = 0; j < h && ok; j++)
+					for (int i = 0; i < w && ok; i++) ok = inside(tx + i, ty + j) && who[(ty + j) * TW + tx + i] < 0;
+				if (!ok) continue;
+				c.dx = dx; c.dy = dy; c.placed = true;
+				each(c, dx, dy, [&](int x, int y) { who[y * TW + x] = s8(c.ch); });
+			}
+		if (c.placed) moved++; else lost++;
+	}
+	// each tile's texels: whose, from how far (the head's everywhere no one else's are, as its set has them; its faces'
+	// expressions uploaded over its eyes as the game goes on, the head's faces')
+	t.tiles.assign(TW * TH, tex_side::src{});
+	for (int ty = 0; ty < TH; ty++)
+		for (int tx = 0; tx < TW; tx++)
+			if (inside(tx, ty) && (who[ty * TW + tx] < 0 || who[ty * TW + tx] == H)) t.tiles[size_t(ty * TW + tx)] = { H, 0, 0 };
+	for (const comp &c : comps) if (c.placed) each(c, c.dx, c.dy, [&](int tx, int ty) { t.tiles[size_t(ty * TW + tx)] = { c.ch, c.dx, c.dy }; });
+	t.applied = false;
+	t.busy = false;
+	t.head_set = rd0(record(slot_rec[2]) + 0x30);
+	texture_set_now(f, side);
+	// The colours: each row a part uses, of its record's (the head's: the giver's, as colours made them), in its own
+	// place if the head doesn't use it, else in one free; then the headers: a moved texture's place, a moved row's
+	// colour number
+	struct row_src { int rec = -1, row = 0; };
+	row_src rows[7];
+	const u32 cb0 = side ? 8 : 1;   // (the side's colour numbers for colour number n's seven rows)
+	auto flat_row = [&](const hdr &h) { const u32 cb = (h.h3 >> 6) & 0x3ff; return (h.h1 & 0xff) == 1 && cb >= cb0 && cb < cb0 + 7 ? int(cb - cb0) : -1; };
+	auto rows_of = [&](u32 model, auto &&fn) {
+		u32 from, count;
+		headers(model, side, from, count);
+		for (u32 k = 0; k < count; k++) { hdr h; if (decode(from + 4 * k, h)) if (const int r = flat_row(h); r >= 0) fn(r); }
+	};
+	rows[0] = { giver, 0 };
+	rows[1] = { giver, 1 };
+	for (u32 mdl : head_models(slot_rec[2])) rows_of(mdl, [&](int r) { rows[r] = { giver, r }; });
+	for (int g = 0; g < 7; g++) if (p.rec[g] == giver) for (u32 mdl : group_models(p.rec[g], g)) rows_of(mdl, [&](int r) { rows[r] = { giver, r }; });
+	auto same = [&](const row_src &a, int rec, int row) {
+		for (u32 k = 0; k < 0x60; k += 2)
+			if (rd16(FLAT_NEW + FLAT_SIZE * u32(a.rec) + 0x60 * u32(a.row) + k) != rd16(FLAT_NEW + FLAT_SIZE * u32(rec) + 0x60 * u32(row) + k)) return false;
+		return true;
+	};
+	std::map<int, std::array<int, 7>> remap;   // (a record's rows: where they are)
+	int unmatched = 0;
+	for (int g = 0; g < 7; g++) {
+		const int rec = p.rec[g];
+		if (rec == giver) continue;
+		auto &rm = remap.emplace(rec, std::array<int, 7>{ -1, -1, -1, -1, -1, -1, -1 }).first->second;
+		for (u32 mdl : group_models(rec, g))
+			rows_of(mdl, [&](int r) {
+				if (rm[size_t(r)] >= 0) return;
+				int to = -1;
+				if (rows[r].rec < 0) { rows[r] = { rec, r }; to = r; }
+				for (int k = 0; k < 7 && to < 0; k++) if (rows[k].rec >= 0 && same(rows[k], rec, r)) to = k;
+				for (int k = 0; k < 7 && to < 0; k++) if (rows[k].rec < 0) { rows[k] = { rec, r }; to = k; }
+				if (to < 0) { to = r; unmatched++; }
+				rm[size_t(r)] = to;
+			});
+	}
+	for (u32 r = 0; r < 7; r++) if (rows[r].rec >= 0 && rows[r].rec != giver) flat_copy(n, r, u32(rows[r].rec), u32(rows[r].row));
+	FILE *log = getenv("VF2_TEXLOG") ? fopen(getenv("VF2_TEXLOG"), "a") : nullptr;   // TESTONLY
+	if (log) {   // TESTONLY
+		fprintf(log, "BUILD %d side %d head %d giver %d n %u\n", f, side, H, giver, n);
+		for (u32 mdl : head_models(slot_rec[2])) {
+			u32 from, count;
+			headers(mdl, side, from, count);
+			for (u32 k = 0; k < count; k++) fprintf(log, "HEAD %d %x %x %04x %04x %04x %04x\n", side, mdl, from + 4 * k, trd0(from + 4 * k), trd0(from + 4 * k + 2), trd0(from + 4 * k + 1), trd0(from + 4 * k + 3));
+		}
+	}
+	for (int g = 0; g < 7; g++) {
+		const int rec = p.rec[g], ch = rec % 13;
+		if (rec == giver && ch == H) continue;   // (the head's own)
+		std::array<int, 7> rm{ -1, -1, -1, -1, -1, -1, -1 };
+		if (const auto it = remap.find(rec); it != remap.end()) rm = it->second;
+		for (u32 mdl : group_models(rec, g)) {
+			u32 from, count;
+			headers(mdl, side, from, count);
+			for (u32 k = 0; k < count; k++) {
+				const u32 i = from + 4 * k;
+				hdr h;
+				if (!decode(i, h)) continue;
+				u16 h2 = trd0(i + 2), h3 = trd0(i + 3);
+				for (const comp &c : comps)
+					if (c.ch == ch && ch != H && c.placed && (c.dx || c.dy) && h.x >= c.x && h.y >= c.y && h.x + h.w <= c.x + c.w && h.y + h.h <= c.y + c.h) {
+						h2 = u16((h2 & ~0x7ff) | ((h.x + c.dx) / 32 & 0x3f) | ((h.y + c.dy) / 32 & 0x1f) << 6);
+						break;
+					}
+				if (const int r = flat_row(h); r >= 0 && rm[size_t(r)] >= 0) h3 = u16((h3 & ~(0x3ff << 6)) | (cb0 + u32(rm[size_t(r)])) << 6);
+				if (h2 != trd0(i + 2)) t.rewrite[i + 2] = h2;
+				if (h3 != trd0(i + 3)) t.rewrite[i + 3] = h3;
+				if (log) fprintf(log, "HDR %d %d %d %x %x %04x %04x %04x %04x %04x\n", side, rec, g, mdl, i, trd0(i), trd0(i + 2), h2, trd0(i + 3), h3);   // TESTONLY
+			}
+		}
+	}
+	if (log) fclose(log);   // TESTONLY
+	if (getenv("VF2_RANDLOG")) {   // TESTONLY
+		fprintf(stderr, "TEXTURES %d side %d: %zu textures of others' (%d moved, %d with no room), %zu headers changed, rows", f, side, comps.size(), moved, lost, t.rewrite.size());
+		for (const row_src &r : rows) fprintf(stderr, " %d.%d", r.rec, r.row);
+		fprintf(stderr, "%s\n", unmatched ? " (some rows unmatched)" : "");
+	}
+}
+
+// The headers of a side's random fighter's parts moved (on), or as loaded
+void random_fighters::set_rewrites(int side, bool on)
+{
+	tex_side &t = tex[side];
+	if (t.rewritten == on) return;
+	for (const auto &[i, v] : t.rewrite) twr(i, on ? v : trd0(i));
+	t.rewritten = on;
+}
+
+// A character's set's blocks (its record's +30 and the next), as the archive has them
+const std::vector<random_fighters::blk> &random_fighters::blocks_of(int ch)
+{
+	auto it = blocks.find(ch);
+	if (it != blocks.end()) return it->second;
+	std::vector<blk> &out = blocks[ch];
+	const u32 first = rd0(record(ch) + 0x30);
+	for (u32 sn = first; sn <= first + 1 && sn < u32(N_ARC_SETS); sn++) {
+		const u32 l = rdl(ARC_SETS_WAS + 4 * sn), d = rdl(ARC_DESCS_WAS + 4 * rdl(l)), cnt = rdl(d);
+		for (u32 k = 0; k < cnt && k < 64; k++) {
+			const u32 g2 = rdl(d + 4 + 4 * k), dat = rdl(l + 4 + 4 * k), i = (g2 & 0xffff) >> 1;
+			if (i >= 24 || dat < 0x02000000 || dat - 0x02000000 + 8 > data.size()) continue;
+			const int y = rd0_16(0x4c120 + 4 * i) + int(g2 >> 24), x = rd0_16(0x4c122 + 4 * i) + int((g2 >> 16) & 0xff);
+			out.push_back({ x, y, *at(dat + 5) + 1, *at(dat + 4) + 1, dat });
+		}
+	}
+	return out;
+}
+
+// The texture set a random fighter's record names: the one its side has (or is loading) if it's a fighter's, so
+// nothing more is loaded (its tiles are all written over: apply_textures), else its head's
+void random_fighters::texture_set_now(int f, int side)
+{
+	const auto &ram = m.m_workram;
+	const u32 e = SET_REQUEST[side][0] - 0x500000, now = u32(ram[e] | ram[e + 1] << 8);
+	u32 set = tex[side].head_set;
+	for (int c = 0; c < 13; c++) if (now && now == rd0(record(c) + 0x30)) set = now;
+	put32(MADE_AT + MADE * u32(f) + 0x30, set);
+}
+
+// A side's random fighter's textures written to texture RAM: each tile's from its fighter's set's blocks (decoded as
+// the game would write them, level 0 and every mipmap), moved as far as its texture was
+void random_fighters::apply_textures(int side)
+{
+	tex_side &t = tex[side];
+	if (t.tiles.empty()) return;
+	if (!decoder) decoder = std::make_unique<tex_decoder>(prog, data);
+	std::vector<tex_side::src> srcs;
+	for (const tex_side::src &sr : t.tiles) if (sr.ch >= 0 && std::find(srcs.begin(), srcs.end(), sr) == srcs.end()) srcs.push_back(sr);
+	size_t written = 0;
+	for (const tex_side::src &sr : srcs)
+		for (const blk &b : blocks_of(sr.ch)) {
+			bool any = false;   // (any of its tiles, moved, this source's)
+			for (int ty = std::max(0, (b.y + sr.dy) / 32); ty < TH && ty * 32 < b.y + sr.dy + b.h && !any; ty++)
+				for (int tx = std::max(0, (b.x + sr.dx) / 32); tx < TW && tx * 32 < b.x + sr.dx + b.w && !any; tx++) any = t.tiles[size_t(ty * TW + tx)] == sr;
+			if (!any) continue;
+			auto it = decoded.find(b.data);
+			if (it == decoded.end()) {
+				std::vector<tex_decoder::unit> out;
+				if (!decoder->decode(b.data, b.x, b.y, out)) out.clear();
+				it = decoded.emplace(b.data, std::move(out)).first;
+			}
+			for (const tex_decoder::unit &u : it->second) {
+				const int px = int(u.at & 511) * 2, py = int(u.at >> 9) * 2;
+				int level = 0, c = 0, x0 = px, y0 = py;
+				if (py >= 1024) {   // (a mipmap: level n at 1024 - 2048 >> n across, 1536 + half that down, a half each)
+					if (py < 1536) continue;
+					level = 1;
+					while (level < 10 && px >= 1024 - (2048 >> (level + 1))) level++;
+					c = 1024 - (2048 >> level);
+					x0 = (px - c) << level;
+					y0 = (py - 1536 - c / 2) << level;
+				}
+				const int x = x0 + sr.dx, y = y0 + sr.dy;
+				if (x < 0 || y < 0 || x / 32 >= TW || y / 32 >= TH || !(t.tiles[size_t(y / 32 * TW + x / 32)] == sr)) continue;
+				const int nx = level ? c + ((x >> level) & ~1) : x, ny = level ? 1536 + c / 2 + ((y >> level) & ~1) : y;
+				const bool sheet1 = (u.sheet != 0) != (side != 0);   // (decoded as player 1's; player 2's on the other sheets)
+				m.write_dword((sheet1 ? 0x12400000u : 0x12000000u) + (u32(ny / 2) * 512 + u32(nx / 2)) * 4, u.v);
+				written++;
+			}
+		}
+	t.applied = true;
+	t.busy = false;
+	if (getenv("VF2_RANDLOG")) fprintf(stderr, "TEXTURES side %d written: %zu units, %zu blocks decoded so far\n", side, written, decoded.size());   // TESTONLY
+}
+
 
 // Random's: one of the named fighters (the first seed of each name), so its name, typed as a seed, is that same
 // fighter; Seed's, its own. (Random's draw from the clock: a new one each game)
@@ -573,7 +1061,7 @@ void random_fighters::frame()
 		if (game == 7) at_select[pl] = (flags & 8) != 0;   // (bit 31 goes on the select's last frame, 3 stays)
 		if (!mode[pl]) { picking[pl] = false; continue; }
 		const int carrier = 11 + pl;
-		if (now_picking && !picking[pl]) { build(carrier, make_plan(seed_for(pl))); }
+		if (now_picking && !picking[pl]) { build(carrier, make_plan(seed_for(pl)), pl); }
 		picking[pl] = now_picking;
 		// (while the select's up, the fighter the select has: a picking player's cursor's (its portrait, colours and
 		// name as ever); one already playing, at a challenger's select, the random fighter's head's (the portrait its
@@ -582,7 +1070,7 @@ void random_fighters::frame()
 		const int bl = block(pl);
 		if (bl < 0) continue;
 		if ((flags & 8) && ram[bl + 0x1b0] == carrier) ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(head_of[carrier]);
-		if (game == 8 && from_select && at_select[pl]) ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier);
+		if (game == 8 && from_select && at_select[pl]) { ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier); texture_set_now(carrier, pl); }
 	}
 	// Who's playing: work RAM 4c in a fight (2 both, 1 player 2 alone, 0 player 1 alone; set as it starts), and
 	// at the VS screen (8) the select's just over, else the last fight's
@@ -606,8 +1094,25 @@ void random_fighters::frame()
 		if (cpu_made[pl] >= 0) { own(cpu_made[pl]); cpu_made[pl] = -1; }
 		const int other = bl >= 0 && block(pl ^ 1) >= 0 ? ram[block(pl ^ 1) + 0x1b1] : -1;
 		if (f % 13 >= 11 || f % 13 == other % 13) continue;
-		build(f, make_plan(random_named()));
+		build(f, make_plan(random_named()), pl);
 		cpu_made[pl] = f;
+	}
+	// (a side's random fighter's parts' texture headers moved while it's the fighter on that side: off at a select's
+	// portrait, or another fighter's)
+	bool on_side[2] = { false, false };
+	for (int pl = 0; pl < 2; pl++)
+		if (const int bl = block(pl); bl >= 0 && ram[bl + 4] < 2 && tex[ram[bl + 4]].fighter >= 0 && ram[bl + 0x1b0] == tex[ram[bl + 4]].fighter) on_side[ram[bl + 4]] = true;
+	for (int side = 0; side < 2; side++) set_rewrites(side, on_side[side]);
+	// (its textures written once the side's set is loaded, and again whenever it's loaded since: while it's the
+	// fighter on that side)
+	for (int side = 0; side < 2; side++) {
+		tex_side &t = tex[side];
+		if (t.tiles.empty()) continue;
+		if (!on_side[side]) { t.applied = false; continue; }
+		bool idle = true;
+		for (u32 e : SET_REQUEST[side]) if (s16(ram[e - 0x500000 + 2] | ram[e - 0x500000 + 3] << 8) != 0) idle = false;
+		if (!idle) t.busy = true;
+		else if (!t.applied || t.busy) apply_textures(side);
 	}
 	std::string hud[2];
 	if (game == 9)
@@ -710,7 +1215,7 @@ bool model2a::apply_random_fighters()
 	r.at_select[0] = r.at_select[1] = r.fighting[0] = r.fighting[1] = r.from_select = false;
 	// (each player's fighter made now too, for a match that starts without a select: a seed's as it plays)
 	for (int pl = 0; pl < 2; pl++)
-		if (r.mode[pl]) r.build(11 + pl, r.make_plan(r.seed_for(pl)));
+		if (r.mode[pl]) r.build(11 + pl, r.make_plan(r.seed_for(pl)), pl);
 	return true;
 }
 

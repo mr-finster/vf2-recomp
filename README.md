@@ -69,6 +69,8 @@ Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
   moves dealt from them a button at a time (its Punch moves one's, its Kick moves another's, its throws a third's, and
   so on), so it plays like a mix of them, at the game's own timings. Its stance and voice are the first's, and it
   gets a name made of theirs on the energy bar (SHUNWOLFGE, AKILAUPAI).
+- **Textures:** every part is drawn in its own fighter's textures and their colours, as on that fighter: Jacky's
+  vest, Kage's wraps, Pai's and Lau's patterns, belts, boots and bare feet beside its head's face and hair.
 - **Colours:** new every game (not part of a seed). A random fighter wears its head's colours, so its face, hair and
   skin are right and its skin is one tone all over; its clothes' main colour is turned round the colour wheel, or
   given a theme: cool, warm, two opposite colours, neon, pastel, black and white, black and gold. Hair, belts and
@@ -88,8 +90,13 @@ The commands are a dispatch on the buttons pressed, each to a program of checks 
 for the whole game, so a random fighter's dispatch can send each button to a different fighter's program. A side's
 colours are loaded by the fighter's number: one instruction of the game's now reads them from the fighter's record,
 each of the cast's records naming its own, and the colour tables are moved to tables of their own, an entry a number,
-so a random fighter has colours of its own: its head's, recoloured. The game's code is otherwise untouched, and every
-byte changed is put back when they're off.
+so a random fighter has colours of its own: its head's, recoloured. A side's textures are one fighter's set, every
+fighter's in the same places on the side's texture sheet, so a random fighter's sheet is put together a 32 x 32 tile
+at a time: each tile from the fighter whose texture is there (its head's where no other's is), a texture that would
+land on another's moved to a free place with its models' texture headers, and its rows of detail colours put in rows
+its head doesn't use. The sets' blocks are decoded by the game's own decompressor, run on an i960 of its own, and
+written to texture RAM as the side's set finishes loading, so nothing more is loaded than for any fighter. The game's
+code is otherwise untouched, and every byte changed is put back when they're off.
 
 ## Secret characters
 
