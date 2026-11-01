@@ -577,6 +577,7 @@ struct settings
 	std::string gpu3d_failed;   // SDL_GPU's drivers whose 3D failed here ("direct3d12 vulkan"): the next start tries the next
 	std::string roms_folder;   // where the player keeps vf2.zip (roms_folder = ...: kept as written)
 	int arcade_coin = -2;   // the arcade way's coin setting, kept while the PC way has FREE PLAY in its place (-1: none to give back; -2: none kept yet)   // the render scale this machine needed pipelining at (the governor's, kept: a start there starts pipelined)
+	bool log = true;   // log.txt written (Game > Log file: read before the log's opened, so from the next start)
 	bool fullscreen = false, timings = false, arcade = false, smooth_bg = false, show_fps = false, smooth = true;
 	OnlineSettings online;   // the Online page's
 	player_controls ctl[2] = { player_controls::defaults(0), player_controls::defaults(1) };
@@ -654,6 +655,7 @@ struct settings
 		if (ring && (ring < 1300 || ring % 100)) ring = 0;   // 0: by difficulty
 		flag("fullscreen", fullscreen);
 		flag("frame_timings", timings);
+		flag("log", log);
 		flag("arcade_mode", arcade);
 		flag("background_filter", smooth_bg);
 		flag("show_fps", show_fps);
@@ -688,6 +690,7 @@ struct settings
 		fprintf(f, "scale = %d\npicture_shape = %d\nfullscreen = %d\nframe_timings = %d\nvolume = %d\narcade_mode = %d\n"
 				"background_filter = %d\nmusic_volume = %d\neffects_volume = %d\nantialiasing = %d\nshow_fps = %d\nscreen_filter = %d\nring_size = %d\nsmooth_motion = %d\npipelined_at = %d\narcade_coins = %d\n", scale, aspect,
 				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin);
+		if (!log) fprintf(f, "log = 0\n");
 		fprintf(f, "renderer_3d = %d\ngpu_quality = %d\nauto_3d = %s\n", renderer3d, gpu_quality, auto3d.c_str());
 		fprintf(f, "secret_character = %d\n", secret);
 		fprintf(f, "crt_colours = %d\nbrightness = %d\ngamma = %d\n", crt_colours, brightness, gamma);
@@ -798,6 +801,26 @@ bool first_launch(const std::string &data, const std::string &folder, romset::re
 
 } // namespace
 
+// settings.ini's log line, read before the settings are (the log's opened first): false for log = 0
+static bool log_wanted(const std::string &path)
+{
+	bool on = true;
+	if (FILE *f = fopen(path.c_str(), "r")) {
+		char line[256];
+		while (fgets(line, sizeof line, f)) {
+			int v = 1;
+			if (sscanf(line, " log = %d", &v) == 1) on = v != 0;
+		}
+		fclose(f);
+	}
+	return on;
+}
+#ifdef _WIN32
+static const char *const NULL_DEVICE = "NUL";
+#else
+static const char *const NULL_DEVICE = "/dev/null";
+#endif
+
 int main(int argc, char **argv)
 {
 #ifdef __APPLE__
@@ -901,7 +924,11 @@ int main(int argc, char **argv)
 	if (data.empty()) data = "vf2_data";
 	// Without a console (started from the Finder, a launcher), the messages go to log.txt there,
 	// for when something goes wrong.
-	if (!isatty(fileno(stderr))) {
+	// settings.ini's log = 0 (Game > Log file): no log.txt written, the program's messages thrown away; read here,
+	// before the log's opened (the settings themselves are read below)
+	if (!log_wanted(data + "/settings.ini")) {
+		if (!freopen(NULL_DEVICE, "w", stderr)) {}
+	} else if (!isatty(fileno(stderr))) {
 		std::filesystem::create_directories(data, ec);
 		if (freopen((data + "/log.txt").c_str(), "w", stderr)) setvbuf(stderr, nullptr, _IONBF, 0);
 	}
@@ -2594,6 +2621,9 @@ int main(int argc, char **argv)
 		p.items.push_back({ "Reset game",
 			"Restarts the game, like switching the arcade off and on. Rankings and settings are kept. (F3)",
 			{}, {}, [&] { reset_game(); } });
+		p.items.push_back({ "Log file",
+			"log.txt in the data folder: what the game did, a few kilobytes a session, kept for bug reports (send it with one). Off, nothing's written. From the next start.",
+			[&] { return on_off(cfg.log); }, [&](int) { cfg.log = !cfg.log; cfg_dirty = true; }, [&] { cfg.log = !cfg.log; cfg_dirty = true; } });
 		p.items.push_back(back_item());
 		return p;
 	};
