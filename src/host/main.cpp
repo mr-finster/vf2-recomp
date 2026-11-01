@@ -1156,6 +1156,17 @@ int main(int argc, char **argv)
 	load_backgrounds(m, data + "/backgrounds");
 	load_blob(backup_path, m.backup_ram().data(), m.backup_ram().size());
 	load_blob(eeprom_path, m.eeprom_cells(), 64 * sizeof(u16));
+	// the ranking's names for random fighters (model2a::ranking_frame), beside the backup (not in it: the backup is the
+	// game's own, and an online match's start)
+	const std::string rank_path = data + "/ranking_names.txt";
+	if (FILE *f = fopen(rank_path.c_str(), "rb")) {
+		std::string text;
+		char buf[4096];
+		for (size_t n; (n = fread(buf, 1, sizeof buf, f)) > 0;) text.append(buf, n);
+		fclose(f);
+		m.set_ranking_names(text);
+	}
+	uint32_t rank_saved = m.ranking_names_version();
 	// The backup as loaded: the autosave writes it once it differs (free play set at boot, the
 	// game's first settings, an arcade setting changed in the first seconds).
 	auto nvram_hash = [&] { return fnv(m.eeprom_cells(), 128, fnv(m.backup_ram().data(), m.backup_ram().size())); };
@@ -1165,6 +1176,11 @@ int main(int argc, char **argv)
 	auto save_nvram = [&](bool now) {
 		if (quit_after >= 0 && !test_saves) return;   // test runs leave the saves alone
 		if (g_match_board) return;   // (an online match's board holds the host's: this player's are given back after it)
+		if (m.ranking_names_version() != rank_saved) {   // (the ranking's names: a few lines, written at once)
+			std::filesystem::create_directories(data, ec);
+			const std::string text = m.ranking_names();
+			if (save_blob(rank_path, reinterpret_cast<const uint8_t *>(text.data()), text.size())) rank_saved = m.ranking_names_version();
+		}
 		const uint64_t h = nvram_hash();
 		if (h == saved_hash && !(now && nv_put)) return;
 		std::filesystem::create_directories(data, ec);

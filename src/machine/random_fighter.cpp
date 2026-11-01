@@ -308,6 +308,7 @@ public:
 	int select_slot(int base) const;   // (the select's slot that sets fighter base, -1 none)
 	void select_cover();
 	void attract_frame();
+	u32 scene_ptr[2] = { 0, 0 };   // (the attract intro's scene pointers as last seen: attract_frame; in the save states)
 	u64 hide_until[2] = { 0, 0 };   // (drawing only: a random player's select portrait hidden till this frame)
 	void attract_scenes();   // (the attract intro's scenes' fighters: the random sides' carriers)
 
@@ -459,6 +460,7 @@ void random_fighters::forget()
 	seeded = false;
 	at_select[0] = at_select[1] = fighting[0] = fighting[1] = from_select = false;
 	select_at = 0;
+	scene_ptr[0] = scene_ptr[1] = 0;
 	col_theme = THEME_TURN;
 	col_turn = 0;
 	col_plain = false;
@@ -1179,6 +1181,7 @@ void random_fighters::build_textures(int f, const plan &p, int side, const int s
 	rows[0] = { giver, 0 };
 	rows[1] = { giver, 1 };
 	for (u32 mdl : head_models(slot_rec[2])) rows_of(mdl, [&](int r) { rows[r] = { giver, r }; });
+	if (const u32 hair = hair_model(slot_rec[2])) rows_of(hair, [&](int r) { rows[r] = { giver, r }; });   // (its portrait's hair)
 	for (int g = 0; g < 7; g++) if (p.rec[g] == giver) for (u32 mdl : group_models(p.rec[g], g)) rows_of(mdl, [&](int r) { rows[r] = { giver, r }; });
 	auto same = [&](const row_src &a, int rec, int row) {
 		for (u32 k = 0; k < 0x60; k += 2)
@@ -1387,23 +1390,41 @@ void random_fighters::frame()
 		// covered (select_cover): the slot's isn't its own)
 		const int bl = block(pl);
 		if (bl < 0) continue;
+		// (picked at a select that shows: the random fighter itself from now, its portrait its own head in its colours: its
+		// side's textures and colours loaded again for it, as the game's own request (0x4b838: 3, the set, the side, the
+		// colour number at 5502c0 or 5502d0, and 550000 set), its textures put together once they're in)
+		if (game == 7 && (flags >> 31) && (flags & 0xa) == 8 && !name_of[carrier].empty() && ram[bl + 0x1b0] != carrier && !select_hidden()) {
+			const u32 rec = rdl(RECORDS + 4 * u32(carrier)), side = ram[bl + 4] & 1, set = rdl(rec + 0x30), col = rdl(rec + 8);
+			ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier);
+			for (u32 k = 0; k < 0x40; k++) ram[bl + 0x1b4 + k] = *at(col + k);
+			memcpy(&ram[bl + 0x640], &set, 4);
+			const u32 req = side ? 0x502d0 : 0x502c0, words[4] = { 3, set, side, ram[bl + 0x1b4] };
+			memcpy(&ram[req], words, 16);
+			const u32 one = 1;
+			memcpy(&ram[0x50000], &one, 4);
+		}
 		if (game == 8 && from_select && at_select[pl]) { ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier); texture_set_now(carrier, pl); }
 	}
 	if (game == 7) select_cover();
-	{   // (a random player's portrait hidden while its cursor walks to its head's slot)
+	{   // (a random player's portrait hidden till it's the random fighter's own, in its textures and colours: while it
+		// picks, its cursor walking to its head's slot, and till its side's textures are in; and 6 frames on, the picture
+		// behind the game's state. Drawing only)
 		bool hide[2] = { false, false };
 		if (game == 7 && !select_hidden())
 			for (int pl = 0; pl < 2; pl++) {
-				const int o = select_object(pl);
+				const int o = select_object(pl), bl = block(pl);
 				const u32 flags = select_flags(pl);
-				if (!mode[pl] || o < 0 || !(flags >> 31) || (flags & 0xa) != 0xa) continue;
-				const int head = select_slot(head_of[11 + pl]);
-				const int bl = block(pl);   // (and till the select's fighter is the head's, and 6 frames on: the picture's behind)
-				if (head >= 0 && (ram[size_t(o) + 6] != head || (bl >= 0 && ram[bl + 0x1b0] % 13 != head_of[11 + pl]))) hide_until[pl] = m.m_frame_number + 6;
+				if (!mode[pl] || o < 0 || bl < 0 || !(flags >> 31) || !(flags & 8)) continue;
+				const tex_side &t = tex[ram[bl + 4] & 1];
+				if ((flags & 2) || ram[bl + 0x1b0] != 11 + pl || !t.applied || t.busy) hide_until[pl] = m.m_frame_number + 6;
 				hide[pl] = m.m_frame_number <= hide_until[pl];
 			}
 		model2_video &v = *m.m_video;
 		if (hide[0] != v.m_hide_portrait[0] || hide[1] != v.m_hide_portrait[1]) { m.render_wait(); v.m_hide_portrait[0] = hide[0]; v.m_hide_portrait[1] = hide[1]; }
+		// (and a random player's cursor frame on the icons: its slot isn't its fighter's, as VF1 Recomp covers its own)
+		u8 frames = 0;
+		if (game == 7) for (int pl = 0; pl < 2; pl++) if (mode[pl] && select_in(pl)) frames |= u8(1 << pl);
+		if (frames != m.m_tiles.hidden_frames()) { m.render_wait(); m.m_tiles.hide_frames(frames); }
 	}
 	if (game == 3) attract_frame();
 	// Who's playing: work RAM 4c in a fight (2 both, 1 player 2 alone, 0 player 1 alone; set as it starts), and
@@ -1651,6 +1672,27 @@ void random_fighters::attract_frame()
 		build(carrier, make_plan(mode[pl] ? seed_for(pl) : random_named()), pl);
 		ram[bl + 0x1b0] = ram[bl + 0x1b1] = u8(carrier);
 	}
+	// Random opponents (a side whose player is on Normal): a new random fighter as each of the intro's scenes brings in
+	// another of the cast on that side (the one before gone from the screen), as VF1 Recomp makes a record afresh once
+	// it's off the screen. The scene just started, by the side's scene pointer (5001c8 player 1's, 5001cc player 2's:
+	// the next scene's entry); the carrier made again and its block loaded again by the game's own loader (+0c, the
+	// block's task: 0x13f08, run at its next turn: its models, textures and colours the new fighter's)
+	for (int pl = 0; pl < 2; pl++) {
+		u32 ptr;
+		memcpy(&ptr, &ram[0x1c8 + 4 * pl], 4);
+		if (ptr == scene_ptr[pl]) continue;
+		scene_ptr[pl] = ptr;
+		if (mode[pl] || !cpu || ptr < SCENES[pl] + 16 || (ptr - SCENES[pl]) % 16) continue;
+		const u32 k = (ptr - SCENES[pl]) / 16 - 1;
+		if (k >= u32(SCENE_N[pl]) || (k > 0 && SCENE_CAST[pl][k] == SCENE_CAST[pl][k - 1])) continue;
+		u32 b;
+		memcpy(&b, &ram[0x804 + 4 * pl], 4);
+		if (b < 0x500000 || b - 0x500000 + 0x200 >= ram.size()) continue;
+		const u32 bl = b - 0x500000, carrier = 11 + pl, loader = 0x13f08;
+		if (ram[bl + 0x1b0] != carrier) continue;
+		build(int(carrier), make_plan(random_named()), pl);
+		memcpy(&ram[bl + 0xc], &loader, 4);
+	}
 }
 
 int random_fighters::select_slot(int base) const
@@ -1774,6 +1816,113 @@ void model2a::random_select_inputs()
 
 bool model2a::random_select_hidden() const { return m_random && m_random->select_hidden(); }
 
+// The ranking (backup RAM 3100, and its working copy in work RAM 9c100: 16 bytes an entry, +0 the time, +4 the
+// initials, +0a the fighter without the costume) names a random fighter MUE or KOJAC (its number, 11 or 12). Each such
+// entry's random fighter is learnt as it comes in (the name of the fighter with that number then) and kept by its
+// bytes; where the game draws the column (tile map 0: a ranking row three tiles high, the initials at columns 32-37,
+// the fighter's name from 42, a letter two tiles across), its name is drawn instead, in the game's own letters
+// (drawing only: segas24_tile::substitute). The letters' tiles as the ranking draws them (A-Z, those its names and
+// initials use: every letter of the book's names)
+namespace {
+constexpr u32 RANK_BACKUP = 0x3100, RANK_WORK = 0x9c100, RANK_N = 20;
+struct glyph { char c; u16 t[6]; };
+constexpr glyph GLYPHS[] = {
+	{ '.', { 0x8315, 0x8315, 0x8315, 0x8315, 0x8341, 0x8342 } }, { 'A', { 0x8300, 0x8301, 0x8307, 0x8308, 0x8310, 0x8310 } },
+	{ 'C', { 0x8300, 0x8301, 0x830a, 0x830b, 0x8313, 0x8312 } }, { 'D', { 0x8302, 0x8301, 0x830a, 0x830a, 0x8311, 0x8312 } },
+	{ 'E', { 0x8302, 0x8303, 0x8307, 0x830c, 0x8311, 0x8314 } }, { 'F', { 0x8302, 0x8304, 0x8307, 0x830d, 0x8310, 0x8315 } },
+	{ 'G', { 0x8300, 0x8305, 0x830e, 0x830f, 0x8313, 0x8316 } }, { 'H', { 0x8306, 0x8306, 0x8307, 0x8308, 0x8310, 0x8310 } },
+	{ 'I', { 0x8317, 0x8318, 0x831d, 0x831e, 0x8325, 0x8326 } }, { 'J', { 0x8315, 0x8306, 0x831f, 0x830a, 0x8313, 0x8312 } },
+	{ 'K', { 0x8306, 0x8306, 0x8320, 0x8321, 0x8310, 0x8310 } }, { 'L', { 0x8306, 0x8315, 0x830a, 0x8315, 0x8311, 0x8314 } },
+	{ 'M', { 0x8319, 0x831a, 0x830a, 0x830a, 0x8310, 0x8310 } }, { 'N', { 0x831b, 0x831c, 0x8322, 0x8323, 0x8310, 0x8310 } },
+	{ 'O', { 0x8300, 0x8301, 0x830a, 0x830a, 0x8313, 0x8312 } }, { 'P', { 0x8302, 0x8301, 0x8307, 0x8324, 0x8310, 0x8315 } },
+	{ 'R', { 0x8302, 0x8301, 0x8307, 0x8329, 0x8310, 0x8310 } }, { 'S', { 0x8300, 0x8305, 0x832a, 0x832b, 0x8313, 0x8312 } },
+	{ 'T', { 0x8327, 0x8328, 0x831d, 0x831e, 0x8331, 0x8332 } }, { 'U', { 0x8306, 0x8306, 0x830a, 0x830a, 0x8313, 0x8312 } },
+	{ 'W', { 0x8306, 0x8306, 0x830a, 0x830a, 0x8335, 0x8336 } }, { 'Y', { 0x8306, 0x8306, 0x833d, 0x833e, 0x8331, 0x8332 } },
+	{ 'Z', { 0x8337, 0x8338, 0x833f, 0x8340, 0x8349, 0x834a } } };
+const glyph *glyph_of(char c) { for (const glyph &g : GLYPHS) if (g.c == c) return &g; return nullptr; }
+std::string rank_key(const u8 *e) { char b[24]; for (int k = 0; k < 11; k++) snprintf(b + 2 * k, 3, "%02x", e[k]); return b; }
+}
+
+void model2a::ranking_frame()
+{
+	if (m_backup.size() < RANK_BACKUP + 16 * RANK_N || m_workram.size() < RANK_WORK + 16 * RANK_N) return;
+	// (learnt: a new entry's random fighter, while random fighters are on, by the entry's bytes: kept, as entries leave
+	// the table only as better times come, and an online match's board holds another's)
+	if (m_random && m_random->on)
+		for (const u8 *table : { &m_backup[RANK_BACKUP], &m_workram[RANK_WORK] })
+			for (u32 i = 0; i < RANK_N; i++) {
+				const u8 *e = table + 16 * i;
+				if (e[10] != 11 && e[10] != 12) continue;
+				const std::string key = rank_key(e);
+				const std::string &n = m_random->name_of[e[10]];
+				if (n.empty() || m_rank_names.count(key)) continue;
+				m_rank_names[key] = n;
+				m_rank_version++;
+			}
+	// (shown: a row whose column spells MUE or KOJAC, its initials and fighter an entry's whose name is known)
+	std::map<uint16_t, uint16_t> sub;
+	auto at = [&](int x, int y) { return m_tiles.tile_r(u32(y * 64 + x)); };
+	auto is = [&](int x, int y, char c) { const glyph *g = glyph_of(c); if (!g) return false; for (int k = 0; k < 6; k++) if (at(x + k % 2, y + k / 2) != g->t[k]) return false; return true; };
+	auto spells = [&](int x, int y, const char *w) { for (int k = 0; w[k]; k++) if (!is(x + 2 * k, y, w[k])) return false; return true; };
+	auto letter = [&](int x, int y) { for (const glyph &g : GLYPHS) { bool ok = true; for (int k = 0; k < 6 && ok; k++) ok = at(x + k % 2, y + k / 2) == g.t[k]; if (ok) return g.c; } return char(0); };
+	if (!m_rank_names.empty() || (m_random && m_random->on))
+		for (int y = 0; y + 2 < 64; y++)
+			for (int x0 = 0; x0 + 6 <= 62; x0++) {
+				const int f = spells(x0, y, "KOJAC") ? 12 : spells(x0, y, "MUE") ? 11 : 0;
+				if (!f) continue;
+				// (its entry: by the initials ten columns before, the ranking's (a letter the font lacks, a digit, any))
+				char ini[3] = {};
+				for (int k = 0; k < 3; k++) ini[k] = x0 >= 10 ? letter(x0 - 10 + 2 * k, y) : 0;
+				std::string name;
+				for (const u8 *table : { &m_workram[RANK_WORK], &m_backup[RANK_BACKUP] })
+					for (u32 i = 0; i < RANK_N && name.empty(); i++) {
+						const u8 *e = table + 16 * i;
+						bool ok = e[10] == f;
+						for (int k = 0; k < 3 && ok; k++) ok = !ini[k] || e[4 + k] == u8(ini[k]);
+						if (!ok) continue;
+						if (const auto it = m_rank_names.find(rank_key(e)); it != m_rank_names.end()) name = it->second;
+					}
+				// (none yet: the name entry's, its initials being typed in: the random fighter who played)
+				if (name.empty() && m_random && m_random->on) name = m_random->name_of[f];
+				if (name.empty()) continue;
+				const int len = f == 12 ? 5 : 3;
+				for (int k = 0; k < 10; k++) {   // (up to 10 letters, to column 61: the screen's edge)
+					const glyph *g = k < int(name.size()) ? glyph_of(name[size_t(k)]) : nullptr;
+					for (int j = 0; j < 6; j++) {
+						const int x = x0 + 2 * k + j % 2, yy = y + j / 2;
+						if (x < 62 && (g || k < len)) sub[uint16_t(yy * 64 + x)] = g ? g->t[j] : 0x8315;
+					}
+				}
+				x0 += 2 * len - 1;
+			}
+	if (!sub.empty() || m_tiles_subst_on) { render_wait(); m_tiles_subst_on = !sub.empty(); m_tiles.substitute(std::move(sub)); }
+}
+
+std::string model2a::ranking_names() const
+{
+	std::string out;
+	for (const auto &[k, n] : m_rank_names) out += k + " " + n + "\n";
+	return out;
+}
+
+void model2a::set_ranking_names(const std::string &text)
+{
+	m_rank_names.clear();
+	size_t at = 0;
+	while (at < text.size()) {
+		size_t e = text.find('\n', at);
+		if (e == std::string::npos) e = text.size();
+		const std::string line = text.substr(at, e - at);
+		at = e + 1;
+		const size_t sp = line.find(' ');
+		if (sp != 22 || line.size() < 24) continue;
+		std::string name;
+		for (char c : line.substr(sp + 1)) if (glyph_of(c) && name.size() < 10) name += c;
+		if (!name.empty()) m_rank_names[line.substr(0, sp)] = name;
+	}
+	m_rank_version++;
+}
+
 // The carried book (tools/carry_book.py: VF1 Recomp's seed book, its names' recipes)
 static const char *const CARRIED =
 #include "random_book.inc"
@@ -1833,6 +1982,7 @@ bool model2a::apply_random_fighters()
 	r.cpu_made[0] = r.cpu_made[1] = -1;
 	r.at_select[0] = r.at_select[1] = r.fighting[0] = r.fighting[1] = r.from_select = false;
 	r.select_at = 0;
+	r.scene_ptr[0] = r.scene_ptr[1] = 0;
 	// (each player's fighter made now too, for a match that starts without a select: a seed's as it plays; with Random
 	// opponents a side's random one for the attract, attract_frame)
 	for (int pl = 0; pl < 2; pl++)
@@ -1895,7 +2045,7 @@ constexpr rom_span STATE_SPANS[] = { { FREE_AT, FREE_END - FREE_AT }, { RECORDS,
 constexpr u32 STATE_TAG = 0x52324656;   // "VF2R"
 struct random_host_state {   // (u32s only: no padding in a state)
 	u32 mode[2], seed[2], cpu, picking[2], cpu_made[2], at_select[2], fighting[2], from_select, head_of[N_RECORDS];
-	u32 seeded, draw_rng, colour_rng, made[2][2], tex_fighter[2], tex_applied[2], tex_busy[2], tex_head_set[2], select_at;
+	u32 seeded, draw_rng, colour_rng, made[2][2], tex_fighter[2], tex_applied[2], tex_busy[2], tex_head_set[2], select_at, scene_ptr[2];
 };
 }
 
@@ -1914,7 +2064,7 @@ void random_fighters::save(m2::StateWriter &io)
 	h.cpu = cpu; h.from_select = from_select;
 	for (int f = 0; f < N_RECORDS; f++) h.head_of[f] = u32(head_of[f]);
 	h.seeded = seeded; h.draw_rng = draw_rng; h.colour_rng = colour_rng;
-	h.select_at = select_at;
+	h.select_at = select_at; h.scene_ptr[0] = scene_ptr[0]; h.scene_ptr[1] = scene_ptr[1];
 	io.pod(h);
 }
 
@@ -1949,7 +2099,7 @@ void random_fighters::load(m2::StateReader &io)
 	cpu = h.cpu; from_select = h.from_select;
 	for (int f = 0; f < N_RECORDS; f++) head_of[f] = int(h.head_of[f]);
 	seeded = h.seeded; draw_rng = h.draw_rng; colour_rng = h.colour_rng;
-	select_at = h.select_at;
+	select_at = h.select_at; scene_ptr[0] = h.scene_ptr[0]; scene_ptr[1] = h.scene_ptr[1];
 }
 
 void model2a::random_state(m2::StateWriter &io) { m_random->save(io); }

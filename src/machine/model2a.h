@@ -359,6 +359,11 @@ public:
 	void random_fighters_decode();   // (every texture a random fighter may take decoded now, not as a match goes: a second or so)
 	const std::map<std::string, uint32_t> &random_fighter_names();   // (the book: every name, its place in it from 1; made once)
 	bool random_fighters_on() const;
+	// The ranking's names for random fighters (ranking_frame), as text for the host to keep beside the backup: a line
+	// an entry, its time, initials and fighter (hex) and its name; and its version (it changes as one is learnt)
+	std::string ranking_names() const;
+	void set_ranking_names(const std::string &text);
+	uint32_t ranking_names_version() const { return m_rank_version; }
 	// The player select hidden: everyone at it with a random fighter (one player alone, or both; online too), picked
 	// for them at once: who they got is a surprise as the fight comes in. A player picking as ever there, it shows
 	bool random_select_hidden() const;
@@ -760,6 +765,13 @@ private:
 	std::unique_ptr<random_fighters, random_deleter> m_random;
 	random_fighters &randoms();
 	void random_frame();
+	// The ranking's random fighters' names (the CHARACTER column's MUE or KOJAC, fighters 11 and 12: the random fighter
+	// who set the time, as VF1 Recomp's): each entry's (its time, initials and fighter, as the game keeps them) name,
+	// learnt as it comes in, kept by the host beside the backup (ranking_names), drawn over the column (drawing only)
+	std::map<std::string, std::string> m_rank_names;
+	uint32_t m_rank_version = 0;
+	bool m_tiles_subst_on = false;
+	void ranking_frame();
 	void random_select_inputs();   // (before a frame: the select's presses for a random player, select_inputs)
 	std::string m_random_hud[2];   // (the names under the energy bars offline: hud_names, under m_hud_mx)
 

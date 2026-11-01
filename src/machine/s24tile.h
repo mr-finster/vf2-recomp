@@ -6,6 +6,7 @@
 // Galibert), by way of vf1-recomp; draw_sides draws past the arcade's edges for widescreen.
 #pragma once
 #include "mame_lite.h"
+#include <map>
 
 class segas24_tile
 {
@@ -33,7 +34,20 @@ public:
 		char_ram[o] = v;
 	}
 	uint64_t char_version = 0;          // (counts the tile graphics' writes: a copy of them is still good while it's the same)
-	void mark_dirty() { m_dirty = true; }   // (the RAMs swapped from outside: decode again)
+	void mark_dirty() { m_dirty = true; }
+	// (VF2's player select, drawing only: a player's cursor frame on the fighters' icons not drawn, bit 0 player 1's
+	// (tiles af80-af8d on map 0, rows 34-44), bit 1 player 2's (af8e-af9b): a random player's, whose slot isn't its own)
+	void hide_frames(uint8_t h) { if (h != m_hide_frames) { m_hide_frames = h; m_dirty = true; } }
+	uint8_t hidden_frames() const { return m_hide_frames; }
+	// (drawing only: map entries drawn as other tiles, entry index -> its tile word: VF2's ranking's random fighters'
+	// names)
+	void substitute(std::map<uint16_t, uint16_t> &&s)
+	{
+		if (s == m_subst) return;
+		for (const auto &[e, v] : m_subst) if (e < 0x4000) { m_entry_dirty[e] = 1; m_entries_dirty = true; }
+		m_subst = std::move(s);
+		for (const auto &[e, v] : m_subst) if (e < 0x4000) { m_entry_dirty[e] = 1; m_entries_dirty = true; }
+	}   // (the RAMs swapped from outside: decode again)
 	// n words from o of the tile RAM (maps true: the maps' entries) or of the tile graphics, written from
 	// outside (a save state's pages put back): decoded again at the next update()
 	void restored(bool maps, offs_t o, size_t n)
@@ -294,12 +308,16 @@ private:
 	uint8_t m_entry_dirty[0x4000] = {}, m_char_dirty[0x4000] = {};
 	bool m_entries_dirty = false, m_chars_dirty = false;
 
+	uint8_t m_hide_frames = 0;   // (hide_frames)
+	std::map<uint16_t, uint16_t> m_subst;   // (substitute)
 	void decode_entry(int e)
 	{
 		const int l = e >> 12, ty = (e >> 6) & 63, tx = e & 63;
 		auto &pm = pix[l];
 		auto &fm = flags[l];
 		uint16_t val = tile_ram[e];
+		if (m_hide_frames && l == 0 && ty >= 34 && ty <= 44 && val >= 0xaf80 && val <= 0xaf9b && (m_hide_frames >> (val >= 0xaf8e ? 1 : 0) & 1)) val = 0x0020;
+		if (!m_subst.empty()) if (const auto it = m_subst.find(uint16_t(e)); it != m_subst.end()) val = it->second;
 		uint32_t code = val & tile_mask;
 		uint32_t color = (val >> 7) & 0xff;
 		uint8_t cat = (val & 0x8000) ? 1 : 0;

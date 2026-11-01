@@ -87,7 +87,9 @@ Normal, it shows, the Normal player picks as ever and the random one is picked a
 and no name is shown under it. A challenger's select doesn't pick again for a player already in, whose portrait is
 their random fighter's own head and hair in its colours. The attract shows random fighters too: each side whose
 player has one (Random: new ones each time the demo fight comes round; a Seed: that fighter), or every side with
-Random opponents, in the intro's scenes and the demo fights. As a match's first round comes in, each random fighter is built on screen during
+Random opponents, in the intro's scenes and the demo fights (with Random opponents, a new one as each scene brings
+in another fighter). A random fighter's time in the ranking shows its name (kept in ranking_names.txt beside the
+backup). As a match's first round comes in, each random fighter is built on screen during
 the camera's sweep: its parts from the feet up, polygon by polygon, each a white flash as it lands, grey until all
 are on, then its colours sweep up the same way before READY (drawing only: online, both screens show the same).
 **Random opponents** makes every computer opponent a random fighter, made afresh for each match (not your own

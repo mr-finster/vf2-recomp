@@ -1190,6 +1190,7 @@ void model2a::run_frame()
 	m_scroll_hist[f % SCROLL_HIST] = { int64_t(f), m_tiles.tile_r(0x5002), m_tiles.tile_r(0x5006) };   // (smooth motion's backdrop)
 	record_scroll_input(f);
 	if (m_random) random_frame();   // (Cheats' random fighters: random_fighter.cpp)
+	if (m_random || !m_rank_names.empty()) ranking_frame();   // (their names in the ranking: drawing only)
 }
 
 // ---------------------------------------------------------------------------------------------
