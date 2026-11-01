@@ -9,7 +9,9 @@
 // N frames too (fNNNNNN.png).
 //   vf2random <vf2.zip> <script> [--out dir] [--p1 SETTING] [--p2 SETTING] [--opponents] [--scale N] [--ko P@F]
 //   vf2random <vf2.zip> --names
-//   vf2random <vf2.zip> --book            (every name, what it's made of: head, torso, arms, hands, legs, moves, voice)
+//   vf2random <vf2.zip> --book            (every name, what it's made of: head, body, arms, legs, moves, voice: docs/SEEDS.md)
+//   vf2random <vf2.zip> --recipes         (the book in the recipe spec's table: what VF3 Recomp carries, docs/random_book.txt)
+//   vf2random <vf2.zip> --owners          (each name's recipe, its move groups' owners and its part groups', as VF3 Recomp lists them)
 //   vf2random <vf2.zip> --online [--frames N]
 // SETTING: "" (Normal), "*" (Random) or a name (a Seed). The pictures are ROM-derived: never commit them.
 #include "../src/machine/model2a.h"
@@ -30,7 +32,7 @@ int main(int argc, char **argv)
 		return 2;
 	}
 	std::string script_path, out = "build/random", setting[2];
-	bool opponents = false, list_names = false, online = false, book = false;
+	bool opponents = false, list_names = false, online = false, book = false, recipes = false, owners = false;
 	long frames = 3000;
 	int ko = 0, every = 0;
 	uint64_t ko_from = 0;
@@ -46,6 +48,8 @@ int main(int argc, char **argv)
 		else if (a == "--names") list_names = true;
 		else if (a == "--online") online = true;
 		else if (a == "--book") book = true;
+		else if (a == "--recipes") recipes = true;
+		else if (a == "--owners") owners = true;
 		else if (a == "--frames") frames = atol(next().c_str());
 		else if (a == "--every") every = atoi(next().c_str());
 		else if (a == "--ko") { const std::string v = next(); ko = atoi(v.c_str()); const size_t at = v.find('@'); ko_from = at == std::string::npos ? 0 : strtoull(v.c_str() + at + 1, nullptr, 10); }
@@ -64,8 +68,14 @@ int main(int argc, char **argv)
 			if (n++ < 40) printf("%-10s seed %u\n", name.c_str(), seed);
 		return names.empty() ? 1 : 0;
 	}
+	if (recipes || owners) {
+		if (recipes) printf("# name leader second third head voice\n");
+		const std::vector<std::string> lines = m.random_fighter_book(owners);
+		for (const std::string &l : lines) printf("%s\n", l.c_str());
+		return lines.empty() ? 1 : 0;
+	}
 	if (book) {
-		printf("| Seed | Head | Torso | Arms | Hands | Legs | Moves (stance first; button groups dealt) | Voice |\n|---|---|---|---|---|---|---|---|\n");
+		printf("| Seed | Head | Body | Arms | Legs | Moves (stance first; move groups dealt) | Voice |\n|---|---|---|---|---|---|---|\n");
 		for (const auto &[name, seed] : m.random_fighter_names()) {
 			std::string row = m.random_fighter_makeup(name);
 			for (char &c : row) if (c == '|') c = '\x01';

@@ -337,21 +337,27 @@ public:
 	// Cheats' random fighters (random_fighter.cpp). Each player's fighter: "" the select as ever, "*" a random
 	// fighter, a new one each game, or a name's (as on its energy bar: a seed's, the same fighter on any machine).
 	// Anything but "" is picked for that player at the select: three of the cast made one, its head, body and limbs
-	// from the three, its commands dealt from them a button at a time, its stance and voice the first's, its name
-	// theirs blended. False (nothing changed) for a name no seed gives. Random opponents: every computer opponent
-	// a random fighter, made afresh for each match. Applied by apply_random_fighters (the menu restarts the game).
-	static constexpr uint32_t RANDOM_SEEDS = 32768;
+	// from the three, its commands dealt from them a move group at a time, its stance the first's, its voice one of
+	// theirs, its name theirs blended. A name is a recipe, the same fighter in every game that has it (VF1's book's
+	// names VF1's, then VF2's own with Lion or Shun: the book). False (nothing changed) for a name not in the book.
+	// Random opponents: every computer opponent a random fighter (any of the book's), made afresh for each match.
+	// Applied by apply_random_fighters (the menu restarts the game).
+	static constexpr uint32_t RANDOM_SEEDS = 32768;   // (the numeric seeds VF2's own names are made from)
 	bool set_random_player(int pl, const std::string &setting);
 	void set_random_opponents(bool on);
 	// The settings into the game's tables: the ROMs as loaded when none is on. The program changed (made again) when
 	// the first goes on or the last off. False if the program isn't the one known (then all off). Before a reset.
 	bool apply_random_fighters();
 	void random_fighters_off();   // (online play: all off, the ROMs as loaded, until the next apply)
-	const std::map<std::string, uint32_t> &random_fighter_names();   // (every name, its seed; made once)
+	const std::map<std::string, uint32_t> &random_fighter_names();   // (the book: every name, its place in it from 1; made once)
 	bool random_fighters_on() const;
 	std::string random_fighter_name(int pl);   // (a player's fighter's now, "" none: the energy bar's)
-	// What a seed's fighter is made of, by whose: "head|torso|arms|hands|legs|moves (button groups)|voice" ("" none)
+	// What a name's fighter is made of, by whose: "head|body|arms|legs|moves (move groups)|voice" ("" none)
 	std::string random_fighter_makeup(const std::string &name);
+	// The book in its order: each name's recipe as the recipe spec's table has it ("name leader second third head
+	// voice", "-" none: what the next game carries), or (owners) "name leader second third head voice" (the head as
+	// in this game) then its 8 move groups' owners and "|" its 7 part groups' (0 the first)
+	std::vector<std::string> random_fighter_book(bool owners);
 
 	// Milestones (TGP upload, IRQs, first scheduler dispatch...) as they happen, to stderr.
 	std::function<void(const std::string &)> on_milestone;

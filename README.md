@@ -66,9 +66,9 @@ screen's refresh rate.
 Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
 
 - **Random:** a new fighter every game, made of three of the cast: its head, body and limbs from the three, and its
-  moves dealt from them a button at a time (its Punch moves one's, its Kick moves another's, its throws a third's, and
-  so on), so it plays like a mix of them, at the game's own timings. Its stance and voice are the first's, and it
-  gets a name made of theirs on the energy bar (SHUNWOLFGE, AKILAUPAI).
+  moves dealt from them a move group at a time (its Punch moves one's, its Kick moves another's, its throws a third's,
+  and so on), so it plays like a mix of them, at the game's own timings. Its stance is the first's and its voice one
+  of theirs, and it gets a name made of theirs on the energy bar (JACPAIWOLF, LIJACPAI).
 - **Textures:** every part is drawn in its own fighter's textures and their colours, as on that fighter: Jacky's
   vest, Kage's wraps, Pai's and Lau's patterns, belts, boots and bare feet beside its head's face and hair.
 - **Colours:** new every game (not part of a seed). A random fighter wears its head's colours, so its face, hair and
@@ -76,7 +76,10 @@ Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
   given a theme: cool, warm, two opposite colours, neon, pastel, black and white, black and gold. Hair, belts and
   shoes keep their colours (VF2 shares those between its fighters).
 - **Seed:** type a fighter's name, as seen on an energy bar, to get that fighter again: the same build and the same
-  moves on any machine.
+  moves on any machine. A name is the same fighter in every game that has it: VF1 Recomp's 337 names are here with
+  their recipes (the same three, head, voice and moves by group), then VF2's own with Lion or Shun, 678 in all
+  ([docs/SEEDS.md](docs/SEEDS.md); Random draws from the whole book). VF3 Recomp carries this book on in turn
+  ([docs/random_book.txt](docs/random_book.txt), `vf2random --recipes`).
 
 Anything but Normal is picked for you at the select (whoever you choose). **Random opponents** makes every computer
 opponent a random fighter, made afresh for each match (not your own fighter's mirror match). Changing them restarts

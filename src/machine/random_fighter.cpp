@@ -281,16 +281,25 @@ public:
 	const std::vector<std::pair<u16, u32>> &dispatch(int base) const { return disp[base]; }
 
 	struct plan {
-		int three[3] = {};            // (the three, by base number: the first's stance, moves' basics and voice)
+		int three[3] = {};            // (the three, by base number: the first's stance, moves' basics; -1 a name of two's third)
 		int rec[7] = {};               // (each group's record: fighter number with its costume)
 		int head = 0;                  // (the head's base number)
+		int voice = 0;                 // (whose voice, by base number)
 		bool head_costume = false;     // (TESTONLY, VF2_PLAN: its head in its second costume)
-		std::map<u8, int> giver;       // (each button group's commands: which of the three)
+		std::map<u8, int> giver;       // (make_numeric's: each button group's commands, which of the three)
+		int moves[8] = {};             // (the recipe's: each move group's owner, of the three: P, K, P+K, P+G, K+G, P+K+G, throw, other)
+		std::vector<std::pair<u16, int>> keys;   // (each command key, whose: of the three)
 		std::string name;
 		int share = 0;                 // (the most of its looks one character's, in %)
 		bool same_body = false;        // (its head and torso one character's)
 	};
-	plan make_plan(u32 seed);
+	plan make_numeric(u32 seed);       // (a numeric seed's fighter: VF2's own names)
+	plan make_plan(u32 place);         // (the book's fighter at place (from 1): its recipe's)
+	static int move_group(u16 key);
+	// the book (the recipe spec's, shared with VF1 and VF3 Recomp: a name the same fighter in every game that has it):
+	// the carried book's names (VF1's, random_book.inc), then VF2's own with Lion or Shun
+	struct entry { std::string name; int three[3]; int head, voice; std::string book_head; };
+	std::vector<entry> entries;
 	static std::string blend_name(const std::map<std::string, int> &made_of);
 	void build(int f, const plan &p, int side);   // (fighter number f made the plan's fighter, for a side)
 	void own(int f);                    // (... and its own again)
@@ -367,7 +376,7 @@ random_fighters::random_fighters(model2a &board)
 }
 
 // One random fighter's makeup, from its seed alone: the same on every machine
-random_fighters::plan random_fighters::make_plan(u32 s)
+random_fighters::plan random_fighters::make_numeric(u32 s)
 {
 	plan p;
 	rng = s;
@@ -424,6 +433,66 @@ random_fighters::plan random_fighters::make_plan(u32 s)
 		p.giver[differ[i]] = int((first + i) % 3);
 		made_of[NAME[p.three[p.giver[differ[i]]]]] += 1;
 	}
+	p.name = blend_name(made_of);
+	int total = 0, most = 0;
+	for (const auto &[n, w] : look) { total += w; most = std::max(most, w); }
+	p.share = total ? most * 100 / total : 100;
+	p.same_body = p.head == p.rec[G_TORSO] % 13;
+	p.voice = p.three[0];
+	return p;
+}
+
+// A command key's move group, the recipe spec's: 0 P, 1 K, 2 P+K, 3 P+G, 4 K+G, 5 P+K+G, 6 throw, 7 other (the
+// dispatch's low byte the buttons: Punch 1, Kick 2, Guard 4; P+G a throw, as VF3 Recomp's, so 3 stays empty)
+int random_fighters::move_group(u16 key)
+{
+	switch (key & 0xff) {
+	case 1: return 0;
+	case 2: return 1;
+	case 3: return 2;
+	case 5: return 6;
+	case 6: return 4;
+	case 7: return 5;
+	default: return 7;
+	}
+}
+
+// The book's fighter at place (from 1), from its recipe and its name alone (the same on any machine, and in VF3 Recomp
+// for the names both have): the three as the book has them (the first's stance and basic moves), its head and voice;
+// each move group's owner from its name (the recipe spec's: its FNV-1a hash, then xorshift32, each of the three once at
+// least; a name of two, the third's the first's), then each part group's from the same stream on (each of the three once
+// at least), and its costume; each command key to its group's owner, or the next of the three that has it
+random_fighters::plan random_fighters::make_plan(u32 place)
+{
+	plan p;
+	if (place < 1 || place > entries.size()) return p;
+	const entry &e = entries[place - 1];
+	p.name = e.name;
+	for (int i = 0; i < 3; i++) p.three[i] = e.three[i];
+	p.head = e.head;
+	p.voice = e.voice;
+	const int n = e.three[2] < 0 ? 2 : 3;
+	uint32_t h = 2166136261u;
+	for (char c : e.name) { h ^= uint8_t(c); h *= 16777619u; }
+	uint32_t x = h ? h : 1;
+	auto next_x = [&] { x ^= x << 13; x ^= x >> 17; x ^= x << 5; return x; };
+	int owner[8];
+	for (int g = 0; g < 8; g++) owner[g] = int(next_x() % 3);
+	for (int who = 0; who < 3; who++) {
+		if (std::count(owner, owner + 8, who)) continue;
+		for (;;) { const int g = int(next_x() % 8); if (std::count(owner, owner + 8, owner[g]) > 1) { owner[g] = who; break; } }
+	}
+	for (int g = 0; g < 8; g++) p.moves[g] = owner[g] % n;
+	int part[7];
+	for (int g = 0; g < 7; g++) part[g] = int(next_x() % 3);
+	for (int who = 0; who < 3; who++) {
+		if (std::count(part, part + 7, who)) continue;
+		for (;;) { const int g = int(next_x() % 7); if (std::count(part, part + 7, part[g]) > 1) { part[g] = who; break; } }
+	}
+	for (int g = 0; g < 7; g++) p.rec[g] = p.three[part[g] % n] + (next_x() % 2 ? 13 : 0);
+	// (arms on a torso of another size: the upper arms were inside a big chest, or out in the air: the torso's own)
+	if (size_of(p.rec[G_TORSO]) != size_of(p.rec[1]) || size_of(p.rec[G_TORSO]) != size_of(p.rec[2]))
+		for (int g = 1; g <= G_HANDS; g++) p.rec[g] = p.rec[G_TORSO];
 	if (const char *o = getenv("VF2_PLAN")) {   // TESTONLY: "leader,head,torso,arms,forearms,hands,thighs,shins,feet" (records)
 		int v[9];
 		if (sscanf(o, "%d,%d,%d,%d,%d,%d,%d,%d,%d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7], &v[8]) == 9) {
@@ -431,9 +500,22 @@ random_fighters::plan random_fighters::make_plan(u32 s)
 			for (int g = 0; g < 7; g++) p.rec[g] = v[2 + g];
 		}
 	}
-	p.name = blend_name(made_of);
+	// the keys: the first's, in its order, then the others' it hasn't
+	std::vector<u16> keys;
+	for (int who = 0; who < n; who++)
+		for (const auto &[k, a] : dispatch(p.three[who]))
+			if (std::find(keys.begin(), keys.end(), k) == keys.end()) keys.push_back(k);
+	for (u16 k : keys) {
+		auto has = [&](int who) { for (const auto &[kk, a] : dispatch(p.three[who])) if (kk == k) return true; return false; };
+		int who = p.moves[move_group(k)];
+		for (int t = 0; t < n && !has(who); t++) who = (who + 1) % n;
+		p.keys.push_back({ k, who });
+	}
+	std::map<int, int> look;
+	look[p.head] += 4;
+	for (int g = 0; g < 7; g++) look[p.rec[g] % 13] += g == G_TORSO ? 3 : 1;
 	int total = 0, most = 0;
-	for (const auto &[n, w] : look) { total += w; most = std::max(most, w); }
+	for (const auto &[c, w] : look) { total += w; most = std::max(most, w); }
 	p.share = total ? most * 100 / total : 100;
 	p.same_body = p.head == p.rec[G_TORSO] % 13;
 	return p;
@@ -603,28 +685,21 @@ void random_fighters::build(int f, const plan &p, int side)
 	}
 	put32(ATTACH + 4 * u32(b), rd0(ATTACH + 4 * u32(p.head)));
 	put32(ATTACH + 4 * u32(b + 13), rd0(ATTACH + 4 * u32(p.head + 13)));
-	// the commands: a dispatch of its own, each key from its button group's giver (else the first of the three
-	// that has it)
-	std::vector<std::pair<u16, u32>> d[3];
-	for (int i = 0; i < 3; i++) d[i] = dispatch(p.three[i]);
-	std::vector<u16> keys;
-	for (int i = 0; i < 3; i++)
-		for (const auto &[k, a] : d[i]) if (std::find(keys.begin(), keys.end(), k) == keys.end()) keys.push_back(k);
-	auto where = [&](int i, u16 k) -> u32 { for (const auto &[kk, a] : d[i]) if (kk == k) return a; return 0; };
+	// the commands: a dispatch of its own, each key to its giver's program (its move group's owner's, or the next of the
+	// three that has it: make_plan)
+	auto where = [&](int i, u16 k) -> u32 { for (const auto &[kk, a] : dispatch(p.three[i])) if (kk == k) return a; return 0; };
 	u32 w = cmds;
-	for (u16 k : keys) {
-		const auto g = p.giver.find(u8(k));
-		u32 a = g != p.giver.end() ? where(g->second, k) : 0;
-		for (int i = 0; i < 3 && !a; i++) a = where(i, k);
+	for (const auto &[k, who] : p.keys) {
+		const u32 a = where(who, k);
 		if (!a || w + 8 > MADE_AT + MADE * u32(f + 1)) continue;
 		put8(w, 0x0e); put8(w + 1, u8(k)); put8(w + 2, u8(k >> 8)); put32(w + 3, a);
 		w += 7;
 	}
 	put8(w, 0x10);
 	put32(COMMANDS + 4 * u32(b), cmds);
-	// the first's voice, and its move at a round's end; the torso's word
+	// its voice, the first's move at a round's end; the torso's word
 	for (int s = 1; s < N_VOICES; s++)
-		if (const u32 was = rd0(VOICES + 4 * u32(s))) put32(VOICE_COPIES + 0x34 * u32(s - 1) + 4 * u32(b), rd0(was + 4 * u32(p.three[0])));
+		if (const u32 was = rd0(VOICES + 4 * u32(s))) put32(VOICE_COPIES + 0x34 * u32(s - 1) + 4 * u32(b), rd0(was + 4 * u32(p.voice)));
 	put32(ROUND_COPY + 4 * u32(b), rd0(ROUND_MOVES + 4 * u32(p.three[0])));
 	put16(WORDS_COPY + 2 * u32(b), rd0_16(rd0(WORDS_PTR) + 2 * u32(torso % 13)));
 	// (its energy bar's name: the first's picture, the box the name is drawn in over it, hud_names)
@@ -633,10 +708,11 @@ void random_fighters::build(int f, const plan &p, int side)
 	head_of[f] = p.head;
 	if (f >= 11 && f <= 12) name_of[f + 13] = p.name;
 	if (getenv("VF2_RANDLOG")) {   // TESTONLY
-		fprintf(stderr, "MADE %d %s: %s+%s+%s head %s torso %d arms %d/%d hands %d legs %d/%d/%d keys %zu share %d%%\n", f, p.name.c_str(),
-			NAME[p.three[0]], NAME[p.three[1]], NAME[p.three[2]], NAME[p.head], p.rec[0], p.rec[1], p.rec[2], p.rec[3], p.rec[4], p.rec[5], p.rec[6],
-			keys.size(), p.share);
-		for (const auto &[g, i] : p.giver) fprintf(stderr, "  buttons %02x: %s\n", g, NAME[p.three[i]]);
+		fprintf(stderr, "MADE %d %s: %s+%s+%s head %s voice %s torso %d arms %d/%d hands %d legs %d/%d/%d keys %zu share %d%%, moves", f, p.name.c_str(),
+			NAME[p.three[0]], NAME[p.three[1]], p.three[2] >= 0 ? NAME[p.three[2]] : "-", NAME[p.head], NAME[p.voice], p.rec[0], p.rec[1], p.rec[2], p.rec[3],
+			p.rec[4], p.rec[5], p.rec[6], p.keys.size(), p.share);
+		for (int g = 0; g < 8; g++) fprintf(stderr, " %d", p.moves[g]);
+		fprintf(stderr, "\n");
 	}
 }
 
@@ -1033,13 +1109,11 @@ u32 random_fighters::seed_for(int pl) { return mode[pl] == 2 ? seed[pl] : random
 
 u32 random_fighters::random_named()
 {
-	const auto &all = m.random_fighter_names();
-	if (all.empty()) return 1;
+	m.random_fighter_names();
+	if (entries.empty()) return 1;
 	static u32 clock = u32(std::chrono::steady_clock::now().time_since_epoch().count()) ^ 0x9e3779b9u;
 	clock ^= clock << 13; clock ^= clock >> 17; clock ^= clock << 5;
-	auto it = all.begin();
-	std::advance(it, clock % u32(all.size()));
-	return it->second;
+	return 1 + clock % u32(entries.size());   // (the whole book's)
 }
 
 // After each frame: at the select, a random player's fighter made as they start picking, and theirs from the VS
@@ -1157,9 +1231,7 @@ std::string model2a::random_fighter_makeup(const std::string &name)
 	const auto it = all.find(name);
 	if (it == all.end()) return "";
 	random_fighters &r = randoms();
-	const u32 was = r.rng;
 	const random_fighters::plan p = r.make_plan(it->second);
-	r.rng = was;
 	auto who = [](int rec) { std::string n = NAME[rec % 13]; for (size_t i = 1; i < n.size(); i++) n[i] = char(tolower(u8(n[i]))); return n; };
 	auto list = [&](std::initializer_list<int> recs) {
 		std::string out;
@@ -1167,14 +1239,40 @@ std::string model2a::random_fighter_makeup(const std::string &name)
 		return out;
 	};
 	std::string moves;
-	static const char *const BUTTON[8] = { "none", "P", "K", "P+K", "G", "P+G", "K+G", "P+K+G" };
-	for (int i = 0; i < 3; i++) {
+	static const char *const GROUP[8] = { "P", "K", "P+K", "P+G", "K+G", "P+K+G", "throws", "the rest" };
+	for (int i = 0; i < 3 && p.three[i] >= 0; i++) {
 		std::string mine;
-		for (const auto &[g, giver] : p.giver) if (giver == i) mine += std::string(mine.empty() ? "" : " ") + (g < 8 ? BUTTON[g] : "other");
+		for (int g = 0; g < 8; g++) if (g != 3 && p.moves[g] == i) mine += std::string(mine.empty() ? "" : " ") + GROUP[g];
 		moves += (i ? "; " : "") + who(p.three[i]) + (mine.empty() ? "" : " " + mine);
 	}
-	return who(p.head) + "|" + list({ p.rec[0] }) + "|" + list({ p.rec[1], p.rec[2] }) + "|" + list({ p.rec[3] }) + "|" +
-		list({ p.rec[4], p.rec[5], p.rec[6] }) + "|" + moves + "|" + who(p.three[0]);
+	return who(p.head) + "|" + list({ p.rec[0] }) + "|" + list({ p.rec[1], p.rec[2], p.rec[3] }) + "|" +
+		list({ p.rec[4], p.rec[5], p.rec[6] }) + "|" + moves + "|" + who(p.voice);
+}
+
+// The book as the recipe spec's table (name leader second third head voice, as carried: "-" none), or (owners) each
+// name's as VF3 Recomp lists them: its head in this game, then its move groups' owners and its part groups' (0 the first)
+std::vector<std::string> model2a::random_fighter_book(bool owners)
+{
+	random_fighter_names();
+	random_fighters &r = randoms();
+	std::vector<std::string> out;
+	for (u32 place = 1; place <= r.entries.size(); place++) {
+		const random_fighters::entry &e = r.entries[place - 1];
+		std::string l = e.name;
+		for (int i = 0; i < 3; i++) l += std::string(" ") + (e.three[i] >= 0 ? NAME[e.three[i]] : "-");
+		if (!owners) { l += " " + e.book_head + " " + NAME[e.voice]; out.push_back(l); continue; }
+		const random_fighters::plan p = r.make_plan(place);
+		l += std::string(" ") + NAME[p.head] + " " + NAME[p.voice];
+		for (int g = 0; g < 8; g++) l += " " + std::to_string(p.moves[g]);
+		l += " |";
+		for (int g = 0; g < 7; g++) {
+			int k = 0;
+			while (k < 2 && p.three[k] != p.rec[g] % 13) k++;
+			l += " " + std::to_string(k);
+		}
+		out.push_back(l);
+	}
+	return out;
 }
 
 void model2a::random_frame()
@@ -1182,17 +1280,44 @@ void model2a::random_frame()
 	if (m_random && m_random->on) m_random->frame();
 }
 
+// The carried book (tools/carry_book.py: VF1 Recomp's seed book, its names' recipes)
+static const char *const CARRIED =
+#include "random_book.inc"
+	;
+
+// The book: the carried book's names (VF1's: their three, head and voice as VF1's book has them; a head not in VF2's
+// cast, a cut character's, the first's), then each numeric seed's fighter whose three have Lion or Shun, a name to the
+// first seed that makes it (only one that looks its own, as the seed makes it and as its recipe does: not one
+// character's face on its own torso, not over 60% of its looks one character's), unless it's a carried name. A name's
+// place in it (from 1) its seed
 const std::map<std::string, u32> &model2a::random_fighter_names()
 {
 	random_fighters &r = randoms();
 	if (!r.names.empty() || !r.known) return r.names;
+	auto who = [](const std::string &n) { for (int f = 0; f <= 10; f++) if (n == NAME[f]) return f; return -1; };
+	for (const char *l = CARRIED; *l;) {
+		const char *e = strchr(l, '\n');
+		const std::string line(l, e ? size_t(e - l) : strlen(l));
+		l = e ? e + 1 : l + line.size();
+		char f[6][24] = {};
+		if (sscanf(line.c_str(), "%23s %23s %23s %23s %23s %23s", f[0], f[1], f[2], f[3], f[4], f[5]) != 6) continue;
+		random_fighters::entry en{ f[0], { who(f[1]), who(f[2]), who(f[3]) }, who(f[4]), who(f[5]), f[4] };
+		if (en.three[0] < 0 || en.three[0] == DURAL || en.three[1] < 0 || en.three[1] == DURAL || en.three[2] == DURAL || r.names.count(en.name)) continue;
+		if (en.head < 0) en.head = en.three[0];   // (a cut character's: the first's)
+		if (en.voice < 0 || en.voice == DURAL) en.voice = en.three[0];
+		r.entries.push_back(en);
+		r.names.emplace(en.name, u32(r.entries.size()));
+	}
 	const u32 was = r.rng;
-	// (only a fighter that looks its own: not one character's face on its own torso, not over 60% of its looks
-	// one character's; the first seed for each name)
 	for (u32 s = 1; s <= RANDOM_SEEDS; s++) {
-		const random_fighters::plan p = r.make_plan(s);
-		if (p.same_body || p.share > 60) continue;
-		r.names.emplace(p.name, s);
+		const random_fighters::plan p = r.make_numeric(s);
+		if (p.same_body || p.share > 60 || r.names.count(p.name)) continue;
+		if (std::find(std::begin(p.three), std::end(p.three), 8) == std::end(p.three) && std::find(std::begin(p.three), std::end(p.three), 10) == std::end(p.three)) continue;
+		r.entries.push_back({ p.name, { p.three[0], p.three[1], p.three[2] }, p.head, p.voice, NAME[p.head] });
+		// (as its recipe makes it, too: its looks dealt from its name)
+		const random_fighters::plan q = r.make_plan(u32(r.entries.size()));
+		if (q.same_body || q.share > 60) { r.entries.pop_back(); continue; }
+		r.names.emplace(p.name, u32(r.entries.size()));
 	}
 	r.rng = was;
 	if (getenv("VF2_RANDLOG")) fprintf(stderr, "random fighters: %zu names\n", r.names.size());   // TESTONLY
