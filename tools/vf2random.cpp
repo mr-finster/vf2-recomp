@@ -6,7 +6,7 @@
 // frames (default 3000): their states the same at every 60th.
 // --ko P@F: from frame F on, player P (1 or 2) knocked out in every round (as vf2run's: a 1P run through its
 // matches); each match's fight is shot too, 150 frames in (matchN.png), with its fighters. --every N: a shot every
-// N frames too (fNNNNNN.png).
+// N frames too (fNNNNNN.png). --record A-B[,C-D...]: a shot every frame from A to B (fNNNNNN.png, not listed).
 //   vf2random <vf2.zip> <script> [--out dir] [--p1 SETTING] [--p2 SETTING] [--opponents] [--scale N] [--ko P@F]
 //   vf2random <vf2.zip> --names
 //   vf2random <vf2.zip> --book            (every name, what it's made of: head, body, arms, legs, moves, voice: docs/SEEDS.md)
@@ -19,6 +19,7 @@
 #include "../src/host/input_script.h"
 #include "../src/host/vf2_netplay.h"
 #include "random_players.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -35,6 +36,7 @@ int main(int argc, char **argv)
 	bool opponents = false, list_names = false, online = false, book = false, recipes = false, owners = false;
 	long frames = 3000;
 	int ko = 0, every = 0;
+	std::vector<std::pair<uint64_t, uint64_t>> record;
 	uint64_t ko_from = 0;
 	int scale = 1;
 	for (int i = 2; i < argc; i++) {
@@ -52,6 +54,18 @@ int main(int argc, char **argv)
 		else if (a == "--owners") owners = true;
 		else if (a == "--frames") frames = atol(next().c_str());
 		else if (a == "--every") every = atoi(next().c_str());
+		else if (a == "--record") {
+			const std::string v = next();
+			for (const char *q = v.c_str(); *q;) {
+				char *e;
+				const uint64_t from = strtoull(q, &e, 10);
+				if (e == q) { fprintf(stderr, "vf2random: --record %s?\n", v.c_str()); return 2; }
+				const uint64_t to = *e == '-' ? strtoull(e + 1, &e, 10) : from;
+				record.push_back({ from, to });
+				if (*e && *e != ',') { fprintf(stderr, "vf2random: --record %s?\n", v.c_str()); return 2; }
+				q = *e ? e + 1 : e;
+			}
+		}
 		else if (a == "--ko") { const std::string v = next(); ko = atoi(v.c_str()); const size_t at = v.find('@'); ko_from = at == std::string::npos ? 0 : strtoull(v.c_str() + at + 1, nullptr, 10); }
 		else if (a[0] != '-' && script_path.empty()) script_path = a;
 		else { fprintf(stderr, "vf2random: %s?\n", a.c_str()); return 2; }
@@ -138,10 +152,11 @@ int main(int argc, char **argv)
 	m.reset();
 	std::filesystem::create_directories(out);
 	uint8_t ports[input_script::N_PORTS];
-	auto shoot = [&](const std::string &name, uint64_t f) {
+	auto shoot = [&](const std::string &name, uint64_t f, bool quiet = false) {
 		const bitmap_rgb32 &b = m.render(true);
 		const std::string path = out + "/" + name + ".png";
 		write_png(path.c_str(), b.data(), b.width(), b.height());
+		if (quiet) return;
 		u32 blk[2] = { m.peek32(0x500804), m.peek32(0x500808) };
 		printf("%s (frame %llu, mode %u): fighters %u %u, names [%s] [%s]\n", path.c_str(), (unsigned long long)f, m.game_mode(),
 			blk[0] ? m.read_byte(blk[0] + 0x1b0) : 0xffu, blk[1] ? m.read_byte(blk[1] + 0x1b0) : 0xffu,
@@ -162,7 +177,8 @@ int main(int argc, char **argv)
 		was_mode = m.game_mode();
 		was_fighters = fighters;
 		if (f == match_shot) { shoot("match" + std::to_string(++matches), f); match_shot = UINT64_MAX; }
-		if (every > 0 && f % uint64_t(every) == 0) { char n[32]; snprintf(n, sizeof n, "f%06llu", (unsigned long long)f); shoot(n, f); }
+		const bool in_record = std::any_of(record.begin(), record.end(), [&](const auto &r) { return f >= r.first && f <= r.second; });
+		if ((every > 0 && f % uint64_t(every) == 0) || in_record) { char n[32]; snprintf(n, sizeof n, "f%06llu", (unsigned long long)f); shoot(n, f, in_record); }
 		if (ko && f >= ko_from && m.workram()[0x2b] == 9 && m.workram()[0x31] == 9) {   // (vf2run's --ko)
 			const u32 block = ko == 1 ? 0x510980 : 0x512980;
 			if (int16_t(m.peek32(block + 0x1ac)) > 0 && !(m.peek32(block) & 0x20)) {

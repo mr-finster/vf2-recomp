@@ -40,7 +40,20 @@
 namespace {
 
 constexpr u32 RECORDS = 0x0200620c, FACE_LISTS = 0x02006278, COMMANDS = 0x0001d1fc, ATTACH = 0x00061cfc;
+// 658a4: each fighter number's list of what it wears that swings, drawn on its own (Akira's headband's tails and his
+// belt's ends, Jacky's hair, Lau's plait, Kage's hood's tails, Shun's gourd...: 0x64220, by +1b0; 6590c an empty one,
+// Dural's, MUE's and KOJAC's). Its ops, each a word and its arguments: 1 a swing's settings (8), 2 what the strands
+// after it hang from and rest on (15), 3 (2), 4 a strand (5: its kind, the part it hangs from: a record's slot, 2 the
+// head; kind 1 the one before's again), 5 a link of it (16: its models at +6..+8), 0 the end. The game makes each op's
+// work in 0x800 bytes (0x644e8, the sizes at 640c0). A random fighter's: each part's owner's strands that hang from
+// that part (its head's from its head, its torso's from its torso...), a list of its own (WORN_COPIES)
+constexpr u32 WORN = 0x000658a4, WORN_NONE = 0x0006590c;
+constexpr u32 WORN_ARGS[6] = { 0, 8, 15, 2, 5, 16 }, WORN_WORK[6] = { 4, 0x94, 0x7c, 0xc, 0x10, 0x30 };
 constexpr u32 VOICES = 0x0201e44c, ROUND_MOVES = 0x0201cc04, ROUND_MOVES_AT = 0x0003b38c, WORDS_PTR = 0x0201cba8;
+// 201e498: each voice's lengths (the win words', 9-12: a u16 by fighter number without the costume, Akira to Lion's
+// 11), the round's end waiting for its winner's to end (+770, set at 0x1b0bc, waited on at 0xf8f0); 11 and 12 read
+// past their ends (59560 frames, a round that never ends, for one of them). Relocated as the voices are: 13 each
+constexpr u32 VOICE_LENGTHS = 0x0201e498, CAST_LENGTHS = 11;
 // the energy bars' names, a picture each (player 1's side's 201e044, player 2's 201e070, 11 each: KOJAC's on player 2's
 // side read past the end, and had no box), read by two ld's (their addresses' words)
 constexpr u32 BAR_NAMES[2] = { 0x0201e044, 0x0201e070 }, BAR_NAMES_AT[2] = { 0x0002ccac, 0x0002ccbc };
@@ -49,6 +62,7 @@ constexpr int N_RECORDS = 26, N_FACE_LISTS = 10, N_VOICES = 19, HEADER = 0x50, B
 constexpr u32 FREE_AT = 0x1c0000, FREE_END = 0x1fef00;
 constexpr u32 COPIES = FREE_AT, COLOURS = FREE_AT + 0x1000, VOICE_COPIES = FREE_AT + 0x2000;
 constexpr u32 ROUND_COPY = FREE_AT + 0x2800, WORDS_COPY = FREE_AT + 0x2900, BAR_COPIES = FREE_AT + 0x2a00;
+constexpr u32 LENGTH_COPIES = FREE_AT + 0x3000;   // (a voice's lengths, 0x20 each)
 constexpr u32 MADE_AT = FREE_AT + 0x4000, MADE = 0x1000;
 // A side's colours, loaded by the colour's number n (block +1b4, COLOUR_AT): seven rows of 16 (the faces' and details'
 // textures) from 2105800 + n * 0x2a0 (0x754), and two ramps of 64, the skin and the main colour (the clothes, shaded),
@@ -58,6 +72,7 @@ constexpr u32 MADE_AT = FREE_AT + 0x4000, MADE = 0x1000;
 // the costumes' split gone; the reloads by the block's number (Shun's drinks, 0x4772c) by the colour's
 constexpr u32 FLAT = 0x02105800, FLAT2 = 0x02107780, RAMPS = 0x02101000, FLAT_SIZE = 0x2a0, RAMP_SIZE = 0x300;
 constexpr u32 FLAT_NEW = 0x1e0000, RAMP_NEW = 0x1e6000, COLOUR_AT = 0x000142bc;
+constexpr u32 WORN_COPIES = 0x1ec000, WORN_COPY = 0x800;   // (a fighter number's worn list: WORN)
 constexpr u32 COLOUR_NUMBER[3] = { 26, 27, 28 };   // (player 1's random fighter's, player 2's, the computer's)
 struct patch { u32 at, was, now; };
 constexpr patch PATCHES[] = {
@@ -262,6 +277,8 @@ public:
 	}
 	u32 rd0(u32 a) const { u32 v; memcpy(&v, at0(a, 4), 4); return v; }
 	u16 rd0_16(u32 a) const { u16 v; memcpy(&v, at0(a, 2), 2); return v; }
+	// a voice's length for fighter number b (without the costume; none past the cast's, VOICE_LENGTHS)
+	u16 voice_length(int s, int b) const { const u32 l = rd0(VOICE_LENGTHS + 4 * u32(s)); return l && b >= 0 && u32(b) < CAST_LENGTHS ? rd0_16(l + 2 * u32(b)) : 0; }
 	u16 rd16(u32 a) { u16 v; memcpy(&v, at(a), 2); return v; }   // (the ROMs as they are: the colours, never changed)
 	void put8(u32 a, u8 v) { u8 &b = *at(a); if (b == v) return; undo.emplace(a, b); b = v; }
 	void put32(u32 a, u32 v) { for (int k = 0; k < 4; k++) put8(a + k, u8(v >> (8 * k))); }
@@ -334,6 +351,13 @@ public:
 	void twr(u32 i, u16 v) { if (2 * size_t(i) + 2 > texrom.size() || trd(i) == v) return; tex_was.emplace(i, trd(i)); memcpy(&texrom[2 * size_t(i)], &v, 2); }
 	u32 rdl(u32 a) { if (a >= 0x02000000 ? a - 0x02000000 + 4 > data.size() : a + 4 > prog.size()) return 0; u32 v; memcpy(&v, at(a), 4); return v; }   // (as they are)
 	void build_textures(int f, const plan &p, int side, const int slot_rec[16], int giver, u32 n);
+	// what's worn that swings (WORN): a list's ops (where, which, the part its strand hangs from: -1 none), a fighter's
+	// list (the strands of each part's owner's that hang from that part, in the work the cast's lists take at most)
+	struct worn_op { u32 at, op; int slot; };
+	bool worn_ops(u32 q, std::vector<worn_op> &ops) const;
+	std::vector<u32> worn_list(const int slot_rec[16]) const;
+	std::vector<u32> worn_models(int rec, const std::vector<int> &slots) const;   // (its strands' from those parts)
+	u32 worn_limit = 0;
 	void set_rewrites(int side, bool on);
 	void apply_textures(int side);
 	void texture_set_now(int f, int side);   // (its record's texture set: the side's as it is, if a fighter's)
@@ -368,7 +392,17 @@ random_fighters::random_fighters(model2a &board)
 	u32 crc = 0;
 	for (const auto &[a, n] : SPANS) crc = u32(::crc32(crc, a < 0x200000 ? &prog[a] : &data[a - 0x02000000], uInt(n)));
 	known = crc == KNOWN_CRC && std::all_of(std::begin(PATCHES), std::end(PATCHES), [&](const patch &k) { return rd0(k.at) == k.was; }) && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; })
-		&& data.size() >= 0x2400000 && texrom.size() >= 0x1000000 && rdl(ARC_DESCS) == ARC_DESCS_WAS && rdl(ARC_SETS) == ARC_SETS_WAS;
+		&& data.size() >= 0x2400000 && texrom.size() >= 0x1000000 && rdl(ARC_DESCS) == ARC_DESCS_WAS && rdl(ARC_SETS) == ARC_SETS_WAS
+		&& rd0(WORN + 4 * 11) == WORN_NONE && rd0(WORN + 4 * 12) == WORN_NONE
+		&& rd0(VOICE_LENGTHS) == 0 && rd0(VOICE_LENGTHS + 4 * 9) == 0x0201e828 && rd0(VOICE_LENGTHS + 4 * 12) == 0x0201e86a;
+	for (u32 g = 0; g < 26 && known; g++) {
+		std::vector<worn_op> ops;
+		known = worn_ops(rd0(WORN + 4 * g), ops);
+		u32 w = WORN_WORK[0];
+		for (const worn_op &o : ops) w += WORN_WORK[o.op];
+		worn_limit = std::max(worn_limit, w);
+	}
+	known = known && worn_limit <= WORN_COPY;
 	for (int b = 0; b < 13; b++)
 		for (u32 a = rd0(COMMANDS + 4 * u32(b)); a + 7 <= prog0.size() && prog0[a] == 0x0e && disp[b].size() < 200; a += 7)
 			disp[b].push_back({ u16(prog0[a + 1] | prog0[a + 2] << 8), rd0(a + 3) });
@@ -572,6 +606,12 @@ void random_fighters::base_layer()
 		for (u32 k = 0; k < 13; k++) put32(copy + 4 * k, rd0(was + 4 * k));
 		put32(VOICES + 4 * u32(s), copy);
 	}
+	for (int s = 1; s < N_VOICES; s++) {
+		if (!rd0(VOICE_LENGTHS + 4 * u32(s))) continue;
+		const u32 copy = LENGTH_COPIES + 0x20 * u32(s);
+		for (int k = 0; k < 13; k++) put16(copy + 2 * u32(k), voice_length(s, k));
+		put32(VOICE_LENGTHS + 4 * u32(s), copy);
+	}
 	for (u32 k = 0; k < 13; k++) put32(ROUND_COPY + 4 * k, rd0(ROUND_MOVES + 4 * k));
 	put32(ROUND_MOVES_AT + 4, ROUND_COPY);
 	const u32 words = rd0(WORDS_PTR);
@@ -626,8 +666,12 @@ void random_fighters::own(int f)
 	put32(COMMANDS + 4 * u32(b), rd0(COMMANDS + 4 * u32(b)));
 	put32(ATTACH + 4 * u32(b), rd0(ATTACH + 4 * u32(b)));
 	put32(ATTACH + 4 * u32(b + 13), rd0(ATTACH + 4 * u32(b + 13)));
+	put32(WORN + 4 * u32(f), rd0(WORN + 4 * u32(f)));
+	if (f >= 11 && f <= 12) put32(WORN + 4 * u32(f + 13), rd0(WORN + 4 * u32(f + 13)));
 	for (int s = 1; s < N_VOICES; s++)
 		if (const u32 was = rd0(VOICES + 4 * u32(s))) put32(VOICE_COPIES + 0x34 * u32(s - 1) + 4 * u32(b), rd0(was + 4 * u32(b)));
+	for (int s = 1; s < N_VOICES; s++)
+		if (rd0(VOICE_LENGTHS + 4 * u32(s))) put16(LENGTH_COPIES + 0x20 * u32(s) + 2 * u32(b), voice_length(s, b));
 	put32(ROUND_COPY + 4 * u32(b), rd0(ROUND_MOVES + 4 * u32(b)));
 	put16(WORDS_COPY + 2 * u32(b), rd0_16(rd0(WORDS_PTR) + 2 * u32(b)));
 	for (int side = 0; side < 2; side++) put32(BAR_COPIES + 0x40 * u32(side) + 4 * u32(b), rd0(BAR_NAMES[side] + 4 * u32(b)));
@@ -685,6 +729,12 @@ void random_fighters::build(int f, const plan &p, int side)
 	}
 	put32(ATTACH + 4 * u32(b), rd0(ATTACH + 4 * u32(p.head)));
 	put32(ATTACH + 4 * u32(b + 13), rd0(ATTACH + 4 * u32(p.head + 13)));
+	// (what it wears that swings: each part's owner's from that part, WORN)
+	const std::vector<u32> worn = worn_list(slot_rec);
+	const u32 worn_at = worn.size() > 1 ? WORN_COPIES + WORN_COPY * u32(f) : WORN_NONE;
+	if (worn.size() > 1) for (size_t k = 0; k < worn.size(); k++) put32(worn_at + 4 * u32(k), worn[k]);
+	put32(WORN + 4 * u32(f), worn_at);
+	if (f >= 11 && f <= 12) put32(WORN + 4 * u32(f + 13), worn_at);
 	// the commands: a dispatch of its own, each key to its giver's program (its move group's owner's, or the next of the
 	// three that has it: make_plan)
 	auto where = [&](int i, u16 k) -> u32 { for (const auto &[kk, a] : dispatch(p.three[i])) if (kk == k) return a; return 0; };
@@ -700,6 +750,8 @@ void random_fighters::build(int f, const plan &p, int side)
 	// its voice, the first's move at a round's end; the torso's word
 	for (int s = 1; s < N_VOICES; s++)
 		if (const u32 was = rd0(VOICES + 4 * u32(s))) put32(VOICE_COPIES + 0x34 * u32(s - 1) + 4 * u32(b), rd0(was + 4 * u32(p.voice)));
+	for (int s = 1; s < N_VOICES; s++)   // (and their lengths: the round's end waits for the win words')
+		if (rd0(VOICE_LENGTHS + 4 * u32(s))) put16(LENGTH_COPIES + 0x20 * u32(s) + 2 * u32(b), voice_length(s, p.voice));
 	put32(ROUND_COPY + 4 * u32(b), rd0(ROUND_MOVES + 4 * u32(p.three[0])));
 	put16(WORDS_COPY + 2 * u32(b), rd0_16(rd0(WORDS_PTR) + 2 * u32(torso % 13)));
 	// (its energy bar's name: the first's picture, the box the name is drawn in over it, hud_names)
@@ -806,6 +858,70 @@ void random_fighters::flat_copy(u32 n, u32 row, u32 from, u32 from_row)
 // faces, what it wears, MISC_TILES; nor another's), else in a free place, moved; their colour rows in rows of colour
 // number n the head doesn't use. Each tile's texels' fighter and how far they're moved (written by apply_textures),
 // and the headers to move (on while f is on the side: frame)
+// A worn list's ops (WORN), each with the part its strand hangs from (a strand's kind 1: the one before's); false if
+// it isn't one
+bool random_fighters::worn_ops(u32 q, std::vector<worn_op> &ops) const
+{
+	ops.clear();
+	int slot = -1;
+	for (u32 a = q; a + 4 <= 0x80000 && ops.size() < 1000;) {
+		const u32 op = rd0(a);
+		if (op == 0) return true;
+		if (op >= std::size(WORN_ARGS)) return false;
+		if (op == 4 && rd0(a + 4) != 1) slot = int(rd0(a + 8));
+		if (op >= 4 && (slot < 0 || slot >= 16)) return false;
+		ops.push_back({ a, op, op >= 4 ? slot : -1 });
+		a += 4 + 4 * WORN_ARGS[op];
+	}
+	return false;
+}
+
+// A fighter's worn list: of the head's, the torso's, the limbs' owners' lists in turn, each swing (its settings and
+// what follows to the next) with the strands that hang from a part of that owner's, those with any, while the work
+// they take is no more than the cast's lists take (the head's always is). The cast's own: as it was
+std::vector<u32> random_fighters::worn_list(const int slot_rec[16]) const
+{
+	std::vector<u32> out;
+	u32 work = WORN_WORK[0];
+	std::vector<int> recs;
+	for (int s : { 2, 0, 1, 9, 3, 6, 4, 7, 5, 8, 10, 13, 11, 14, 12, 15 })
+		if (std::find(recs.begin(), recs.end(), slot_rec[s]) == recs.end()) recs.push_back(slot_rec[s]);
+	std::vector<worn_op> ops;
+	for (int rec : recs) {
+		if (!worn_ops(rd0(WORN + 4 * u32(rec)), ops)) continue;
+		for (size_t i = 0, j; i < ops.size(); i = j) {
+			for (j = i + 1; j < ops.size() && ops[j].op != 1; j++) {}
+			std::vector<u32> swing;
+			u32 w = 0;
+			bool any = false;
+			for (size_t k = i; k < j; k++) {
+				const worn_op &o = ops[k];
+				if (o.slot >= 0 && slot_rec[o.slot] != rec) continue;
+				any |= o.op == 4;
+				for (u32 n = 0; n <= WORN_ARGS[o.op]; n++) swing.push_back(rd0(o.at + 4 * n));
+				w += WORN_WORK[o.op];
+			}
+			if (any && work + w <= worn_limit && 4 * (out.size() + swing.size() + 1) <= WORN_COPY) {
+				out.insert(out.end(), swing.begin(), swing.end());
+				work += w;
+			}
+		}
+	}
+	out.push_back(0);
+	return out;
+}
+
+std::vector<u32> random_fighters::worn_models(int rec, const std::vector<int> &slots) const
+{
+	std::vector<u32> ms;
+	std::vector<worn_op> ops;
+	if (worn_ops(rd0(WORN + 4 * u32(rec)), ops))
+		for (const worn_op &o : ops)
+			if (o.op == 5 && std::find(slots.begin(), slots.end(), o.slot) != slots.end())
+				for (u32 n = 7; n <= 9; n++) if (const u32 m = rd0(o.at + 4 * n); m && m < 0x2000) ms.push_back(m);
+	return ms;
+}
+
 void random_fighters::build_textures(int f, const plan &p, int side, const int slot_rec[16], int giver, u32 n)
 {
 	tex_side &t = tex[side];
@@ -836,6 +952,7 @@ void random_fighters::build_textures(int f, const plan &p, int side, const int s
 		for (u32 o : { 0u, 0x34u, 0x44u })
 			if (const u32 q = rd0(r + o)) for (int s : GROUPS[g]) ms.push_back(rd0(q + 4 * u32(s)));
 		if (g == G_TORSO) if (const u32 q = rd0(r + 0x38)) for (u32 k = 0; k < 4; k++) ms.push_back(rd0(q + 4 * k));
+		for (u32 mdl : worn_models(rec, GROUPS[g])) ms.push_back(mdl);   // (what swings from them)
 		if (g == G_HANDS) {   // (the hands' poses, both hands', in the record's block)
 			const u32 b = rd0(r);
 			for (u32 k = 0x40; k < 0xc0; k += 4) ms.push_back(rd0(b + k));
@@ -862,6 +979,11 @@ void random_fighters::build_textures(int f, const plan &p, int side, const int s
 		for (u32 k = 0; k < count; k++) { hdr h; if (decode(from + 4 * k, h)) tiles(h, [&](int tx, int ty) { who[ty * TW + tx] = s8(ch); }); }
 	};
 	for (u32 mdl : head_models(slot_rec[2])) mark(mdl, H);
+	// (what swings from the head, WORN; and its shadow's pieces, ATTACH's 15 a costume)
+	for (u32 mdl : worn_models(slot_rec[2], { 2 })) mark(mdl, H);
+	for (int c : { H, H + 13 })
+		if (const u32 q = rd0(ATTACH + 4 * u32(c)))
+			for (u32 k = 0; k < 15; k++) if (const u32 m = rd0(q + 24 * k + 4); m && m < 0x2000) mark(m, H);
 	if (H < int(std::size(MISC_TILES)))
 		for (int ty = 0; ty < TH; ty++) for (int tx = 0; tx < TW; tx++) if (MISC_TILES[H][ty] >> tx & 1) who[ty * TW + tx] = s8(H);
 	for (int g = 0; g < 7; g++) if (p.rec[g] % 13 == H) for (u32 mdl : group_models(p.rec[g], g)) mark(mdl, H);
