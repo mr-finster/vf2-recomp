@@ -17,7 +17,8 @@
 //     their sums; the high byte the situation), each to a program of checks ending in a move. Move numbers are the
 //     whole game's (200d34c), so a program works for anyone
 //   - 61cfc, what swings from the head (Akira's headband's ends, braids); 201e44c, the voices (18 kinds, 11
-//     fighters each); 201cc04 a move at a round's end, and 201cbee a word, each by fighter
+//     fighters each); 201cc04 a move at a round's end (the loser's, standing), and 201cb9c's four tables of the win
+//     poses, each by fighter
 // MUE and KOJAC are Lion's record with Akira's commands, and so free: player 1's random fighter is made as fighter
 // 11, player 2's as 12, and picked for them as the select ends (the VS screen). The computer's random opponent is
 // made on its own fighter's tables as its match loads (not one a player has picked).
@@ -49,7 +50,12 @@ constexpr u32 RECORDS = 0x0200620c, FACE_LISTS = 0x02006278, COMMANDS = 0x0001d1
 // that part (its head's from its head, its torso's from its torso...), a list of its own (WORN_COPIES)
 constexpr u32 WORN = 0x000658a4, WORN_NONE = 0x0006590c;
 constexpr u32 WORN_ARGS[6] = { 0, 8, 15, 2, 5, 16 }, WORN_WORK[6] = { 4, 0x94, 0x7c, 0xc, 0x10, 0x30 };
-constexpr u32 VOICES = 0x0201e44c, ROUND_MOVES = 0x0201cc04, ROUND_MOVES_AT = 0x0003b38c, WORDS_PTR = 0x0201cba8;
+constexpr u32 VOICES = 0x0201e44c, ROUND_MOVES = 0x0201cc04, ROUND_MOVES_AT = 0x0003b38c;
+// 201cb9c: the winner's pose (0x3b278), four tables of a move by fighter number without the costume, 11 each (u16): by
+// the round's time in thirds (or the button held as it ends: Guard the first, Punch the second, Kick the third) and a
+// perfect round's. 11 and 12 read past their ends (the next table's Akira and Jacky: a random fighter's win was
+// theirs). Relocated as the voices are: 13 each
+constexpr u32 POSES = 0x0201cb9c, N_POSES = 4;
 // 201e498: each voice's lengths (the win words', 9-12: a u16 by fighter number without the costume, Akira to Lion's
 // 11), the round's end waiting for its winner's to end (+770, set at 0x1b0bc, waited on at 0xf8f0); 11 and 12 read
 // past their ends (59560 frames, a round that never ends, for one of them). Relocated as the voices are: 13 each
@@ -61,8 +67,17 @@ constexpr int N_RECORDS = 26, N_FACE_LISTS = 10, N_VOICES = 19, HEADER = 0x50, B
 // The ROM's empty space past the program (zeros): the base layer, then a place for each fighter number's
 constexpr u32 FREE_AT = 0x1c0000, FREE_END = 0x1fef00;
 constexpr u32 COPIES = FREE_AT, COLOURS = FREE_AT + 0x1000, VOICE_COPIES = FREE_AT + 0x2000;
-constexpr u32 ROUND_COPY = FREE_AT + 0x2800, WORDS_COPY = FREE_AT + 0x2900, BAR_COPIES = FREE_AT + 0x2a00;
+constexpr u32 ROUND_COPY = FREE_AT + 0x2800, POSE_COPIES = FREE_AT + 0x2900, BAR_COPIES = FREE_AT + 0x2a00;   // (POSES': 0x20 each)
 constexpr u32 LENGTH_COPIES = FREE_AT + 0x3000;   // (a voice's lengths, 0x20 each)
+// The bookkeeping's matches by fighter (0x6d9f8, at a match's end): a 12 x 12 table in backup RAM (36a4: rows of 48
+// bytes by player 1's +1b1, two u16 a column by player 2's), its row and column read as the fighters' numbers and times
+// 48 (0x6daec: addo 31,17,r13; mulo r11,r13,r9; mulo r12,r13,r10). KOJAC's 12 past its end: player 2's random fighter
+// added 65536 to a count of the play times' after it (38e4) at each 2P match's end. Now a branch to the same three
+// with each number through a table first, 12 and on counted as 11 (MUE's, the arcade's unused), and back
+constexpr u32 MATCHES_AT = 0x0006daec, MATCHES_STUB = FREE_AT + 0x3800, MATCHES_MAP = FREE_AT + 0x3900;
+constexpr u32 branch(u32 at, u32 to) { return 0x08000000u | ((to - at) & 0x00fffffcu); }   // (b to)
+constexpr u32 MATCHES_CODE[] = { 0x805af400, MATCHES_MAP, 0x80633400, MATCHES_MAP,   // (ldob MAP(r11),r11; ldob MAP(r12),r12)
+	0x596c581f, 0x704b408b, 0x7053408c, branch(MATCHES_STUB + 0x1c, MATCHES_AT + 12) };  // (as they were; b back)
 constexpr u32 MADE_AT = FREE_AT + 0x4000, MADE = 0x1000;
 // A side's colours, loaded by the colour's number n (block +1b4, COLOUR_AT): seven rows of 16 (the faces' and details'
 // textures) from 2105800 + n * 0x2a0 (0x754), and two ramps of 64, the skin and the main colour (the clothes, shaded),
@@ -86,7 +101,8 @@ constexpr patch PATCHES[] = {
 	{ 0x00000c2c, 0x8088e1b0, 0x8088e1b4 },        // (Shun's drinks' reload: ldob 0x1b0(r3),g1 -> 0x1b4)
 	{ 0x00000c5c, 0x8088e1b0, 0x8088e1b4 },
 	{ 0x0004775c, 0x8088e1b0, 0x8088e1b4 },        // (both sides' ramps again, 0x4772c)
-	{ 0x00047770, 0x8088e1b0, 0x8088e1b4 } };
+	{ 0x00047770, 0x8088e1b0, 0x8088e1b4 },
+	{ MATCHES_AT, 0x596c581f, branch(MATCHES_AT, MATCHES_STUB) } };   // (the bookkeeping's matches: addo 31,17,r13 -> b)
 
 // Textures. A fighter's are two sets (record +30 and the next number) in the archive at 2300000: [2300008] a table of
 // descriptor tables (a count, then a word each texture: where it goes), [230000c] a table of sets by number (the
@@ -387,14 +403,15 @@ random_fighters::random_fighters(model2a &board)
 	prog0.resize(0x200000, 0);
 	data0.assign(data.begin(), data.begin() + 0x20000);
 	static const std::pair<u32, u32> SPANS[] = { { RECORDS, 4 * N_RECORDS }, { FACE_LISTS, 4 * N_FACE_LISTS }, { COMMANDS, 4 * 13 },
-		{ ATTACH, 4 * N_RECORDS }, { VOICES, 4 * N_VOICES }, { COLOUR_AT - 8, 16 }, { ROUND_MOVES_AT - 4, 12 }, { WORDS_PTR - 12, 16 },
+		{ ATTACH, 4 * N_RECORDS }, { VOICES, 4 * N_VOICES }, { COLOUR_AT - 8, 16 }, { ROUND_MOVES_AT - 4, 12 }, { POSES, 4 * N_POSES },
 		{ ROUND_MOVES, 4 * 11 }, { BAR_NAMES_AT[0] - 4, 4 }, { BAR_NAMES_AT[1] - 4, 4 }, { BAR_NAMES[0], 4 * 22 } };
 	u32 crc = 0;
 	for (const auto &[a, n] : SPANS) crc = u32(::crc32(crc, a < 0x200000 ? &prog[a] : &data[a - 0x02000000], uInt(n)));
 	known = crc == KNOWN_CRC && std::all_of(std::begin(PATCHES), std::end(PATCHES), [&](const patch &k) { return rd0(k.at) == k.was; }) && std::all_of(prog.begin() + FREE_AT, prog.begin() + FREE_END, [](u8 b) { return b == 0; })
 		&& data.size() >= 0x2400000 && texrom.size() >= 0x1000000 && rdl(ARC_DESCS) == ARC_DESCS_WAS && rdl(ARC_SETS) == ARC_SETS_WAS
 		&& rd0(WORN + 4 * 11) == WORN_NONE && rd0(WORN + 4 * 12) == WORN_NONE
-		&& rd0(VOICE_LENGTHS) == 0 && rd0(VOICE_LENGTHS + 4 * 9) == 0x0201e828 && rd0(VOICE_LENGTHS + 4 * 12) == 0x0201e86a;
+		&& rd0(VOICE_LENGTHS) == 0 && rd0(VOICE_LENGTHS + 4 * 9) == 0x0201e828 && rd0(VOICE_LENGTHS + 4 * 12) == 0x0201e86a
+		&& rd0(MATCHES_AT - 8) == 0x805ae1b1 && rd0(MATCHES_AT - 4) == 0x806321b1 && rd0(MATCHES_AT + 4) == MATCHES_CODE[5] && rd0(MATCHES_AT + 8) == MATCHES_CODE[6];
 	for (u32 g = 0; g < 26 && known; g++) {
 		std::vector<worn_op> ops;
 		known = worn_ops(rd0(WORN + 4 * g), ops);
@@ -585,7 +602,7 @@ std::string random_fighters::blend_name(const std::map<std::string, int> &made_o
 }
 
 // The base layer, while any random fighter is on: every record a copy of itself naming its own colours (+08), the
-// colours' read moved to it, and the voices, the round's end moves and the words a table of 13 (MUE's and KOJAC's
+// colours' read moved to it, and the voices, the round's end moves and the win poses a table of 13 (MUE's and KOJAC's
 // places read past the end of 11: what they read kept)
 void random_fighters::base_layer()
 {
@@ -614,9 +631,11 @@ void random_fighters::base_layer()
 	}
 	for (u32 k = 0; k < 13; k++) put32(ROUND_COPY + 4 * k, rd0(ROUND_MOVES + 4 * k));
 	put32(ROUND_MOVES_AT + 4, ROUND_COPY);
-	const u32 words = rd0(WORDS_PTR);
-	for (u32 k = 0; k < 13; k++) put16(WORDS_COPY + 2 * k, rd0_16(words + 2 * k));
-	put32(WORDS_PTR, WORDS_COPY);
+	for (u32 t = 0; t < N_POSES; t++) {
+		const u32 was = rd0(POSES + 4 * t);
+		for (u32 k = 0; k < 13; k++) put16(POSE_COPIES + 0x20 * t + 2 * k, rd0_16(was + 2 * k));
+		put32(POSES + 4 * t, POSE_COPIES + 0x20 * t);
+	}
 	for (int side = 0; side < 2; side++) {
 		const u32 copy = BAR_COPIES + 0x40 * u32(side);
 		for (u32 k = 0; k < 13; k++) put32(copy + 4 * k, rd0(BAR_NAMES[side] + 4 * k));
@@ -628,6 +647,8 @@ void random_fighters::base_layer()
 		for (u32 k = 0; k < FLAT_SIZE; k += 2) put16(FLAT_NEW + FLAT_SIZE * n + k, rd16(flat + k));
 		for (u32 k = 0; k < RAMP_SIZE; k += 2) put16(RAMP_NEW + RAMP_SIZE * n + k, rd16(ramp + k));
 	}
+	for (u32 k = 0; k < std::size(MATCHES_CODE); k++) put32(MATCHES_STUB + 4 * k, MATCHES_CODE[k]);
+	for (u32 k = 0; k < 256; k++) put8(MATCHES_MAP + k, u8(std::min(k, 11u)));
 	for (const patch &k : PATCHES) put32(k.at, k.now);
 	code_changed();
 }
@@ -673,7 +694,7 @@ void random_fighters::own(int f)
 	for (int s = 1; s < N_VOICES; s++)
 		if (rd0(VOICE_LENGTHS + 4 * u32(s))) put16(LENGTH_COPIES + 0x20 * u32(s) + 2 * u32(b), voice_length(s, b));
 	put32(ROUND_COPY + 4 * u32(b), rd0(ROUND_MOVES + 4 * u32(b)));
-	put16(WORDS_COPY + 2 * u32(b), rd0_16(rd0(WORDS_PTR) + 2 * u32(b)));
+	for (u32 t = 0; t < N_POSES; t++) put16(POSE_COPIES + 0x20 * t + 2 * u32(b), rd0_16(rd0(POSES + 4 * t) + 2 * u32(b)));
 	for (int side = 0; side < 2; side++) put32(BAR_COPIES + 0x40 * u32(side) + 4 * u32(b), rd0(BAR_NAMES[side] + 4 * u32(b)));
 	name_of[f].clear();
 	if (f >= 11 && f <= 12) name_of[f + 13].clear();
@@ -747,13 +768,13 @@ void random_fighters::build(int f, const plan &p, int side)
 	}
 	put8(w, 0x10);
 	put32(COMMANDS + 4 * u32(b), cmds);
-	// its voice, the first's move at a round's end; the torso's word
+	// its voice, the first's move at a round's end; the torso's win poses
 	for (int s = 1; s < N_VOICES; s++)
 		if (const u32 was = rd0(VOICES + 4 * u32(s))) put32(VOICE_COPIES + 0x34 * u32(s - 1) + 4 * u32(b), rd0(was + 4 * u32(p.voice)));
 	for (int s = 1; s < N_VOICES; s++)   // (and their lengths: the round's end waits for the win words')
 		if (rd0(VOICE_LENGTHS + 4 * u32(s))) put16(LENGTH_COPIES + 0x20 * u32(s) + 2 * u32(b), voice_length(s, p.voice));
 	put32(ROUND_COPY + 4 * u32(b), rd0(ROUND_MOVES + 4 * u32(p.three[0])));
-	put16(WORDS_COPY + 2 * u32(b), rd0_16(rd0(WORDS_PTR) + 2 * u32(torso % 13)));
+	for (u32 t = 0; t < N_POSES; t++) put16(POSE_COPIES + 0x20 * t + 2 * u32(b), rd0_16(rd0(POSES + 4 * t) + 2 * u32(torso % 13)));
 	// (its energy bar's name: the first's picture, the box the name is drawn in over it, hud_names)
 	for (int side = 0; side < 2; side++) put32(BAR_COPIES + 0x40 * u32(side) + 4 * u32(b), rd0(BAR_NAMES[side] + 4 * u32(p.three[0])));
 	name_of[f] = p.name;
