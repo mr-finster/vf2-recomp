@@ -349,6 +349,14 @@ public:
 	// the first goes on or the last off. False if the program isn't the one known (then all off). Before a reset.
 	bool apply_random_fighters();
 	void random_fighters_off();   // (online play: all off, the ROMs as loaded, until the next apply)
+	// Online play (vf2_netplay): every random choice from the match's seed, the same on both sides (Random's draws and
+	// the colours, never the clock), until random_fighters_off; a player's named fighter by its place in the book
+	// (from 1: random_fighter_names' value); and everything the feature knew forgotten (off first: the next use starts
+	// from the ROMs as they are then, the match's patches on, alike on both sides)
+	void set_random_seed(uint32_t seed);
+	bool set_random_player_place(int pl, uint32_t place);
+	void random_fighters_forget();
+	void random_fighters_decode();   // (every texture a random fighter may take decoded now, not as a match goes: a second or so)
 	const std::map<std::string, uint32_t> &random_fighter_names();   // (the book: every name, its place in it from 1; made once)
 	bool random_fighters_on() const;
 	std::string random_fighter_name(int pl);   // (a player's fighter's now, "" none: the energy bar's)
@@ -441,6 +449,10 @@ private:
 	// written since (each page's save number when last written). The RAMs the recompiled code writes directly,
 	// and buffer RAM (the TGP's too), are copied whole.
 	template <class IO> void state(IO &io);
+	// (Cheats' random fighters in a save state, while they're on: the ROM's bytes they change as a match goes, and what
+	// they know of them; a load puts back the fighters the state had, made again if they're others now)
+	void random_state(m2::StateWriter &io);
+	void random_state(m2::StateReader &io);
 	enum { P_TILE, P_CHAR, P_PAL, P_XLAT, P_FB_A, P_FB_B, P_TEX0, P_TEX1, P_LUMA, PAGED };
 	static constexpr size_t PAGE = 4096;
 	std::vector<uint32_t> m_page_gen[PAGED];

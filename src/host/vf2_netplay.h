@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <string>
 #include <vector>
 
 namespace vf2net {
@@ -29,7 +30,9 @@ void unpack(const uint16_t input[2], model2a &board);
 // only with what a match depends on (the board, the recompiler, their compiler flags, this adapter, online.cpp's
 // match settings, src/net's protocol), so a release that changes only the picture or the menus still plays the one
 // before. Named after the release that brings it; VF2's first online release names it (docs/RELEASING-ALL.md).
-inline constexpr const char *NET_VERSION = "v0.1.16";
+// v0.1.17: Cheats' random fighters online (each player's fighter in the hello, the match's seed in the host's blob,
+// their state in the save states): a build of v0.1.16's and one of this refuse each other in the handshake
+inline constexpr const char *NET_VERSION = "v0.1.17";
 // The online version a build plays as: NET_VERSION for a release (its version a release's name: v0.1.16, or with a
 // word after it), else the build's own (git describe's between releases, a bare commit, "dev"): a test build, which
 // may carry a change to the game, plays only the same build
@@ -37,9 +40,20 @@ std::string online_version(const std::string &build);
 
 // A hash of the ROMs' contents as loaded (before any patch)
 uint64_t content_hash(const model2a &board);
-// The host's starting blob: its backup RAM and EEPROM, its secret character (0: none; Cheats' choice) and its place in the
-// stages' list (a fresh one each call: STAGE)
-std::vector<uint8_t> start_blob(const model2a &board, int secret = 0);
+// The host's starting blob: its backup RAM and EEPROM, its secret character (0: none; Cheats' choice), its place in the
+// stages' list (a fresh one each call: STAGE), the match's random seed (Cheats' random fighters made alike on both
+// sides: Random's draws, the colours) and the host's fighter (player 1's: fighter_extra)
+std::vector<uint8_t> start_blob(const model2a &board, int secret = 0, const std::string &host_fighter = "", uint32_t seed = 1);
+
+// A player's fighter as the handshake carries it (Identity::extra), VF1's: "" the select as ever, "R" a random fighter
+// (a new one at every select), "S<place>" a named fighter's (its place in the book, model2a::random_fighter_names: the
+// same on any machine with the ROM and this online version; a change to the book, or its order, changes NET_VERSION). From Cheats' setting (model2a::set_random_player's: "",
+// "*" or a name; a name the book hasn't plays as Random, as offline), and back (false for one that isn't any of them)
+std::string fighter_extra(const std::string &random_player_setting, model2a &board);
+bool fighter_setting(const std::string &extra, model2a &board, std::string &setting);
+void set_players(model2a &board, const std::string fighters[2]);
+// A fighter as a word under a player's name (the VS reveal): "" Normal, "RANDOM", a named fighter's name
+std::string fighter_words(const std::string &extra, model2a &board);
 
 // The settings a match plays with on both sides, whatever each has offline (they change the game's program or
 // its timing): the scenery culling widescreen uses (so a 16:9 and a 4:3 player run the same game), the sound
@@ -131,6 +145,13 @@ public:
 	std::vector<std::vector<uint8_t>> boot_sound;
 	int stage_offset = 0;   // (the host's place in the stages' list, from its blob)
 	int secret() const { return started_secret; }   // (the match's secret character, from the host's blob)
+	// The fighters (Online sets these before the session): this side's choice (fighter_extra), and whether it hosts
+	// (player 1, its choice in its blob) or joins (player 2, its choice in its hello)
+	std::string own_extra;
+	bool hosting = false;
+	std::vector<uint8_t> host_blob(int secret = 0);   // (start_blob with this side's fighter and a fresh seed)
+	void peer_extra(const std::string &extra) override { their_extra = extra; }
+	std::string fighters[2];   // (the match's, as begin set them: "", "*" or "S<place>")
 
 	// tests: the state's hash after each frame a multiple of this, the last time it ran (0: none kept)
 	uint32_t checkpoint_every = 0;
@@ -146,6 +167,7 @@ private:
 	std::vector<uint8_t> check_buf;
 	bool sound_taken = false;
 	int started_secret = 0;
+	std::string their_extra;
 };
 
 } // namespace vf2net

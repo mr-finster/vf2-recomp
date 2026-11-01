@@ -11,7 +11,7 @@ namespace {
 // IN0's bits for each player (active low on the board)
 constexpr uint8_t IN0_COIN[2] = { 0x01, 0x02 }, IN0_START[2] = { 0x10, 0x20 };
 
-constexpr uint32_t BLOB_MAGIC = 0x42324656;   // "VF2B"
+constexpr uint32_t BLOB_MAGIC = 0x43324656;   // "VF2C" (v0.1.16's "VF2B": no seed, no fighter)
 
 } // namespace
 
@@ -59,7 +59,8 @@ std::string online_version(const std::string &b)
 
 uint64_t content_hash(const model2a &b) { return b.rom_hash(); }
 
-std::vector<uint8_t> start_blob(const model2a &b, int secret)
+// [magic][backup RAM][EEPROM][secret][stage][seed: 4][the host's fighter's length][its letters]
+std::vector<uint8_t> start_blob(const model2a &b, int secret, const std::string &host_fighter, uint32_t seed)
 {
 	std::vector<uint8_t> out(4);
 	memcpy(out.data(), &BLOB_MAGIC, 4);
@@ -71,7 +72,61 @@ std::vector<uint8_t> start_blob(const model2a &b, int secret)
 	// the host's random place in the stages' list (stage_for): a fresh one each match
 	const uint64_t t = uint64_t(std::chrono::steady_clock::now().time_since_epoch().count()) * 2654435761u;
 	out.push_back(uint8_t((t >> 24) % STAGES));
+	for (int k = 0; k < 4; k++) out.push_back(uint8_t(seed >> (8 * k)));
+	const std::string f = host_fighter.substr(0, vfnet::MAX_EXTRA);
+	out.push_back(uint8_t(f.size()));
+	out.insert(out.end(), f.begin(), f.end());
 	return out;
+}
+
+std::string fighter_extra(const std::string &setting, model2a &b)
+{
+	if (setting.empty()) return "";
+	if (setting == "*") return "R";
+	std::string n;
+	for (char ch : setting) if (ch != ' ') n += char(toupper(uint8_t(ch)));
+	const auto &names = b.random_fighter_names();
+	const auto it = names.find(n);
+	return it == names.end() ? "R" : "S" + std::to_string(it->second);   // (a name the book hasn't: Random, as offline)
+}
+
+bool fighter_setting(const std::string &x, model2a &b, std::string &setting)
+{
+	setting.clear();
+	if (x.empty()) return true;
+	if (x == "R") { setting = "*"; return true; }
+	const bool digits = x.size() >= 2 && x.size() <= 6 && x[0] == 'S' && x.find_first_not_of("0123456789", 1) == std::string::npos;
+	if (!digits) return false;
+	const long v = strtol(x.c_str() + 1, nullptr, 10);
+	if (v < 1 || size_t(v) > b.random_fighter_names().size()) return false;
+	setting = x;   // (a named fighter by its place: set_players)
+	return true;
+}
+
+std::string fighter_words(const std::string &x, model2a &b)
+{
+	if (x == "R") return "RANDOM";
+	if (x.size() > 1 && x[0] == 'S') {
+		const uint32_t place = uint32_t(strtoul(x.c_str() + 1, nullptr, 10));
+		for (const auto &[name, at] : b.random_fighter_names())
+			if (at == place) return name;
+		return "SEED " + x.substr(1);
+	}
+	return "";
+}
+
+void set_players(model2a &b, const std::string fighters[2])
+{
+	for (int p = 0; p < 2; p++)
+		if (fighters[p].size() > 1 && fighters[p][0] == 'S') b.set_random_player_place(p, uint32_t(strtoul(fighters[p].c_str() + 1, nullptr, 10)));
+		else b.set_random_player(p, fighters[p]);
+}
+
+std::vector<uint8_t> Adapter::host_blob(int secret)
+{
+	uint32_t seed = uint32_t(uint64_t(std::chrono::steady_clock::now().time_since_epoch().count()) * 2654435761u) ^ 0x9e3779b9u;
+	if (!seed) seed = 1;
+	return start_blob(board, secret, own_extra, seed);
 }
 
 // (a frame's bytes go at once, a guessed frame's as much as a certain one's, so no sound waits for the other
@@ -94,13 +149,19 @@ void Adapter::take_sound(std::vector<uint8_t> &out)
 bool Adapter::begin(const std::vector<uint8_t> &blob)
 {
 	const size_t backup_n = board.backup_ram().size();
-	uint32_t magic = 0;
-	if (blob.size() != 4 + backup_n + 64 * 2 + 2) return false;
+	const size_t FIXED = 4 + backup_n + 64 * 2 + 2 + 4 + 1;
+	uint32_t magic = 0, seed = 0;
+	if (blob.size() < FIXED || blob.size() != FIXED + blob[FIXED - 1]) return false;
 	memcpy(&magic, blob.data(), 4);
 	if (magic != BLOB_MAGIC) return false;
-	const int secret = blob[blob.size() - 2];
-	stage_offset = blob.back() % STAGES;
+	const int secret = blob[FIXED - 7];
+	stage_offset = blob[FIXED - 6] % STAGES;
+	memcpy(&seed, blob.data() + FIXED - 5, 4);
 	if (secret != 0 && secret != 9 && secret != 11 && secret != 12) return false;
+	// each player's fighter (Cheats' random fighters): the host's (player 1's) in its blob, the guest's in its hello
+	const std::string host_x(reinterpret_cast<const char *>(blob.data()) + FIXED, blob[FIXED - 1]);
+	if (!fighter_setting(host_x, board, fighters[0]) || !fighter_setting(hosting ? their_extra : own_extra, board, fighters[1])) return false;
+	const bool random = !fighters[0].empty() || !fighters[1].empty();
 	if (settle) settle();
 	if (on_begin) on_begin();
 	collecting = false;
@@ -108,7 +169,9 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	// uses, the host's secret character, the WARNING shortened), the FREE PLAY notices hidden, the sound board
 	// held and the byte link (they cut the CPUs' time differently)
 	// (each only on the program known: the ROMs' hashes being the same, both sides patch alike)
-	board.random_fighters_off();   // (Cheats' random fighters: not online yet, the ROMs as loaded on both sides)
+	// (Cheats' random fighters off, the ROMs as loaded, and everything they knew forgotten: on again below from the
+	// cold start, only when a player has one)
+	board.random_fighters_forget();
 	board.set_scenery_culling(MATCH_CULLING);
 	board.set_secret_character(secret);
 	board.shorten_warning();
@@ -137,6 +200,16 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	std::vector<uint8_t> eeprom(64 * 2);
 	memcpy(eeprom.data(), board.eeprom_cells(), eeprom.size());
 	cold(backup.data(), eeprom.data());
+	// the players' random fighters (Cheats'), on only now, from the cold start's RAM, every random choice from the
+	// host's seed: the same on both sides (Random opponents offline only: no computer's opponent is anyone's online)
+	if (random) {
+		board.set_random_seed(seed);
+		set_players(board, fighters);
+		board.set_random_opponents(false);
+		if (!board.apply_random_fighters()) return false;
+		board.random_fighters_decode();   // (every texture one may take, now: none decoded mid-match, a frame of 100 ms on one side)
+		if (program_changed) program_changed();
+	}
 	// (the boot's bytes too, from this cold start, a frame's at a time: a sound board made for the match, alone, needs
 	// its set-up, and booting as this board boots, as the arcade's does, to take it: all at once on its first frame,
 	// its program not yet started, they were lost, and the character select had no music or sounds)

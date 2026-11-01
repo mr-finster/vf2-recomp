@@ -778,6 +778,10 @@ template <class IO> void model2a::state(IO &io)
 	attos(io, m_link_t0);
 	io.pod(m_link_delivered); io.pod(m_link_in_step); io.pod(m_link_byte);
 	io.pod(m_m2comm_cn); io.pod(m_m2comm_fg);
+	if (random_fighters_on()) {   // (online: on on both sides or neither, from the host's blob)
+		io.section("random fighters");
+		random_state(io);
+	}
 	io.section("end");
 }
 

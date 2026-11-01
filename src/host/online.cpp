@@ -156,7 +156,10 @@ bool Online::open_host(std::string &error)
 	if (!link->bind(uint16_t(port), error)) { link.reset(); return false; }
 	if (adapter.settle) adapter.settle();
 	identity.name = started_with.name;
-	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, identity, config(started_with), true, vf2net::start_blob(board));
+	identity.extra = vf2net::fighter_extra(started_with.fighter, board);   // (this player's fighter, in the hello: Cheats' random fighters)
+	adapter.hosting = true;
+	adapter.own_extra = identity.extra;
+	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, identity, config(started_with), true, adapter.host_blob());
 	session->trace = log_line;
 	ph = Phase::hosting;
 	return true;
@@ -262,6 +265,9 @@ bool Online::join(const OnlineSettings &s, std::string &error)
 	link = std::make_unique<vfnet::UdpLink>();
 	if (!link->connect(host, uint16_t(p), error)) { link.reset(); return false; }
 	identity.name = s.name;
+	identity.extra = vf2net::fighter_extra(s.fighter, board);
+	adapter.hosting = false;
+	adapter.own_extra = identity.extra;
 	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, identity, config(s), false);
 	session->trace = log_line;
 	joining_to = host + (p != 7700 ? ":" + std::to_string(p) : "");
@@ -297,6 +303,7 @@ bool Online::find_random(const OnlineSettings &s, std::string &error)
 	if (!room->open(0, error)) { room.reset(); return false; }
 	room->set_relay_only(s.hide_ip);
 	identity.name = s.name;
+	identity.extra = vf2net::fighter_extra(s.fighter, board);
 	rooms = true;
 	random = true;
 	random_misses = 0;
@@ -337,6 +344,7 @@ bool Online::host_room(const OnlineSettings &s, std::string &error, const std::s
 	if (!room->open(0, error)) { room.reset(); return false; }
 	room->set_relay_only(s.hide_ip);
 	identity.name = s.name;
+	identity.extra = vf2net::fighter_extra(s.fighter, board);
 	rooms = true;
 	ph = Phase::hosting;
 	st = Step::getting_ready;
@@ -376,6 +384,7 @@ bool Online::join_room(const OnlineSettings &s, const std::string &c, std::strin
 	if (!room->open(0, error)) { room.reset(); return false; }
 	room->set_relay_only(s.hide_ip);
 	identity.name = s.name;
+	identity.extra = vf2net::fighter_extra(s.fighter, board);
 	rooms = true;
 	code = want;
 	ph = Phase::joining;
@@ -555,7 +564,9 @@ void Online::room_session(bool host)
 	if (adapter.settle) adapter.settle();
 	vfnet::Config c = config(started_with);
 	c.token = room_token;
-	session = std::make_unique<vfnet::Session>(lagged(*room), adapter, identity, c, host, host ? vf2net::start_blob(board) : std::vector<uint8_t>());
+	adapter.hosting = host;
+	adapter.own_extra = identity.extra;
+	session = std::make_unique<vfnet::Session>(lagged(*room), adapter, identity, c, host, host ? adapter.host_blob() : std::vector<uint8_t>());
 	session->trace = log_line;
 }
 
@@ -1532,6 +1543,104 @@ void named(OnlineSettings &s, game_menu &menu, std::function<void()> changed, st
 	menu.push(name_page(s, menu, changed, go));
 }
 
+menu_page settings_page(Online &o, OnlineSettings &s, game_menu &menu, std::function<void()> changed);
+
+// VF1's: this player's fighter online (OnlineSettings::fighter): Normal, Random, Seed (Cheats' random fighters); and under
+// it, for Seed, a row of its own to type the seed in (a mistake said under it), as the Cheats page's. Seed with none
+// typed yet plays as Random till one is
+struct SeedTyping { bool typing = false, pending = false; std::string typed, error; };
+SeedTyping &seed_typing() { static SeedTyping t; return t; }
+bool is_seed(const std::string &f) { return !f.empty() && f != "*"; }
+
+void fighter_rows(Online &o, OnlineSettings &s, game_menu &menu, std::function<void()> changed, std::vector<menu_item> &items)
+{
+	const int row = int(items.size());
+	auto rebuild = [&o, &s, &menu, changed, row](bool sub) { menu.replace(settings_page(o, s, menu, changed), row + (sub ? 1 : 0)); };
+	// the choices: "" Normal, "*" Random, "=" Seed (the one typed, else the Cheats page's, else none yet)
+	auto kinds = [] { return std::vector<std::string>{ "", "*", "=" }; };
+	auto kind = [&s] { const SeedTyping &t = seed_typing(); return t.typing || t.pending || is_seed(s.fighter) ? std::string("=") : s.fighter; };
+	auto label = [](const std::string &f) -> std::string { return f == "*" ? "Random" : f == "=" ? "Seed" : "Normal"; };
+	items.push_back({ "Your fighter",
+		"Online, whichever side you're on. Normal: you pick at the select. Random: a new random fighter at every select, three of the "
+		"cast made one. Seed: one such fighter, the same build and moves every game (its name from its energy bar). Your opponent sees "
+		"it before the fight.",
+		[kind, label] { return label(kind()); },
+		[&s, changed, kinds, kind, rebuild](int d) {
+			const std::vector<std::string> c = kinds();
+			int i = 0;
+			for (int k = 0; k < int(c.size()); k++) if (c[k] == kind()) i = k;
+			const std::string to = c[size_t((i + d + int(c.size())) % int(c.size()))];
+			SeedTyping &t = seed_typing();
+			t.typing = t.pending = false;
+			t.error.clear();
+			if (to != "=") s.fighter = to;
+			else if (!s.seed_name.empty() && (!s.seed_ok || s.seed_ok(s.seed_name))) s.fighter = s.seed_name;
+			else { t.pending = true; s.fighter = "*"; }   // (no seed yet: Random till one is typed in its row)
+			changed();
+			rebuild(false);
+		} });
+	if (kind() != "=") return;
+	auto entry = std::make_shared<std::function<bool(const SDL_Event &)>>();
+	static const char *HINT = "Letters type   Backspace delete   Enter play it   Esc cancel   "
+	                          "(a pad: Up / Down the letter, Right the next, Left delete, A play it, B cancel)";
+	*entry = [&s, &menu, changed, rebuild](const SDL_Event &e) {
+		SeedTyping &st = seed_typing();
+		bool enter = false;
+		if (e.type == SDL_EVENT_KEY_DOWN) {
+			const SDL_Scancode sc = e.key.scancode;
+			SDL_Keycode k = e.key.key;   // (the letter on the key, the keyboard's layout)
+			if (k == SDLK_UNKNOWN && sc >= SDL_SCANCODE_A && sc <= SDL_SCANCODE_Z) k = SDLK_A + (sc - SDL_SCANCODE_A);
+			if (k >= SDLK_A && k <= SDLK_Z) { if (st.typed.size() < 12) st.typed += char('A' + (k - SDLK_A)); }
+			else if (sc == SDL_SCANCODE_BACKSPACE) { if (!st.typed.empty()) st.typed.pop_back(); }
+			else if (sc == SDL_SCANCODE_RETURN || sc == SDL_SCANCODE_KP_ENTER) enter = true;
+			else return false;
+		} else if (e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+			std::string &t = st.typed;
+			auto turn = [&](int d) { if (t.empty()) t.push_back('A'); else t.back() = char('A' + ((t.back() - 'A' + d) % 26 + 26) % 26); };
+			switch (e.gbutton.button) {
+			case SDL_GAMEPAD_BUTTON_EAST: st.typing = false; st.error.clear(); rebuild(true); return true;   // (B: as it was)
+			case SDL_GAMEPAD_BUTTON_SOUTH: enter = true; break;
+			case SDL_GAMEPAD_BUTTON_DPAD_UP: turn(+1); break;
+			case SDL_GAMEPAD_BUTTON_DPAD_DOWN: turn(-1); break;
+			case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: if (t.size() < 12) t.push_back(t.empty() ? 'A' : t.back()); break;
+			case SDL_GAMEPAD_BUTTON_DPAD_LEFT: if (!t.empty()) t.pop_back(); break;
+			default: return false;
+			}
+		} else
+			return false;
+		st.error.clear();
+		if (enter) {
+			if (st.typed.empty()) st.error = "Type a seed: a random fighter's name, from its energy bar";
+			else if (s.seed_ok && !s.seed_ok(st.typed)) st.error = "No fighter has the seed " + st.typed;
+			else {
+				s.fighter = s.seed_name = st.typed;
+				st.typing = st.pending = false;
+				changed();
+				rebuild(true);
+				return true;
+			}
+		}
+		menu.refresh();
+		return false;
+	};
+	menu_item it{ "Seed",
+		"A random fighter's name, from its energy bar: the same seed is the same build and moves on any machine, in new colours each game. "
+		"Enter: type a new one.",
+		[&s] { const SeedTyping &t = seed_typing(); return t.typing ? t.typed + "_" : t.pending ? std::string("Enter to type a seed (Random till then)") : s.fighter; },
+		{},
+		[&menu, entry, rebuild] {
+			SeedTyping &t = seed_typing();
+			t.typing = true;
+			t.typed.clear();
+			t.error.clear();
+			rebuild(true);
+			menu.capture(HINT, *entry, [rebuild] { SeedTyping &t = seed_typing(); t.typing = false; t.error.clear(); rebuild(true); });
+		} };
+	it.below = [] { const SeedTyping &t = seed_typing(); return t.typing ? t.error : std::string(); };
+	it.sub = true;
+	items.push_back(it);
+}
+
 menu_page settings_page(Online &o, OnlineSettings &s, game_menu &menu, std::function<void()> changed)
 {
 	menu_page p{ "Settings", "", {} };
@@ -1555,6 +1664,7 @@ menu_page settings_page(Online &o, OnlineSettings &s, game_menu &menu, std::func
 	p.items.push_back({ "Match found chime", "A chime when an online match is found (and the game's window flashes if it isn't the one in front), so "
 		"you can wait in another window.",
 		[&s] { return std::string(s.chime ? "On" : "Off"); }, [&s, changed](int) { s.chime = !s.chime; changed(); } });
+	fighter_rows(o, s, menu, changed, p.items);
 	p.items.push_back({ "Back", "", {}, {}, [&menu] { menu.pop(); } });
 	return p;
 }

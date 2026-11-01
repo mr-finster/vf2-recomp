@@ -6,7 +6,7 @@
 // must be the straight board's, byte for byte; at the first that isn't, the two states are written out and the
 // parts that differ named.
 //   vf2soak <vf2.zip> [--script FILE | --random SEED] [--frames N] [--delay D] [--only-misses] [--interp]
-//           [--hashes FILE] [--quiet] [--draw]
+//           [--hashes FILE] [--quiet] [--draw] [--p1 F] [--p2 F] [--match-seed N]
 // Both boards start as a netplay match does (vf2_netplay's begin: a cold start, free play, the boot run unseen,
 // the sound board held and the byte link). --script: inputs from a script (src/host/input_script.h, frames
 // counted from the match's start); --random SEED: two random players who press Start now and then (a versus: one
@@ -24,6 +24,7 @@
 #include "random_players.h"
 #include "synthetic_rom.h"
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -87,12 +88,15 @@ bool write_file(const char *path, const std::vector<uint8_t> &v)
 
 // The start of a match: vf2_netplay's begin, from a fresh board's backup RAM and EEPROM (a first run's; the
 // made-up ROM's with the settings block in it)
-bool start(model2a &m, bool synthetic)
+bool start(model2a &m, bool synthetic, const std::string fighters[2], uint32_t seed)
 {
 	if (synthetic) synthetic::settings(m.backup_ram());
 	m.set_draw_3d(false);
 	vf2net::Adapter adapter(m);
-	return adapter.begin(vf2net::start_blob(m));
+	adapter.hosting = true;   // (player 1's fighter in the blob, player 2's as the guest's hello brings it)
+	adapter.own_extra = fighters[0];
+	adapter.peer_extra(fighters[1]);
+	return adapter.begin(vf2net::start_blob(m, 0, fighters[0], seed));
 }
 
 } // namespace
@@ -103,6 +107,8 @@ int main(int argc, char **argv)
 	long frames = -1, delay = 7;
 	uint32_t seed = 1;
 	bool quiet = false, interp = false, only_misses = false, synthetic = false, draw = false;
+	std::string fighters[2];   // (--p1, --p2: each player's fighter, Cheats' random fighters, as the handshake has it: R, S<place>)
+	uint32_t match_seed = 1;
 	const char *usage = "usage: vf2soak <vf2.zip> [--script FILE | --random SEED] [--frames N] [--delay D] [--only-misses] [--interp] [--hashes FILE] [--quiet]\n"
 	                    "       vf2soak --synthetic [--frames N] [--delay D] [--only-misses] [--hashes FILE] [--quiet]\n";
 	for (int i = 1; i < argc; i++) {
@@ -117,6 +123,9 @@ int main(int argc, char **argv)
 		else if (a == "--synthetic") synthetic = true;
 		else if (a == "--quiet") quiet = true;
 		else if (a == "--draw") draw = true;   // (the pictures drawn as the game draws them: a frame run again, none)
+		else if (a == "--p1" && i + 1 < argc) fighters[0] = argv[++i];
+		else if (a == "--p2" && i + 1 < argc) fighters[1] = argv[++i];
+		else if (a == "--match-seed" && i + 1 < argc) match_seed = uint32_t(strtoul(argv[++i], nullptr, 10));
 		else if (a[0] != '-' && rom.empty()) rom = a;
 		else {
 			fprintf(stderr, "vf2soak: unknown argument %s\n%s", a.c_str(), usage);
@@ -140,7 +149,12 @@ int main(int argc, char **argv)
 	auto pa = std::make_unique<model2a>(std::move(ra)), pb = std::make_unique<model2a>(std::move(rb));
 	model2a &A = *pa, &B = *pb;   // A straight through, B rolled back
 	if (interp) { A.use_interpreter(); B.use_interpreter(); }
-	if (!start(A, synthetic) || !start(B, synthetic)) {
+	for (std::string &f : fighters)   // (as the Cheats page has it: *, a name)
+		if (!(f.empty() || f == "R" || (f.size() > 1 && f[0] == 'S' && isdigit(uint8_t(f[1]))))) f = vf2net::fighter_extra(f, A);
+	if (!fighters[0].empty() || !fighters[1].empty())
+		printf("fighters: player 1 %s (%s), player 2 %s (%s)\n", fighters[0].empty() ? "Normal" : fighters[0].c_str(), vf2net::fighter_words(fighters[0], A).c_str(),
+		       fighters[1].empty() ? "Normal" : fighters[1].c_str(), vf2net::fighter_words(fighters[1], A).c_str());
+	if (!start(A, synthetic, fighters, match_seed) || !start(B, synthetic, fighters, match_seed)) {
 		fprintf(stderr, "vf2soak: the match's start failed (not the ROM known?)\n");
 		return 1;
 	}
@@ -246,8 +260,13 @@ int main(int argc, char **argv)
 		t_tick.add(ms_since(tick));
 
 		if (!quiet && f % 1000 == 999)
-			printf("frame %llu: %llu checked, %llu rollbacks, %llu guesses wrong (game mode %u)\n", (unsigned long long)f + 1,
-			       (unsigned long long)checked, (unsigned long long)rollbacks, (unsigned long long)misses, unsigned(A.game_mode()));
+		{
+			const u32 b1 = A.peek32(0x500804), b2 = A.peek32(0x500808);
+			printf("frame %llu: %llu checked, %llu rollbacks, %llu guesses wrong (game mode %u, fighters %d %d%s%s%s%s)\n", (unsigned long long)f + 1,
+			       (unsigned long long)checked, (unsigned long long)rollbacks, (unsigned long long)misses, unsigned(A.game_mode()),
+			       b1 ? A.read_byte(b1 + 0x1b0) : -1, b2 ? A.read_byte(b2 + 0x1b0) : -1, A.random_fighters_on() ? ": " : "",
+			       A.random_fighter_name(0).c_str(), A.random_fighters_on() ? " / " : "", A.random_fighter_name(1).c_str());
+		}
 	}
 	if (hashes) fclose(hashes);
 	if (!quiet || !failed) {

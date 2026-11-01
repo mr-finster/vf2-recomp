@@ -738,6 +738,7 @@ struct settings
 		flag("online_hide_ip", online.hide_ip);
 		num("online_max_ping", online.max_ping, 0, 1000);
 		flag("online_chime", online.chime);
+		if (auto it = kv.find("online_fighter"); it != kv.end()) { std::string v = it->second; while (!v.empty() && isspace(uint8_t(v.back()))) v.pop_back(); online.fighter = v.substr(0, 16); }
 		num("picture_shape", aspect, 0, N_ASPECTS - 1);
 		num("volume", volume, 0, 100);
 		num("antialiasing", aa, 0, 3);   // 1 off, 0 Low (the 3D's edges smoothed: older builds read 0 as off), 2 and 3 drawn larger
@@ -846,6 +847,7 @@ struct settings
 		if (!online.address.empty()) fprintf(f, "online_address = %s\n", online.address.c_str());
 		if (!online.lobby.empty()) fprintf(f, "online_lobby = %s\n", online.lobby.c_str());
 		fprintf(f, "online_hide_ip = %d\nonline_max_ping = %d\nonline_chime = %d\n", int(online.hide_ip), online.max_ping, int(online.chime));
+		if (!online.fighter.empty()) fprintf(f, "online_fighter = %s\n", online.fighter.c_str());
 		for (int p = 0; p < 2; p++) ctl[p].save(f, p);
 		for (const std::string &m : pad_mappings) fprintf(f, "pad_mapping = %s\n", m.c_str());
 		const bool flushed = flush_to_disk(f);
@@ -3441,6 +3443,8 @@ int main(int argc, char **argv)
 			online.identity = { "vf2", vf2net::online_version(VF2_VERSION), vf2net::content_hash(m), "" };   // (the online version, not the release's)
 			online_ready = true;
 		}
+		cfg.online.seed_name = cfg.random_named[0];   // (the Cheats page's seed name, offered as a fighter)
+		cfg.online.seed_ok = [&](const std::string &n) { return m.random_fighter_names().count(n) > 0; };
 		return online_menu::page(online, cfg.online, menu, [&] { cfg_dirty = true; });
 	};
 	auto main_page = [&] {
@@ -3577,11 +3581,14 @@ int main(int argc, char **argv)
 				// who's playing who, over the title screen for a moment (the host is player 1)
 				const std::string host = online.is_hosting() ? online.identity.name : online.opponent(), guest = online.is_hosting() ? online.opponent() : online.identity.name;
 				const int ms = online.ping();
+				// (with each one's fighter under the name: Random, a seed's, Cheats' random fighters)
+				const std::string me_ft = vf2net::fighter_words(online.identity.extra, m), them_ft = vf2net::fighter_words(online.opponent_extra(), m);
 				menu.show_versus({ "PLAYER 1 \xC2\xB7 HOST", host, "PLAYER 2", guest,
 				                   std::string(online.via_relay() ? "Connected through the relay" : "Connected directly") + (ms > 0 ? " \xC2\xB7 " + std::to_string(ms) + " ms" : ""),
 				                   online.slow_local() ? "Through the relay: this Mac blocks your network. Turn on Local Network (System Settings) for a faster match"
 				                                       : "Both press Start", online.via_relay(),
-				                   online.is_hosting() ? online.my_country() : online.peer_country(), online.is_hosting() ? online.peer_country() : online.my_country() });
+				                   online.is_hosting() ? online.my_country() : online.peer_country(), online.is_hosting() ? online.peer_country() : online.my_country(),
+				                   online.is_hosting() ? me_ft : them_ft, online.is_hosting() ? them_ft : me_ft });
 			}
 			fprintf(stderr, "online: %s\n", Online::log_masked(n.text).c_str());
 		}

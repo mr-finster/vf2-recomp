@@ -32,6 +32,11 @@ struct OnlineSettings
 	bool hide_ip = false;         // a room code's matches always through the relay: the other player never sees this address
 	int max_ping = 0;             // Random's: an opponent further than this (the ping, ms) passed over for another; 0 any
 	bool chime = true;            // a chime when a match is found (and the window flashing, if it's not the one in front)
+	// this player's fighter in a match (Cheats' random fighters, VF1's), whichever side they're on: "" the select as ever,
+	// "*" a random fighter (a new one at every select), or a named fighter's name
+	std::string fighter;
+	std::string seed_name;        // (the Cheats page's name last typed, offered as a choice; not saved here)
+	std::function<bool(const std::string &)> seed_ok;   // (whether a fighter has this seed: the host program's)
 };
 
 class Online
@@ -89,6 +94,7 @@ public:
 	bool by_code() const { return rooms; }
 	bool is_random() const { return random; }   // (a random opponent's match, not a code's)
 	bool is_hosting() const { return is_host; }
+	std::string opponent_extra() const { return session ? session->opponent_extra() : std::string(); }   // (their fighter, as the handshake carried it)
 	std::string room_code() const;   // "ABC-DEF" ("" until the lobby's given one)
 	bool playing() const { return ph == Phase::playing; }
 	bool waiting() const { return ph == Phase::hosting || ph == Phase::joining; }

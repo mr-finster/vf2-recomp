@@ -57,7 +57,7 @@ screen's refresh rate.
 | The 3D drawn on the GPU (Display > 3D renderer: Auto, GPU or CPU) | Working on macOS (Metal), Windows (Direct3D 12 or Vulkan) and Linux / Steam Deck (Vulkan): the same picture as the CPU's, checked when the game starts; Auto uses the GPU unless it's clearly slower, and any difference or error falls back to the CPU |
 | Stereo reverb (the sound board's DSP) | Working: wide stereo, as on the cabinet (fixed in v0.1.2) |
 | Portable mode, your own ROM folder | Working |
-| Random fighters (Menu > Cheats): three of the cast made one, for a player or every computer opponent | Working (new: offline only for now) |
+| Random fighters (Menu > Cheats): three of the cast made one, for a player or every computer opponent | Working (new), online too (Online > Settings > Your fighter) |
 | Secret characters (Menu > Cheats): Dural, MUE and KOJAC | Working |
 | Online play | Experimental: rollback netplay, a random opponent or a friend by room code, no setup (see [Online play](#online-play-experimental)) |
 
@@ -83,7 +83,13 @@ Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
 
 Anything but Normal is picked for you at the select (whoever you choose). **Random opponents** makes every computer
 opponent a random fighter, made afresh for each match (not your own fighter's mirror match). Changing them restarts
-the game. Not online yet: an online match plays the game as it is on both sides.
+the game.
+
+**Online**, your fighter is Online > Settings > **Your fighter** (Normal, Random or Seed, as here), whichever side you
+play: your opponent sees it as the match starts (RANDOM, or the seed's name), and both machines make the same fighters
+from the match's own seed (Random's draws and the colours), in step through every rollback. Random opponents stay
+offline (online, no one plays the computer). Online play with random fighters needs both players on a version that
+has it (the online version 0.1.17 on).
 
 **How it works.** VF2 loads a fighter by its number from tables: its record (its body's 16 parts, skeleton, sizes,
 textures), its faces, its commands, its voices. A random fighter is a record of its own, its parts taken from the three
@@ -247,6 +253,7 @@ Open the menu (Esc, or View / Select on a controller) and choose **Online**. The
 - After a match, **New opponent** searches again.
 - **Random: max ping** (Online > Settings): Any, or 80 to 250 ms. A random opponent's ping is measured as you connect, before the match starts; over your limit, the game leaves and looks for someone else (and the two of you aren't matched again for 10 minutes). Room codes and addresses play whatever the ping.
 - **Match found chime** (Online > Settings): On (the default) plays a chime when an online match is found, and the game's window flashes in the taskbar or the Dock if it isn't the one in front, so you can wait for an opponent in another window.
+- **Your fighter** (Online > Settings): Normal (you pick at the select), Random (a new [random fighter](#random-fighters) at every select) or Seed (one random fighter by its name), in any match, whichever side you're on. Your opponent sees it as the match starts.
 
 **HOST / JOIN: play a friend**
 1. One player picks **HOST**. It shows a 6-letter room code like `FR7-W25`. **Copy code** puts it on the clipboard: send it to your friend.
@@ -403,7 +410,8 @@ The release packages: `tools/mac/package.sh` (Mac), `tools/win/build.sh` (Window
 `tools/scripts/start_game.txt`); `tools/compare.py` and `tools/sound_compare.py` compare its output with MAME's.
 `make build/bin/vf2random` builds the random fighters' headless runner: a script's shots with each side's fighter and
 its name (`tools/scripts/random_versus.txt`, `random_1p.txt`), the seed book (`--names`) and a check that an online
-match starts with them off (`--online`). The address map is made from coverage runs (`vf2run --cov`, then `make map`). `make rec` also recompiles the
+match starts with them off (`--online`). `vf2soak` and `vf2net` take each player's fighter online (`--p1`, `--p2`: `R`,
+`S<place>`, `*` or a name) for the rollback and network checks with random fighters. The address map is made from coverage runs (`vf2run --cov`, then `make map`). `make rec` also recompiles the
 program to C++ (into `build/`, from your `roms/vf2.zip`: never committed) for `build/bin/vf2lock`, which runs the
 interpreter and the recompiled code side by side and compares the CPU's whole state, the clocks, the RAMs and the
 pictures as they go. `vf2 --interp` and `vf2run --interp` run the interpreter.

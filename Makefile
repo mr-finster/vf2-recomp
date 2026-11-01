@@ -73,9 +73,10 @@ $(OBJ)/src/machine/model2_video.o $(OBJ)/src/machine/model2_smooth.o: CXXFLAGS +
 # The game's own float arithmetic (the i960's floating point in the interpreter and the native code's
 # helpers, the TGP's ALU, the board): one rounding an operation on every machine, so that two in a
 # netplay match (an Apple silicon Mac's clang would fuse a * b + c, an x86-64 PC can't) run the
-# same game. Not the renderer's (the picture's alone, above).
+# same game. Not the renderer's (the picture's alone, above). Cheats' random fighters' too: their colours are in the
+# game's tables (online, both sides make them from the match's seed)
 GAME_FLAGS = -ffp-contract=off
-$(call objs,$(CORE) src/machine/model2a.cpp): CXXFLAGS += $(GAME_FLAGS)
+$(call objs,$(CORE) src/machine/model2a.cpp src/machine/random_fighter.cpp): CXXFLAGS += $(GAME_FLAGS)
 
 # RmlUi (MIT, third_party/rmlui): the in-game menu. Its core and the SDL backend, built with FreeType.
 RML_SRC = $(wildcard third_party/rmlui/Source/Core/*.cpp third_party/rmlui/Source/Core/*/*.cpp) \

@@ -41,6 +41,7 @@
 namespace {
 
 constexpr u32 RECORDS = 0x0200620c, FACE_LISTS = 0x02006278, COMMANDS = 0x0001d1fc, ATTACH = 0x00061cfc;
+constexpr u32 FACE_SPAN = 0x020062a0, FACE_SPAN_N = 0x1a0;   // (where FACE_LISTS' lists are: a save state's)
 // 658a4: each fighter number's list of what it wears that swings, drawn on its own (Akira's headband's tails and his
 // belt's ends, Jacky's hair, Lau's plait, Kage's hood's tails, Shun's gourd...: 0x64220, by +1b0; 6590c an empty one,
 // Dural's, MUE's and KOJAC's). Its ops, each a word and its arguments: 1 a swing's settings (8), 2 what the strands
@@ -266,6 +267,9 @@ class random_fighters
 {
 public:
 	explicit random_fighters(model2a &m);
+	void snapshot();       // (the ROMs' bytes as they are now: what's read, known or not, each fighter's dispatch)
+	bool stale = false;    // (forget's: everything forgotten, the ROMs read again at the next use)
+	void forget();
 	model2a &m;
 	std::vector<u8> &prog, &data;
 	std::vector<u8> prog0, data0;   // (the ROMs' bytes as loaded, the part read: tables and records)
@@ -323,6 +327,7 @@ public:
 		int moves[8] = {};             // (the recipe's: each move group's owner, of the three: P, K, P+K, P+G, K+G, P+K+G, throw, other)
 		std::vector<std::pair<u16, int>> keys;   // (each command key, whose: of the three)
 		std::string name;
+		u32 place = 0;                 // (make_plan's: its place in the book, from 1)
 		int share = 0;                 // (the most of its looks one character's, in %)
 		bool same_body = false;        // (its head and torso one character's)
 	};
@@ -341,6 +346,11 @@ public:
 	void frame();
 	void code_changed();   // (the program's patched instructions: made again)
 	u32 colour_rng = 0;    // (the colours' draw: the clock's, new each game; not the seed's)
+	// Online (set_random_seed): Random's draws and the colours from the match's seed, never the clock; and each
+	// player's fighter as made (its place, the colours' draw before it: a save state's, made again from them)
+	bool seeded = false;
+	u32 draw_rng = 0;
+	struct made_key { u32 place = 0, colour = 0; bool operator==(const made_key &) const = default; } made[2];
 	u32 next_colour(u32 n);
 	void colours(u32 n, int giver);   // (colour number n: the giver's colours, recoloured)
 	int col_theme = THEME_TURN;       // (... its theme and turn, for the rows put in after)
@@ -380,10 +390,14 @@ public:
 	struct blk { int x, y, w, h; u32 data; };
 	std::map<int, std::vector<blk>> blocks;   // (each character's set's blocks: where they go, their size, their data)
 	const std::vector<blk> &blocks_of(int ch);
+	void decode_all();   // (every character's set's blocks decoded now: none left to decode as a match goes)
 	std::unique_ptr<tex_decoder> decoder;
 	std::map<u32, std::vector<tex_decoder::unit>> decoded;   // (each block's units as the game writes them, by its data)
 	u32 seed_for(int pl);
 	u32 random_named();
+	// save states (model2a::random_state): the ROM's bytes they change as a match goes, and what they know
+	void save(m2::StateWriter &io);
+	void load(m2::StateReader &io);
 };
 
 void model2a::random_deleter::operator()(random_fighters *r) const { delete r; }
@@ -391,12 +405,43 @@ void model2a::random_deleter::operator()(random_fighters *r) const { delete r; }
 random_fighters &model2a::randoms()
 {
 	if (!m_random) m_random.reset(new random_fighters(*this));
+	if (m_random->stale) m_random->snapshot();
 	return *m_random;
 }
 
 random_fighters::random_fighters(model2a &board)
 	: m(board), prog(board.m_roms.regions[romset::MAINCPU]), data(board.m_roms.regions[romset::MAIN_DATA]), texrom(board.m_roms.regions[romset::TEXTURES])
 {
+	snapshot();
+}
+
+// Everything forgotten (off first): the next use reads the ROMs as they are then (online: the match's patches on, alike
+// on both sides) and makes the book again. The textures' decoded blocks kept: the ROMs' own, which nothing changes
+void random_fighters::forget()
+{
+	off();
+	on = false;
+	mode[0] = mode[1] = 0;
+	seed[0] = seed[1] = 0;
+	cpu = false;
+	names.clear();
+	entries.clear();
+	for (int &h : head_of) h = 0;
+	rng = colour_rng = draw_rng = 0;
+	seeded = false;
+	at_select[0] = at_select[1] = fighting[0] = fighting[1] = from_select = false;
+	col_theme = THEME_TURN;
+	col_turn = 0;
+	col_plain = false;
+	stale = true;
+}
+
+void random_fighters::snapshot()
+{
+	stale = false;
+	known = false;
+	worn_limit = 0;
+	for (auto &d : disp) d.clear();
 	// (made before any of this changes them: the secret character's patches don't touch what's read here)
 	if (prog.size() < 0x200000 || data.size() < 0x20000) return;
 	prog0.assign(prog.begin(), prog.begin() + 0x80000);
@@ -412,6 +457,7 @@ random_fighters::random_fighters(model2a &board)
 		&& rd0(WORN + 4 * 11) == WORN_NONE && rd0(WORN + 4 * 12) == WORN_NONE
 		&& rd0(VOICE_LENGTHS) == 0 && rd0(VOICE_LENGTHS + 4 * 9) == 0x0201e828 && rd0(VOICE_LENGTHS + 4 * 12) == 0x0201e86a
 		&& rd0(MATCHES_AT - 8) == 0x805ae1b1 && rd0(MATCHES_AT - 4) == 0x806321b1 && rd0(MATCHES_AT + 4) == MATCHES_CODE[5] && rd0(MATCHES_AT + 8) == MATCHES_CODE[6];
+	for (u32 t = 0; t < N_FACE_LISTS && known; t++) known = rd0(FACE_LISTS + 4 * t) >= FACE_SPAN && rd0(FACE_LISTS + 4 * t) + 4 * 13 <= FACE_SPAN + FACE_SPAN_N;
 	for (u32 g = 0; g < 26 && known; g++) {
 		std::vector<worn_op> ops;
 		known = worn_ops(rd0(WORN + 4 * g), ops);
@@ -519,6 +565,7 @@ random_fighters::plan random_fighters::make_plan(u32 place)
 	if (place < 1 || place > entries.size()) return p;
 	const entry &e = entries[place - 1];
 	p.name = e.name;
+	p.place = place;
 	for (int i = 0; i < 3; i++) p.three[i] = e.three[i];
 	p.head = e.head;
 	p.voice = e.voice;
@@ -674,6 +721,7 @@ void random_fighters::off()
 	for (auto &n : name_of) n.clear();
 	picking[0] = picking[1] = false;
 	cpu_made[0] = cpu_made[1] = -1;
+	made[0] = made[1] = made_key{};
 	{ std::lock_guard<std::mutex> lk(m.m_hud_mx); m.m_random_hud[0].clear(); m.m_random_hud[1].clear(); }
 }
 
@@ -708,6 +756,7 @@ void random_fighters::build(int f, const plan &p, int side)
 {
 	const int b = f % 13, torso = p.rec[G_TORSO];
 	const u32 at_ = MADE_AT + MADE * u32(f), hdr = at_, colour = at_ + 0x50, blk = at_ + 0x100, far34 = at_ + 0x440, far44 = at_ + 0x480, cmds = at_ + 0x500;
+	if (f == 11 || f == 12) made[f - 11] = { p.place, colour_rng };
 	// the record: the torso's (its skeleton, sizes and weight, torso and its swinging parts, the rest of its body's),
 	// its own parts' list, the head's texture set, colours of its own
 	const u32 t_rec = record(torso);
@@ -792,6 +841,7 @@ void random_fighters::build(int f, const plan &p, int side)
 u32 random_fighters::next_colour(u32 n)
 {
 	u32 &x = colour_rng;
+	if (!x && seeded) x = 1;
 	if (!x && getenv("VF2_COLOUR_SEED")) x = u32(atoi(getenv("VF2_COLOUR_SEED")));   // TESTONLY
 	if (!x) x = u32(std::chrono::steady_clock::now().time_since_epoch().count()) * 2654435761u ^ 0x85ebca6bu;
 	x ^= x << 13; x ^= x >> 17; x ^= x << 5;
@@ -1188,6 +1238,18 @@ const std::vector<random_fighters::blk> &random_fighters::blocks_of(int ch)
 	return out;
 }
 
+void random_fighters::decode_all()
+{
+	if (!decoder) decoder = std::make_unique<tex_decoder>(prog, data);
+	for (int ch = 0; ch < 11; ch++)
+		for (const blk &b : blocks_of(ch))
+			if (!decoded.count(b.data)) {
+				std::vector<tex_decoder::unit> out;
+				if (!decoder->decode(b.data, b.x, b.y, out)) out.clear();
+				decoded.emplace(b.data, std::move(out));
+			}
+}
+
 // The texture set a random fighter's record names: the one its side has (or is loading) if it's a fighter's, so
 // nothing more is loaded (its tiles are all written over: apply_textures), else its head's
 void random_fighters::texture_set_now(int f, int side)
@@ -1255,8 +1317,10 @@ u32 random_fighters::random_named()
 	m.random_fighter_names();
 	if (entries.empty()) return 1;
 	static u32 clock = u32(std::chrono::steady_clock::now().time_since_epoch().count()) ^ 0x9e3779b9u;
-	clock ^= clock << 13; clock ^= clock >> 17; clock ^= clock << 5;
-	return 1 + clock % u32(entries.size());   // (the whole book's)
+	u32 &x = seeded ? draw_rng : clock;   // (online: the match's seed's)
+	if (!x) x = 1;
+	x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+	return 1 + x % u32(entries.size());   // (the whole book's)
 }
 
 // After each frame: at the select, a random player's fighter made as they start picking, and theirs from the VS
@@ -1495,4 +1559,106 @@ void model2a::random_fighters_off()
 	m_random->on = false;
 	m_random->mode[0] = m_random->mode[1] = 0;
 	m_random->cpu = false;
+	m_random->seeded = false;
+	m_random->draw_rng = m_random->colour_rng = 0;
 }
+
+void model2a::random_fighters_decode()
+{
+	if (m_random && m_random->on) m_random->decode_all();
+}
+
+void model2a::random_fighters_forget()
+{
+	if (!m_random) return;
+	render_wait();
+	m_random->forget();
+}
+
+void model2a::set_random_seed(uint32_t seed)
+{
+	random_fighters &r = randoms();
+	auto mix = [](uint32_t x) { x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16; return x ? x : 1u; };
+	r.seeded = true;
+	r.draw_rng = mix(seed);
+	r.colour_rng = mix(seed ^ 0x5bd1e995u);
+}
+
+bool model2a::set_random_player_place(int pl, uint32_t place)
+{
+	if (pl < 0 || pl > 1) return false;
+	random_fighters &r = randoms();
+	if (place < 1 || place > random_fighter_names().size()) return false;
+	r.mode[pl] = 2;
+	r.seed[pl] = place;
+	return true;
+}
+
+// Save states while they're on (online, on both sides alike): the ROM's bytes they change as a match goes (the empty
+// ROM they're made in, and the tables by fighter number they point into it), and what they know (each player's
+// fighter as made, who's picking, the draws, each side's textures' state). A load makes a player's fighter again
+// if the state's is another than the one made now (its textures' plan, its name), then puts the bytes back
+namespace {
+struct rom_span { u32 at, n; };
+constexpr rom_span STATE_SPANS[] = { { FREE_AT, FREE_END - FREE_AT }, { RECORDS, 4 * N_RECORDS }, { FACE_SPAN, FACE_SPAN_N },
+	{ COMMANDS, 4 * 13 }, { ATTACH, 4 * N_RECORDS }, { WORN, 4 * N_RECORDS } };
+constexpr u32 STATE_TAG = 0x52324656;   // "VF2R"
+struct random_host_state {   // (u32s only: no padding in a state)
+	u32 mode[2], seed[2], cpu, picking[2], cpu_made[2], at_select[2], fighting[2], from_select, head_of[N_RECORDS];
+	u32 seeded, draw_rng, colour_rng, made[2][2], tex_fighter[2], tex_applied[2], tex_busy[2], tex_head_set[2];
+};
+}
+
+void random_fighters::save(m2::StateWriter &io)
+{
+	u32 tag = STATE_TAG;
+	io.pod(tag);
+	for (const rom_span &k : STATE_SPANS) io.bytes(at(k.at), k.n);
+	random_host_state h{};
+	for (int i = 0; i < 2; i++) {
+		h.mode[i] = u32(mode[i]); h.seed[i] = seed[i]; h.picking[i] = picking[i]; h.cpu_made[i] = u32(cpu_made[i]);
+		h.at_select[i] = at_select[i]; h.fighting[i] = fighting[i];
+		h.made[i][0] = made[i].place; h.made[i][1] = made[i].colour;
+		h.tex_fighter[i] = u32(tex[i].fighter); h.tex_applied[i] = tex[i].applied; h.tex_busy[i] = tex[i].busy; h.tex_head_set[i] = tex[i].head_set;
+	}
+	h.cpu = cpu; h.from_select = from_select;
+	for (int f = 0; f < N_RECORDS; f++) h.head_of[f] = u32(head_of[f]);
+	h.seeded = seeded; h.draw_rng = draw_rng; h.colour_rng = colour_rng;
+	io.pod(h);
+}
+
+void random_fighters::load(m2::StateReader &io)
+{
+	u32 tag = 0;
+	io.pod(tag);
+	const u8 *src[std::size(STATE_SPANS)];
+	for (size_t i = 0; i < std::size(STATE_SPANS); i++) src[i] = io.take(STATE_SPANS[i].n);
+	random_host_state h{};
+	io.pod(h);
+	if (!io.ok || tag != STATE_TAG) { io.ok = false; return; }
+	// (the players' fighters the state had: made again, from their places and colours' draws, if they're others now)
+	for (int i = 0; i < 2; i++) {
+		const made_key k{ h.made[i][0], h.made[i][1] };
+		if (k == made[i]) continue;
+		if (k.place) { colour_rng = k.colour; build(11 + i, make_plan(k.place), i); }
+		else if (!name_of[11 + i].empty()) { own(11 + i); made[i] = made_key{}; }
+	}
+	for (size_t i = 0; i < std::size(STATE_SPANS); i++) {
+		const u32 a = STATE_SPANS[i].at, n = STATE_SPANS[i].n;
+		for (u32 k = 0; k < n; k += 64) {
+			const u32 len = std::min(64u, n - k);
+			if (memcmp(at(a + k), src[i] + k, len)) for (u32 j = 0; j < len; j++) put8(a + k + j, src[i][k + j]);
+		}
+	}
+	for (int i = 0; i < 2; i++) {
+		mode[i] = int(h.mode[i]); seed[i] = h.seed[i]; picking[i] = h.picking[i]; cpu_made[i] = int(h.cpu_made[i]);
+		at_select[i] = h.at_select[i]; fighting[i] = h.fighting[i];
+		tex[i].fighter = int(h.tex_fighter[i]); tex[i].applied = h.tex_applied[i]; tex[i].busy = h.tex_busy[i]; tex[i].head_set = h.tex_head_set[i];
+	}
+	cpu = h.cpu; from_select = h.from_select;
+	for (int f = 0; f < N_RECORDS; f++) head_of[f] = int(h.head_of[f]);
+	seeded = h.seeded; draw_rng = h.draw_rng; colour_rng = h.colour_rng;
+}
+
+void model2a::random_state(m2::StateWriter &io) { m_random->save(io); }
+void model2a::random_state(m2::StateReader &io) { m_random->load(io); }
