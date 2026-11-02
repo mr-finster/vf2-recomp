@@ -24,10 +24,10 @@ VF2_VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo dev)
 VF2_DATE ?= $(shell git log -1 --format=%cd --date=format:'%b %-d %Y' 2>/dev/null)
 # (the commit too: what a GPU failure is remembered by, src/host/main.cpp's BUILD)
 VF2_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null)
-# and the lobby the room codes use (VF3's, shared: vf3-recomp/tools/lobby): its https address, this one if unset or
+# and the lobby the room codes use (VF3's, shared: vf3-recomp/tools/lobby): its https address, .lobby-url's (one line, kept out of git) if unset or
 # empty, "none" for none
 ifeq ($(strip $(VF_LOBBY_URL)),)
-VF_LOBBY_URL = https://<lobby address>
+VF_LOBBY_URL := $(strip $(shell cat .lobby-url 2>/dev/null))
 endif
 ifeq ($(VF_LOBBY_URL),none)
 VF_LOBBY_URL :=

@@ -5,3 +5,5 @@ build/
 *.zip
 *.bin
 .DS_Store
+# the lobby's address (one line): the builds read it, git never has it
+.lobby-url
