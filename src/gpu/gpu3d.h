@@ -36,7 +36,7 @@ struct gpu3d_poly
 	uint32_t colour = 0;     // solid: its colour (0xffRRGGBB)
 	uint16_t pal = 0;        // textured: its palette colour (5 bits each: r, g, b), lumabase, luma, texlod
 	uint16_t lumabase = 0;
-	uint8_t luma = 0;
+	uint16_t luma = 0;   // (above 255 only for a random fighter's dark hair: model2_video::hair_colour)
 	int32_t texlod = 0;
 	uint8_t sheet = 0;       // 1: texture RAM 1 is its sheet (0 its mipmaps' odd levels and microtexture)
 	uint16_t texw = 0, texh = 0, texx = 0, texy = 0;

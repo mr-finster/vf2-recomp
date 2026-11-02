@@ -73,8 +73,9 @@ Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
   vest, Kage's wraps, Pai's and Lau's patterns, belts, boots and bare feet beside its head's face and hair.
 - **Colours:** new every game (not part of a seed). A random fighter wears its head's colours, so its face, hair and
   skin are right and its skin is one tone all over; its clothes' main colour is turned round the colour wheel, or
-  given a theme: cool, warm, two opposite colours, neon, pastel, black and white, black and gold. Hair, belts and
-  shoes keep their colours (VF2 shares those between its fighters).
+  given a theme: cool, warm, two opposite colours, neon, pastel, black and white, black and gold. Its hair (and
+  headband, hood) is given a hue of its own, as in VF1 Recomp, in the fight and on its select portrait; Shun's white
+  hair and Dural's chrome stay as they are. Belts and shoes keep their colours (VF2 shares those between its fighters).
 - **Seed:** type a fighter's name, as seen on an energy bar, to get that fighter again: the same build and the same
   moves on any machine. A name is the same fighter in every game that has it: VF1 Recomp's 337 names are here with
   their recipes (the same three, head, voice and moves by group), then VF2's own with Lion or Shun, 678 in all

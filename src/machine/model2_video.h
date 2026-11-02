@@ -54,8 +54,9 @@ struct m2_poly_extra_data
 	u32      utexx;
 	u32      utexy;
 	s32      texlod;
-	u8       luma;
+	u16      luma;   // (above 255 only for a random fighter's dark hair: hair_colour)
 	u32      build_rgb = 0;   // (Cheats' random fighters' build: drawn solid in this colour, model2_video::build_tint)
+	u16      pal = 0;         // (Cheats' random fighters' hair: 0x8000 | the palette colour it's drawn in, hair_colour)
 };
 
 class model2_renderer;
@@ -202,6 +203,12 @@ public:
 	// (Cheats' random fighters at a select that shows: a side's portrait not drawn while the random player's cursor
 	// walks to its fighter's head's slot, the cast's it passes not shown; player 1's the left (its objects' x below 0))
 	bool m_hide_portrait[2] = { false, false };
+	// (each side's random fighter's hair hue in 1/1000ths (-1 none: a cast fighter, Dural's head): its head's models' polygons
+	// that aren't skin, eyes or a mouth drawn in it, as VF1 Recomp's: hair, hoods, bands; m_build_parts' group 8 by side.
+	// At the select (m_portraits), a side's by where it's drawn: player 1's portrait the left)
+	int16_t m_hair_hue[2] = { -1, -1 };   // (1000 on: its dark colours not lifted, Kage's head)
+	bool m_portraits = false;
+	static u32 hair_colour(u16 pal, int hue);   // (the palette colour | its light's lift in 16ths << 16; 0 kept)
 	// The 3D `alpha` (0-1) of the way from the one shown a frame before `frame` to the one shown
 	// at `frame` (the delay as it is now), set up into a picture of its own: `map`, and the
 	// picture to draw_layer() before reading it. -1: none kept (draw the frame as it is).
@@ -280,7 +287,7 @@ private:
 	float m_build_at[2][3] = {};
 	u64 m_build_seen[2] = { 0, 0 };   // (the frame each side's place was seen in)
 	int m_build_group[2] = { 3, 3 };   // (each side's last model's group)
-	void build_object(u32 oba, const float *matrix);
+	void build_object(u32 oba, const float *matrix, raster_state *raster);
 	u8 build_tint(u32 i) const;
 	// smooth motion
 	bool m_smooth = false;
@@ -501,6 +508,7 @@ struct model2_video::polygon
 	int16_t         center[2] = { 0, 0 };
 	u8              window = 0;
 	u8              build = 0;      // (the random fighters' build: 2 white, 3 grey, as build_tint)
+	int16_t         hue = -1;       // (a random fighter's head: its hair's hue in 1/1000ths, hair_colour; -1 as ever)
 };
 
 struct model2_video::quad_m2
@@ -560,6 +568,7 @@ struct model2_video::raster_state
 	u8              cur_window = 0;                 // Current window
 	plane           clip_plane[4][4];               // Polygon clipping planes
 	u8              build_tint = 0;                 // (the random fighters' build: the next polygon's, as build_tint)
+	int16_t         hue = -1;                       // (the object's polygons' hair hue: model2_video::m_hair_hue)
 };
 
 /*******************************************

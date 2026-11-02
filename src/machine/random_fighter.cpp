@@ -293,6 +293,7 @@ public:
 	void groups_of(const int slot_rec[16], int hands, int torso, std::map<u32, u8> &out) const;
 	const std::map<u32, u8> &groups(int f);
 	int64_t intro_at = -1;
+	int hair_hue[N_RECORDS];   // (each fighter number's random fighter's hair hue, in 1/1000ths: build; -1 none)
 	bool build_side[2] = { false, false };   // (this intro's: the side's fighter built)
 	std::string built[2];                    // (each side's random fighter built since the last select: not again)
 	int build_fighter[2] = { -1, -1 };
@@ -441,6 +442,7 @@ random_fighters &model2a::randoms()
 random_fighters::random_fighters(model2a &board)
 	: m(board), prog(board.m_roms.regions[romset::MAINCPU]), data(board.m_roms.regions[romset::MAIN_DATA]), texrom(board.m_roms.regions[romset::TEXTURES])
 {
+	for (int &h : hair_hue) h = -1;
 	snapshot();
 }
 
@@ -751,6 +753,7 @@ void random_fighters::off()
 	base_on = false;
 	for (auto &n : name_of) n.clear();
 	for (auto &g : part_groups) g.clear();
+	for (int &h : hair_hue) h = -1;
 	build_stop();
 	picking[0] = picking[1] = false;
 	cpu_made[0] = cpu_made[1] = -1;
@@ -780,6 +783,8 @@ void random_fighters::own(int f)
 	name_of[f].clear();
 	if (f >= 11 && f <= 12) name_of[f + 13].clear();
 	part_groups[f].clear();
+	hair_hue[f] = -1;
+	if (f >= 11 && f <= 12) hair_hue[f + 13] = -1;
 	for (int side = 0; side < 2; side++)
 		if (tex[side].fighter == f) { set_rewrites(side, false); tex[side].fighter = -1; }
 }
@@ -804,6 +809,9 @@ void random_fighters::build(int f, const plan &p, int side)
 	int giver = p.head + (f >= 13 || p.head_costume ? 13 : 0);
 	if (getenv("VF2_GIVER")) giver = p.rec[G_TORSO];   // TESTONLY: the torso's colours (to compare a body with its own)
 	colours(n, giver);
+	// (its hair's hue: from the colours' draw as it stands (online, the match's seed's), not a draw of its own)
+	hair_hue[f] = int(((colour_rng ^ 0x5bd1e995u) * 2654435761u >> 8) % 1000u);
+	if (f >= 11 && f <= 12) hair_hue[f + 13] = hair_hue[f];
 	put8(colour, u8(n));
 	int slot_rec[16];
 	for (int g = 0; g < 7; g++) for (int s : GROUPS[g]) slot_rec[s] = p.rec[g];
@@ -1542,14 +1550,30 @@ void random_fighters::build_frame(int game)
 			}
 			if (build_side[pl]) start[pl] = intro_at + BUILD_DELAY;
 		}
-	if (start[0] < 0 && start[1] < 0) { build_stop(); return; }
-	if (want[0] == build_fighter[0] && want[1] == build_fighter[1] && start[0] == build_start[0] && start[1] == build_start[1]) return;
-	m.render_wait();
+	// (and each side's fighter, a random one's hair in its own hue: in a match, at its select (the portraits) and in the
+	// attract; not Dural's head, her chrome as it is)
+	int hue[2] = { -1, -1 };
+	if (intro_at < 0 && (game == 3 || (game >= 7 && game <= 9)))
+		for (int pl = 0; pl < 2; pl++) {
+			u32 b;
+			memcpy(&b, &ram[0x804 + 4 * pl], 4);
+			if (b < 0x500000 || b - 0x500000 + 0x200 >= ram.size()) continue;
+			const int f = ram[b - 0x500000 + 0x1b0];
+			if (f < N_RECORDS) want[pl] = f;
+		}
+	for (int pl = 0; pl < 2; pl++)
+		if (want[pl] >= 0 && !name_of[want[pl]].empty() && head_of[want[pl]] != DURAL && head_of[want[pl]] != 8) hue[pl] = hair_hue[want[pl]] + (head_of[want[pl]] == 3 ? 1000 : 0);   // (Dural's chrome and Shun's white hair as they are)
 	model2_video &v = *m.m_video;
+	if (v.m_portraits != (game == 7)) { m.render_wait(); v.m_portraits = game == 7; }
+	if (start[0] < 0 && start[1] < 0 && hue[0] < 0 && hue[1] < 0) { build_stop(); return; }
+	if (want[0] == build_fighter[0] && want[1] == build_fighter[1] && start[0] == build_start[0] && start[1] == build_start[1]
+		&& hue[0] == v.m_hair_hue[0] && hue[1] == v.m_hair_hue[1]) return;
+	m.render_wait();
 	v.m_build_parts.clear();
 	for (int pl = 0; pl < 2; pl++) {
 		build_fighter[pl] = want[pl];
 		build_start[pl] = v.m_build_start[pl] = start[pl];
+		v.m_hair_hue[pl] = int16_t(hue[pl]);
 		if (want[pl] < 0) continue;
 		for (const auto &[mdl, g] : groups(want[pl])) {
 			const u32 oba = rdl(MODELS + 16 * mdl + 8), n = rdl(MODELS + 16 * mdl + 12) & 0xffff;
@@ -1570,6 +1594,7 @@ void random_fighters::build_stop()
 	model2_video &v = *m.m_video;
 	v.m_build_parts.clear();
 	v.m_build_start[0] = v.m_build_start[1] = -1;
+	v.m_hair_hue[0] = v.m_hair_hue[1] = -1;
 	build_fighter[0] = build_fighter[1] = -1;
 	build_start[0] = build_start[1] = -1;
 }
@@ -2047,7 +2072,7 @@ constexpr rom_span STATE_SPANS[] = { { FREE_AT, FREE_END - FREE_AT }, { RECORDS,
 constexpr u32 STATE_TAG = 0x52324656;   // "VF2R"
 struct random_host_state {   // (u32s only: no padding in a state)
 	u32 mode[2], seed[2], cpu, picking[2], cpu_made[2], at_select[2], fighting[2], from_select, head_of[N_RECORDS];
-	u32 seeded, draw_rng, colour_rng, made[2][2], tex_fighter[2], tex_applied[2], tex_busy[2], tex_head_set[2], select_at, scene_ptr[2];
+	u32 seeded, draw_rng, colour_rng, made[2][2], tex_fighter[2], tex_applied[2], tex_busy[2], tex_head_set[2], select_at, scene_ptr[2], hair_hue[N_RECORDS];
 };
 }
 
@@ -2064,7 +2089,7 @@ void random_fighters::save(m2::StateWriter &io)
 		h.tex_fighter[i] = u32(tex[i].fighter); h.tex_applied[i] = tex[i].applied; h.tex_busy[i] = tex[i].busy; h.tex_head_set[i] = tex[i].head_set;
 	}
 	h.cpu = cpu; h.from_select = from_select;
-	for (int f = 0; f < N_RECORDS; f++) h.head_of[f] = u32(head_of[f]);
+	for (int f = 0; f < N_RECORDS; f++) { h.head_of[f] = u32(head_of[f]); h.hair_hue[f] = u32(hair_hue[f]); }
 	h.seeded = seeded; h.draw_rng = draw_rng; h.colour_rng = colour_rng;
 	h.select_at = select_at; h.scene_ptr[0] = scene_ptr[0]; h.scene_ptr[1] = scene_ptr[1];
 	io.pod(h);
@@ -2099,7 +2124,7 @@ void random_fighters::load(m2::StateReader &io)
 		tex[i].fighter = int(h.tex_fighter[i]); tex[i].applied = h.tex_applied[i]; tex[i].busy = h.tex_busy[i]; tex[i].head_set = h.tex_head_set[i];
 	}
 	cpu = h.cpu; from_select = h.from_select;
-	for (int f = 0; f < N_RECORDS; f++) head_of[f] = int(h.head_of[f]);
+	for (int f = 0; f < N_RECORDS; f++) { head_of[f] = int(h.head_of[f]); hair_hue[f] = int(h.hair_hue[f]); }
 	seeded = h.seeded; draw_rng = h.draw_rng; colour_rng = h.colour_rng;
 	select_at = h.select_at; scene_ptr[0] = h.scene_ptr[0]; scene_ptr[1] = h.scene_ptr[1];
 }
