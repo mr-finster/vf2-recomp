@@ -298,6 +298,10 @@ public:
 	enum class game_assignment { match_1p, match_vs, difficulty, advertise_sound, continues, version, vs_finish };
 	int assignment(game_assignment a) const;
 	bool set_assignment(game_assignment a, int v);
+	// Rounds to win (vs player) set in a copy of the backup RAM (backup_ram()'s), its CRC with it, the board's own
+	// untouched: an online match's start blob (every match first to 3, whatever the host plays offline). False when
+	// the copy has no settings yet or already has it.
+	static bool set_vs_rounds_in(std::vector<u8> &backup, int rounds);
 	// The ring's width (1300-1600) whatever the difficulty, or 0 for the arcade's (by difficulty:
 	// 1600 on EASY down to 1300 on HARDEST, the test mode's STAGE WIDTH). Written into the
 	// settings (the game takes it from there as it starts); false when there are none yet.

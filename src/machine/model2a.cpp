@@ -318,19 +318,31 @@ void assignments_sign(std::vector<u8> &b)
 	b[ASSIGN_CRC] = u8(crc);
 	b[ASSIGN_CRC + 1] = u8(crc >> 8);
 }
-}
 
-int model2a::assignment(game_assignment a) const
+int assignment_in(const std::vector<u8> &b, model2a::game_assignment a)
 {
-	if (!assignments_valid(m_backup)) return -1;
+	if (!assignments_valid(b)) return -1;
 	const assignment_at &s = ASSIGNMENTS[int(a)];
-	const u8 v = m_backup[s.at];
+	const u8 v = b[s.at];
 	if (s.bit) {
 		const bool set = v & s.bit;
 		// ADVERTISE SOUND and CONTINUE are on while their bit is clear
-		return (a == game_assignment::advertise_sound || a == game_assignment::continues) ? !set : set;
+		return (a == model2a::game_assignment::advertise_sound || a == model2a::game_assignment::continues) ? !set : set;
 	}
 	return std::clamp(int(v), s.lo, s.hi);
+}
+}
+
+int model2a::assignment(game_assignment a) const { return assignment_in(m_backup, a); }
+
+bool model2a::set_vs_rounds_in(std::vector<u8> &backup, int rounds)
+{
+	const assignment_at &s = ASSIGNMENTS[int(game_assignment::match_vs)];
+	rounds = std::clamp(rounds, s.lo, s.hi);
+	if (backup.size() < ASSIGN_END || assignment_in(backup, game_assignment::match_vs) < 0 || backup[s.at] == rounds) return false;
+	backup[s.at] = u8(rounds);
+	assignments_sign(backup);
+	return true;
 }
 
 bool model2a::set_assignment(game_assignment a, int v)

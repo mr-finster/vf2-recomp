@@ -49,8 +49,12 @@ std::string online_version(const std::string &build);
 
 // A hash of the ROMs' contents as loaded (before any patch)
 uint64_t content_hash(const model2a &board);
-// The host's starting blob ("VF2B", v0.1.16's, byte for byte): its backup RAM and EEPROM, its secret character (0: none;
-// Cheats' choice) and its place in the stages' list (a fresh one each call: STAGE)
+// Every online match first to 3 rounds: the host's blob's copy of its backup RAM has Rounds to win (vs player) at this
+// (model2a::set_vs_rounds_in, its CRC with it), the host's own setting untouched. A guest plays the blob's settings as
+// they are (Adapter::begin), so a guest of any version plays it, in step; an older host's blob has its own setting
+inline constexpr int ONLINE_VS_ROUNDS = 3;
+// The host's starting blob ("VF2B", v0.1.16's layout): its backup RAM (Rounds to win (vs player) ONLINE_VS_ROUNDS) and
+// EEPROM, its secret character (0: none; Cheats' choice) and its place in the stages' list (a fresh one each call: STAGE)
 std::vector<uint8_t> start_blob(const model2a &board, int secret = 0);
 // A random fighters' match's ("VF2C", only between two RANDOM_TAG versions): start_blob's, then the match's random seed
 // (Cheats' random fighters made alike on both sides: Random's draws, the colours) and the host's fighter (player 1's:
