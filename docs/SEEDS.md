@@ -33,7 +33,7 @@ K+G, P+K+G, throws (P+G), and the rest.
 
 Twenty-four of them, a moment into round 1 (on player 1's side). Their colours will be different in your game.
 
-<!-- seeds-sheet-1.png: drag it in here (edit this file on GitHub), in place of this line -->
+<img width="1260" height="1308" alt="seeds-sheet-1" src="https://github.com/user-attachments/assets/06e28c16-562d-42dc-8368-f81b7d27c6d9" />
 
 | Seed | Head | Body | Arms | Legs | Moves (stance first; move groups dealt) | Voice |
 |---|---|---|---|---|---|---|
@@ -50,7 +50,7 @@ Twenty-four of them, a moment into round 1 (on player 1's side). Their colours w
 | **LAUWOLFPAI** | Lau | Pai | Pai | Wolf, Pai | Lau P K P+K; Pai P+K+G throws the rest; Wolf K+G | Lau |
 | **SHUNKAPAI** | Shun | Pai | Pai | Shun | Shun P K K+G; Kage P+K throws the rest; Pai P+K+G | Shun |
 
-<!-- seeds-sheet-2.png: drag it in here (edit this file on GitHub), in place of this line -->
+<img width="1260" height="1308" alt="seeds-sheet-2" src="https://github.com/user-attachments/assets/cd132658-fa75-4a95-a1ea-1beb1ad06c0c" />
 
 | Seed | Head | Body | Arms | Legs | Moves (stance first; move groups dealt) | Voice |
 |---|---|---|---|---|---|---|
