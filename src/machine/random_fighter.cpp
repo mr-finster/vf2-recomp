@@ -1515,6 +1515,26 @@ void random_fighters::groups_of(const int slot_rec[16], int hands, int torso, st
 	}
 	if (const u32 q = rd0(record(torso) + 0x38)) for (u32 k = 0; k < 4; k++) put(rd0(q + 4 * k), 4);
 	put(hair_model(slot_rec[2]), 8);
+	// (the head as the face lists draw it: their expressions' models (a blink, a pain face as it's hit), each a frame's,
+	// in place of part 2; each list's entries chained (+10), +08 the frames: +02 their count, +04 a table of 16 bytes a
+	// model (the costumes' at +0, +4, +8), from +08 each frame's index: 0x4b730)
+	const int hb = slot_rec[2] % 13;
+	for (int t = 0; t < N_FACE_LISTS && hb < 13; t++) {
+		u32 e = rd0(rd0(FACE_LISTS + 4 * u32(t)) + 4 * u32(hb));
+		for (int k = 0; k < 64 && e >= 0x02000000; k++) {
+			const u32 fr = rd0(e + 8);
+			if (fr >= 0x02000000) {
+				const u32 n = std::min<u32>(rd0_16(fr + 2), 64), tab = rd0(fr + 4);
+				for (u32 i = 0; i < n && tab >= 0x02000000; i++) {
+					const u32 idx = *at0(fr + 8 + i, 1);
+					for (u32 v = 0; v < 12; v += 4) put(rd0(tab + 16 * idx + v), 8);
+				}
+			}
+			const u32 nx = rd0(e + 16);
+			if (nx == e) break;
+			e = nx;
+		}
+	}
 	const u32 b = rd0(record(hands));
 	for (u32 k = 0x40; k < 0xc0; k += 4) put(rd0(b + k), 7);
 	for (u32 k = 0x1c0; k < 0x240; k += 4) put(rd0(b + k), 7);
