@@ -231,6 +231,9 @@ private:
 	void start_job(std::function<void(Job &)> work);
 	void room_poll();
 	void host_again(const std::string &why);
+	// (this player's fighter into the identity and the adapter: the random fighters' protocol only with a RANDOM_TAG
+	// online version, the identity's as main.cpp made it from Online > Settings > Your fighter; else v0.1.16's match)
+	void fighter_identity(const OnlineSettings &s);
 	void room_session(bool host);       // the session, with the lobby's token, on the room's link
 	void room_failed(const std::string &why);
 	void joined(const vfnet::json::Value &v);   // (the room found: connecting to its host)

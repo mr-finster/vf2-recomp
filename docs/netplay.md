@@ -60,14 +60,25 @@ Tests with the real game: `VF2_HOST_ROOM=1`, `VF2_JOIN_CODE=XXXXXX`, `VF2_RANDOM
 The online version (`vf2net::NET_VERSION`): changed only with what a match depends on (the board, the recompiler,
 the adapter, the match's settings, the protocol); a test build plays only the same build.
 
-Cheats' random fighters online (v0.1.17's online version, VF1's way): each player's fighter goes in the handshake's
-`Identity::extra` ("" Normal, "R" Random, "S<place>" a named fighter by its place in the book: the book and its order
-are part of the online version), the host's in its blob too; the blob ("VF2C": backup RAM, EEPROM, the secret
+Every release plays the last one online (the private repo's `tools/compat/compat.sh vf2 check` says COMPATIBLE
+first): what a match gains goes behind an option that adds to the online version, VF3's "+dural" way, the plain version
+and its match as the release's before while the option's off.
+
+Cheats' random fighters online (VF1's way), Online > Settings > **Your fighter**: Normal is the plain online version
+(v0.1.16) and v0.1.16's match exactly (its "VF2B" blob, nothing in the hello's `Identity::extra`, the same save
+states), so it plays v0.1.16. Random or Seed adds `vf2net::RANDOM_TAG` ("+random") to the online version, so the lobby,
+Random and the handshake meet only others with a random fighter (Random v Normal online isn't possible: the two are
+told so, `options_apart` in online.cpp), and such a match plays the random fighters' protocol (the adapter's
+`random_fighters`, from the version): each player's fighter in the handshake's `Identity::extra` ("" Normal, "R"
+Random, "S<place>" a named fighter by its place in the book: the book and its order are part of the tag, a change to
+them a new one), the host's in its blob too; the blob ("VF2C", `start_blob_random`: backup RAM, EEPROM, the secret
 character, the stage's place, then the match's seed and the host's fighter) gives both sides one seed for every random
-choice (Random's draws, the colours). `begin` turns everything off and forgets it, cold-starts, then turns them on from
-the cold start's RAM only when a player has one. While they're on, a save state carries the ROM bytes they change as a
-match goes (the empty ROM they're made in and the tables by fighter number) and what they know; a load makes a player's
-fighter again if the state's is another. `vf2soak --p1 R --p2 R` (every frame rolled back 7, 20,000 frames) and
-`--p1 AKILAUPAI --p2 AKILAUPAI` (5 back), identical; `vf2net --p1 R --p2 R` (60 ms each way, jitter 15, 2% lost) and
-`--p1 AKILAUPAI` (100 ms, jitter 30, 5% lost) in step with a straight run. `random_fighter.cpp` is built with the
-game's float flags (its colours are in the game's tables).
+choice (Random's draws, the colours). `begin` turns everything off and forgets it, cold-starts, then (VF2C only) turns
+them on from the cold start's RAM. While they're on, a save state carries the ROM bytes they change as a match goes (the
+empty ROM they're made in and the tables by fighter number) and what they know; a load makes a player's fighter again
+if the state's is another. Your fighter changes the identity at once (main.cpp's `online_identity`), and not while
+hosting, joining or playing. `vf2soak --p1 R --p2 R` (every frame rolled back 7, 20,000 frames) and `--p1 AKILAUPAI
+--p2 AKILAUPAI` (5 back), identical; `vf2net --p1 R --p2 R` (60 ms each way, jitter 15, 2% lost) and `--p1 AKILAUPAI`
+(100 ms, jitter 30, 5% lost) in step with a straight run (a fighter on either side makes vf2net and vf2soak play the
+random fighters' match; none, v0.1.16's). `random_fighter.cpp` is built with the game's float flags (its colours are in
+the game's tables).

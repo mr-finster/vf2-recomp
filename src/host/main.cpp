@@ -3452,16 +3452,24 @@ int main(int argc, char **argv)
 		g_test_frames = 0;
 	};
 	online.adapter.sound_out = [&](const std::vector<uint8_t> &b) { msound.put(b); };
-	bool online_ready = false;
+	// The identity for the handshake: the online version, with vf2net::RANDOM_TAG after it for a random fighter (Online >
+	// Settings > Your fighter Random or Seed: such players meet only each other); Normal the plain version, as v0.1.16's
+	bool online_ready = false;   // (made: again after Your fighter changes between Normal and a random fighter)
+	auto online_identity = [&] {
+		if (online_ready) return;   // (the ROMs' hash for the handshake, once; again after the fighter's kind changed)
+		finish_async(false);
+		const bool random = !cfg.online.fighter.empty();
+		online.identity = { "vf2", vf2net::online_version(VF2_VERSION) + (random ? vf2net::RANDOM_TAG : ""), vf2net::content_hash(m), "" };   // (the online version, not the release's)
+		online_ready = true;
+	};
 	auto online_page = [&] {
-		if (!online_ready) {   // (the ROMs' hash for the handshake, once)
-			finish_async(false);
-			online.identity = { "vf2", vf2net::online_version(VF2_VERSION), vf2net::content_hash(m), "" };   // (the online version, not the release's)
-			online_ready = true;
-		}
+		online_identity();
 		cfg.online.seed_name = cfg.random_named[0];   // (the Cheats page's seed name, offered as a fighter)
 		cfg.online.seed_ok = [&](const std::string &n) { return m.random_fighter_names().count(n) > 0; };
-		return online_menu::page(online, cfg.online, menu, [&] { cfg_dirty = true; });
+		return online_menu::page(online, cfg.online, menu, [&] {
+			cfg_dirty = true;
+			if (cfg.online.fighter.empty() == vf2net::random_version(online.identity.build)) { online_ready = false; online_identity(); }   // (Your fighter: at once)
+		});
 	};
 	auto main_page = [&] {
 		menu_page p{ "", "", {} };

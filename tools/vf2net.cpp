@@ -7,7 +7,8 @@
 //   vf2net <vf2.zip> [--script FILE | --random SEED] [--frames N] [--latency MS] [--jitter MS] [--loss PERCENT]
 //          [--delay D] [--interp] [--soft] [--stage N] [--hashes FILE] [--p1 F] [--p2 F] [--match-seed N]
 // --p1, --p2: each player's fighter (Cheats' random fighters), as the handshake carries it (R, S<place>) or as the
-// Cheats page has it (*, a name); --match-seed: the host's blob's seed (else a fixed one)
+// Cheats page has it (*, a name), either one making it a random fighters' match (start_blob_random's; neither: v0.1.16's
+// match, start_blob's); --match-seed: the host's blob's seed (else a fixed one)
 // --stage N: the host's place in the stages' list (else a random one, as a match has). --hashes FILE: the straight
 // board's state hash every 30 frames ("frame hash", hex): a release's file against the last online release's says
 // whether the two play each other (docs: the online version); with --stage and --random, the same every run
@@ -132,12 +133,15 @@ int main(int argc, char **argv)
 	};
 	p1 = extra(p1);
 	p2 = extra(p2);
+	// (a fighter on either side: a random fighters' match, both sides' online version vf2net::RANDOM_TAG's; else v0.1.16's)
+	const bool random = !p1.empty() || !p2.empty();
+	A.adapter->random_fighters = B.adapter->random_fighters = random;
 	A.adapter->hosting = true;
 	A.adapter->own_extra = p1;
 	B.adapter->own_extra = p2;
 	if (!p1.empty() || !p2.empty()) printf("fighters: host %s (%s), guest %s (%s)\n", p1.empty() ? "Normal" : p1.c_str(), vf2net::fighter_words(p1, *A.m).c_str(),
 	                                    p2.empty() ? "Normal" : p2.c_str(), vf2net::fighter_words(p2, *A.m).c_str());
-	std::vector<uint8_t> blob = vf2net::start_blob(*A.m, 0, p1, match_seed);
+	std::vector<uint8_t> blob = random ? vf2net::start_blob_random(*A.m, 0, p1, match_seed) : vf2net::start_blob(*A.m);
 	if (stage >= 0) blob[4 + A.m->backup_ram().size() + 64 * 2 + 1] = uint8_t(stage % vf2net::STAGES);
 	const uint64_t content = vf2net::content_hash(*A.m);
 	if (content != vf2net::content_hash(*B.m)) { fprintf(stderr, "vf2net: the two boards' ROM hashes differ\n"); return 1; }
@@ -147,7 +151,8 @@ int main(int argc, char **argv)
 	cfg.delay = delay;
 	cfg.soft_sync = soft;
 	cfg.handshake_ms = 300000;   // (both boots run here one after the other, on the one clock)
-	const vfnet::Identity ia{ "vf2", "test", content, "HOST", p1 }, ib{ "vf2", "test", content, "GUEST", p2 };
+	const std::string build = random ? std::string("test") + vf2net::RANDOM_TAG : std::string("test");
+	const vfnet::Identity ia{ "vf2", build, content, "HOST", p1 }, ib{ "vf2", build, content, "GUEST", p2 };
 	A.adapter->checkpoint_every = B.adapter->checkpoint_every = 300;
 	std::vector<uint8_t> sound[2];   // (the bytes each side sent its sound board)
 	A.adapter->sound_out = [&](const std::vector<uint8_t> &b) { sound[0].insert(sound[0].end(), b.begin(), b.end()); };
@@ -198,7 +203,7 @@ int main(int argc, char **argv)
 	if (!failed) {
 		auto pc = std::make_unique<Board>();
 		Board &C = *pc;
-		if (!C.open(load(), interp, error) || (C.adapter->own_extra = p2, !C.adapter->begin(blob))) { fprintf(stderr, "vf2net: the straight board didn't start\n"); return 1; }
+		if (!C.open(load(), interp, error) || (C.adapter->random_fighters = random, C.adapter->own_extra = p2, !C.adapter->begin(blob))) { fprintf(stderr, "vf2net: the straight board didn't start\n"); return 1; }
 		C.adapter->checkpoint_every = hashes_path ? 30 : 300;
 		C.adapter->sound_out = [&](const std::vector<uint8_t> &b) { straight_sound.insert(straight_sound.end(), b.begin(), b.end()); };
 		for (uint32_t f = 0; f < n; f++) {

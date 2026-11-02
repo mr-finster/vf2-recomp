@@ -156,9 +156,8 @@ bool Online::open_host(std::string &error)
 	if (!link->bind(uint16_t(port), error)) { link.reset(); return false; }
 	if (adapter.settle) adapter.settle();
 	identity.name = started_with.name;
-	identity.extra = vf2net::fighter_extra(started_with.fighter, board);   // (this player's fighter, in the hello: Cheats' random fighters)
+	fighter_identity(started_with);   // (this player's fighter, in the hello: Cheats' random fighters)
 	adapter.hosting = true;
-	adapter.own_extra = identity.extra;
 	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, identity, config(started_with), true, adapter.host_blob());
 	session->trace = log_line;
 	ph = Phase::hosting;
@@ -265,9 +264,8 @@ bool Online::join(const OnlineSettings &s, std::string &error)
 	link = std::make_unique<vfnet::UdpLink>();
 	if (!link->connect(host, uint16_t(p), error)) { link.reset(); return false; }
 	identity.name = s.name;
-	identity.extra = vf2net::fighter_extra(s.fighter, board);
+	fighter_identity(s);
 	adapter.hosting = false;
-	adapter.own_extra = identity.extra;
 	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, identity, config(s), false);
 	session->trace = log_line;
 	joining_to = host + (p != 7700 ? ":" + std::to_string(p) : "");
@@ -303,7 +301,7 @@ bool Online::find_random(const OnlineSettings &s, std::string &error)
 	if (!room->open(0, error)) { room.reset(); return false; }
 	room->set_relay_only(s.hide_ip);
 	identity.name = s.name;
-	identity.extra = vf2net::fighter_extra(s.fighter, board);
+	fighter_identity(s);
 	rooms = true;
 	random = true;
 	random_misses = 0;
@@ -344,7 +342,7 @@ bool Online::host_room(const OnlineSettings &s, std::string &error, const std::s
 	if (!room->open(0, error)) { room.reset(); return false; }
 	room->set_relay_only(s.hide_ip);
 	identity.name = s.name;
-	identity.extra = vf2net::fighter_extra(s.fighter, board);
+	fighter_identity(s);
 	rooms = true;
 	ph = Phase::hosting;
 	st = Step::getting_ready;
@@ -384,7 +382,7 @@ bool Online::join_room(const OnlineSettings &s, const std::string &c, std::strin
 	if (!room->open(0, error)) { room.reset(); return false; }
 	room->set_relay_only(s.hide_ip);
 	identity.name = s.name;
-	identity.extra = vf2net::fighter_extra(s.fighter, board);
+	fighter_identity(s);
 	rooms = true;
 	code = want;
 	ph = Phase::joining;
@@ -565,7 +563,6 @@ void Online::room_session(bool host)
 	vfnet::Config c = config(started_with);
 	c.token = room_token;
 	adapter.hosting = host;
-	adapter.own_extra = identity.extra;
 	session = std::make_unique<vfnet::Session>(lagged(*room), adapter, identity, c, host, host ? adapter.host_blob() : std::vector<uint8_t>());
 	session->trace = log_line;
 }
@@ -596,6 +593,29 @@ void Online::close_room()
 
 namespace {
 
+// Two versions apart only by a random fighter (Online > Settings > Your fighter Random or Seed: vf2net::RANDOM_TAG):
+// said so, VF3's way
+std::string options_apart(const std::string &theirs, const std::string &mine)
+{
+	const auto plain = [](std::string v) { const size_t at = v.find('+'); return at == std::string::npos ? v : v.substr(0, at); };
+	if (plain(theirs) != plain(mine) || vf2net::random_version(theirs) == vf2net::random_version(mine)) return "";
+	return vf2net::random_version(theirs)
+		? "Your opponent has a random fighter (Online > Settings > Your fighter): pick Random or Seed there too to play them, or ask them to pick Normal."
+		: "Your opponent's fighter is Normal, and you have a random fighter (Online > Settings > Your fighter): pick Normal to play them.";
+}
+
+// A refusal's "Your opponent has X, you have Y" or "The host has X, you have Y": the options' one if that's all it is
+std::string options_said(const std::string &text, const std::string &mine)
+{
+	for (const char *lead : { "Your opponent has ", "The host has " }) {
+		const size_t at = text.find(lead), comma = text.find(", you have ");
+		if (at == std::string::npos || comma == std::string::npos || comma < at) continue;
+		const size_t from = at + strlen(lead);
+		if (const std::string d = options_apart(text.substr(from, comma - from), mine); !d.empty()) return d;
+	}
+	return text;
+}
+
 // The lobby's no, in words: what happened and what to do
 std::string lobby_says(const vfnet::http::Reply &r, const std::string &code, const std::string &mine)
 {
@@ -611,6 +631,7 @@ std::string lobby_says(const vfnet::http::Reply &r, const std::string &code, con
 		std::string theirs;
 		for (char ch : v["host_version"].str())
 			if (isalnum(uint8_t(ch)) || ch == '.' || ch == '-' || ch == '+' || ch == '_') theirs += ch;
+		if (const std::string d = options_apart(v["host_version"].str(), mine); !d.empty()) return d;
 		return "The host has " + (theirs.empty() ? std::string("another version") : theirs.substr(0, 40)) + ", you have " + mine +
 		       ": you both need the same version (the newest, from the site).";
 	}
@@ -624,6 +645,13 @@ std::string lobby_says(const vfnet::http::Reply &r, const std::string &code, con
 
 // A room's host after a player who couldn't join: a random match's, another opponent (its code known to no one
 // else); one with a code, the same code open again with a new token (the last player's no good for it)
+void Online::fighter_identity(const OnlineSettings &s)
+{
+	adapter.random_fighters = vf2net::random_version(identity.build);
+	identity.extra = adapter.random_fighters ? vf2net::fighter_extra(s.fighter, board) : std::string();
+	adapter.own_extra = identity.extra;
+}
+
 void Online::host_again(const std::string &why)
 {
 	notices.push_back({ Notice::refused, "A player couldn't join: " + why });
@@ -1019,9 +1047,10 @@ void Online::poll(double t)
 			// a host goes on waiting after a player who couldn't join (another version, another ROM, gone quiet
 			// before the game started); anything else ends it
 			if (!was_playing && is_host && (why == vfnet::Session::End::rejected || why == vfnet::Session::End::timeout || why == vfnet::Session::End::opponent_quit)) {
-				if (rooms) { host_again(e.text); return; }
-				notices.push_back({ Notice::refused, "A player couldn't join: " + e.text });
-				note = "A player couldn't join: " + e.text;
+				const std::string said = why == vfnet::Session::End::rejected ? options_said(e.text, identity.build) : e.text;
+				if (rooms) { host_again(said); return; }
+				notices.push_back({ Notice::refused, "A player couldn't join: " + said });
+				note = "A player couldn't join: " + said;
 				std::string err;
 				if (!open_host(err)) { notices.push_back({ Notice::ended, err }); session.reset(); link.reset(); ph = Phase::off; }
 				return;
@@ -1046,6 +1075,7 @@ void Online::poll(double t)
 			}
 			if (!was_playing && !is_host && why != vfnet::Session::End::quit) {
 				failure = e.text;
+				if (why == vfnet::Session::End::rejected) failure = options_said(failure, identity.build);
 				fail_step = rooms ? st : Step::connecting;
 				if (rooms && room && room->local_blocked())   // (only a Mac's refuses like this)
 					failure = "This Mac blocked the game from the local network: System Settings > Privacy & Security > Local Network, turn on "
@@ -1563,9 +1593,11 @@ void fighter_rows(Online &o, OnlineSettings &s, game_menu &menu, std::function<v
 	items.push_back({ "Your fighter",
 		"Online, whichever side you're on. Normal: you pick at the select. Random: a new random fighter at every select, three of the "
 		"cast made one. Seed: one such fighter, the same build and moves every game (its name from its energy bar). Your opponent sees "
-		"it before the fight.",
+		"it before the fight. With Random or Seed you only meet players who also have a random fighter (Random or Seed); Normal "
+		"plays everyone else, older versions too. Not while hosting, joining or playing.",
 		[kind, label] { return label(kind()); },
-		[&s, changed, kinds, kind, rebuild](int d) {
+		[&o, &s, changed, kinds, kind, rebuild](int d) {
+			if (o.phase() != Online::Phase::off) return;   // (the online version goes with it: not while a match is on its way)
 			const std::vector<std::string> c = kinds();
 			int i = 0;
 			for (int k = 0; k < int(c.size()); k++) if (c[k] == kind()) i = k;
@@ -1583,7 +1615,7 @@ void fighter_rows(Online &o, OnlineSettings &s, game_menu &menu, std::function<v
 	auto entry = std::make_shared<std::function<bool(const SDL_Event &)>>();
 	static const char *HINT = "Letters type   Backspace delete   Enter play it   Esc cancel   "
 	                          "(a pad: Up / Down the letter, Right the next, Left delete, A play it, B cancel)";
-	*entry = [&s, &menu, changed, rebuild](const SDL_Event &e) {
+	*entry = [&o, &s, &menu, changed, rebuild](const SDL_Event &e) {
 		SeedTyping &st = seed_typing();
 		bool enter = false;
 		if (e.type == SDL_EVENT_KEY_DOWN) {
@@ -1612,6 +1644,7 @@ void fighter_rows(Online &o, OnlineSettings &s, game_menu &menu, std::function<v
 		if (enter) {
 			if (st.typed.empty()) st.error = "Type a seed: a random fighter's name, from its energy bar";
 			else if (s.seed_ok && !s.seed_ok(st.typed)) st.error = "No fighter has the seed " + st.typed;
+			else if (o.phase() != Online::Phase::off) st.error = "Not while hosting, joining or playing";
 			else {
 				s.fighter = s.seed_name = st.typed;
 				st.typing = st.pending = false;
@@ -1628,7 +1661,8 @@ void fighter_rows(Online &o, OnlineSettings &s, game_menu &menu, std::function<v
 		"Enter: type a new one.",
 		[&s] { const SeedTyping &t = seed_typing(); return t.typing ? t.typed + "_" : t.pending ? std::string("Enter to type a seed (Random till then)") : s.fighter; },
 		{},
-		[&menu, entry, rebuild] {
+		[&o, &menu, entry, rebuild] {
+			if (o.phase() != Online::Phase::off) return;
 			SeedTyping &t = seed_typing();
 			t.typing = true;
 			t.typed.clear();

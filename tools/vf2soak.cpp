@@ -93,10 +93,12 @@ bool start(model2a &m, bool synthetic, const std::string fighters[2], uint32_t s
 	if (synthetic) synthetic::settings(m.backup_ram());
 	m.set_draw_3d(false);
 	vf2net::Adapter adapter(m);
+	// (a fighter on either side: a random fighters' match, start_blob_random's; neither: v0.1.16's, start_blob's)
+	adapter.random_fighters = !fighters[0].empty() || !fighters[1].empty();
 	adapter.hosting = true;   // (player 1's fighter in the blob, player 2's as the guest's hello brings it)
 	adapter.own_extra = fighters[0];
 	adapter.peer_extra(fighters[1]);
-	return adapter.begin(vf2net::start_blob(m, 0, fighters[0], seed));
+	return adapter.begin(adapter.random_fighters ? vf2net::start_blob_random(m, 0, fighters[0], seed) : vf2net::start_blob(m));
 }
 
 } // namespace

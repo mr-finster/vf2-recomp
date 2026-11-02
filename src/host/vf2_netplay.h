@@ -30,9 +30,18 @@ void unpack(const uint16_t input[2], model2a &board);
 // only with what a match depends on (the board, the recompiler, their compiler flags, this adapter, online.cpp's
 // match settings, src/net's protocol), so a release that changes only the picture or the menus still plays the one
 // before. Named after the release that brings it; VF2's first online release names it (docs/RELEASING-ALL.md).
-// v0.1.17: Cheats' random fighters online (each player's fighter in the hello, the match's seed in the host's blob,
-// their state in the save states): a build of v0.1.16's and one of this refuse each other in the handshake
-inline constexpr const char *NET_VERSION = "v0.1.17";
+// Every release plays the last one online (tools/compat/compat.sh in the private repo says COMPATIBLE first): what's
+// new for a match goes behind an option that adds to the online version (RANDOM_TAG below), the version itself as the
+// release's before it while the option's off.
+inline constexpr const char *NET_VERSION = "v0.1.16";
+// Online > Settings > Your fighter Random or Seed (Cheats' random fighters online): the online version with this after
+// it, so the lobby, Random and the handshake meet only others who have a random fighter too, and such a match plays the
+// random fighters' protocol (start_blob_random's blob, each fighter in the hello, their state in the save states).
+// Normal: the plain version, the match exactly as v0.1.16's (start_blob's "VF2B" blob, no fighter in the hello, the
+// same save states), so it plays v0.1.16. A change to the random fighters' match (the book, its order, the blob) is
+// a new tag ("+random2"), the plain version untouched
+inline constexpr const char *RANDOM_TAG = "+random";
+bool random_version(const std::string &online_version);   // (the version has RANDOM_TAG: the random fighters' protocol)
 // The online version a build plays as: NET_VERSION for a release (its version a release's name: v0.1.16, or with a
 // word after it), else the build's own (git describe's between releases, a bare commit, "dev"): a test build, which
 // may carry a change to the game, plays only the same build
@@ -40,14 +49,17 @@ std::string online_version(const std::string &build);
 
 // A hash of the ROMs' contents as loaded (before any patch)
 uint64_t content_hash(const model2a &board);
-// The host's starting blob: its backup RAM and EEPROM, its secret character (0: none; Cheats' choice), its place in the
-// stages' list (a fresh one each call: STAGE), the match's random seed (Cheats' random fighters made alike on both
-// sides: Random's draws, the colours) and the host's fighter (player 1's: fighter_extra)
-std::vector<uint8_t> start_blob(const model2a &board, int secret = 0, const std::string &host_fighter = "", uint32_t seed = 1);
+// The host's starting blob ("VF2B", v0.1.16's, byte for byte): its backup RAM and EEPROM, its secret character (0: none;
+// Cheats' choice) and its place in the stages' list (a fresh one each call: STAGE)
+std::vector<uint8_t> start_blob(const model2a &board, int secret = 0);
+// A random fighters' match's ("VF2C", only between two RANDOM_TAG versions): start_blob's, then the match's random seed
+// (Cheats' random fighters made alike on both sides: Random's draws, the colours) and the host's fighter (player 1's:
+// fighter_extra)
+std::vector<uint8_t> start_blob_random(const model2a &board, int secret, const std::string &host_fighter, uint32_t seed);
 
 // A player's fighter as the handshake carries it (Identity::extra), VF1's: "" the select as ever, "R" a random fighter
 // (a new one at every select), "S<place>" a named fighter's (its place in the book, model2a::random_fighter_names: the
-// same on any machine with the ROM and this online version; a change to the book, or its order, changes NET_VERSION). From Cheats' setting (model2a::set_random_player's: "",
+// same on any machine with the ROM and this online version; a change to the book, or its order, changes RANDOM_TAG). From Cheats' setting (model2a::set_random_player's: "",
 // "*" or a name; a name the book hasn't plays as Random, as offline), and back (false for one that isn't any of them)
 std::string fighter_extra(const std::string &random_player_setting, model2a &board);
 bool fighter_setting(const std::string &extra, model2a &board, std::string &setting);
@@ -145,11 +157,14 @@ public:
 	std::vector<std::vector<uint8_t>> boot_sound;
 	int stage_offset = 0;   // (the host's place in the stages' list, from its blob)
 	int secret() const { return started_secret; }   // (the match's secret character, from the host's blob)
-	// The fighters (Online sets these before the session): this side's choice (fighter_extra), and whether it hosts
-	// (player 1, its choice in its blob) or joins (player 2, its choice in its hello)
+	// The fighters (Online sets these before the session): whether the match is a random fighters' one (both sides'
+	// online version RANDOM_TAG's: start_blob_random's blob; else v0.1.16's match, start_blob's, no fighters), this
+	// side's choice (fighter_extra), and whether it hosts (player 1, its choice in its blob) or joins (player 2, its
+	// choice in its hello)
+	bool random_fighters = false;
 	std::string own_extra;
 	bool hosting = false;
-	std::vector<uint8_t> host_blob(int secret = 0);   // (start_blob with this side's fighter and a fresh seed)
+	std::vector<uint8_t> host_blob(int secret = 0);   // (start_blob, or start_blob_random with this side's fighter and a fresh seed)
 	void peer_extra(const std::string &extra) override { their_extra = extra; }
 	std::string fighters[2];   // (the match's, as begin set them: "", "*" or "S<place>")
 

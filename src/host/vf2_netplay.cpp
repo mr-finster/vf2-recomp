@@ -11,7 +11,8 @@ namespace {
 // IN0's bits for each player (active low on the board)
 constexpr uint8_t IN0_COIN[2] = { 0x01, 0x02 }, IN0_START[2] = { 0x10, 0x20 };
 
-constexpr uint32_t BLOB_MAGIC = 0x43324656;   // "VF2C" (v0.1.16's "VF2B": no seed, no fighter)
+constexpr uint32_t BLOB_MAGIC = 0x42324656;          // "VF2B" (v0.1.16's: no random fighters)
+constexpr uint32_t BLOB_MAGIC_RANDOM = 0x43324656;   // "VF2C" (a random fighters' match: the seed, the host's fighter)
 
 } // namespace
 
@@ -59,8 +60,14 @@ std::string online_version(const std::string &b)
 
 uint64_t content_hash(const model2a &b) { return b.rom_hash(); }
 
-// [magic][backup RAM][EEPROM][secret][stage][seed: 4][the host's fighter's length][its letters]
-std::vector<uint8_t> start_blob(const model2a &b, int secret, const std::string &host_fighter, uint32_t seed)
+bool random_version(const std::string &v)
+{
+	const size_t n = strlen(RANDOM_TAG);
+	return v.size() > n && v.compare(v.size() - n, n, RANDOM_TAG) == 0;
+}
+
+// [magic "VF2B"][backup RAM][EEPROM][secret][stage]
+std::vector<uint8_t> start_blob(const model2a &b, int secret)
 {
 	std::vector<uint8_t> out(4);
 	memcpy(out.data(), &BLOB_MAGIC, 4);
@@ -72,6 +79,14 @@ std::vector<uint8_t> start_blob(const model2a &b, int secret, const std::string 
 	// the host's random place in the stages' list (stage_for): a fresh one each match
 	const uint64_t t = uint64_t(std::chrono::steady_clock::now().time_since_epoch().count()) * 2654435761u;
 	out.push_back(uint8_t((t >> 24) % STAGES));
+	return out;
+}
+
+// [magic "VF2C"][backup RAM][EEPROM][secret][stage][seed: 4][the host's fighter's length][its letters]
+std::vector<uint8_t> start_blob_random(const model2a &b, int secret, const std::string &host_fighter, uint32_t seed)
+{
+	std::vector<uint8_t> out = start_blob(b, secret);
+	memcpy(out.data(), &BLOB_MAGIC_RANDOM, 4);
 	for (int k = 0; k < 4; k++) out.push_back(uint8_t(seed >> (8 * k)));
 	const std::string f = host_fighter.substr(0, vfnet::MAX_EXTRA);
 	out.push_back(uint8_t(f.size()));
@@ -124,9 +139,10 @@ void set_players(model2a &b, const std::string fighters[2])
 
 std::vector<uint8_t> Adapter::host_blob(int secret)
 {
+	if (!random_fighters) return start_blob(board, secret);
 	uint32_t seed = uint32_t(uint64_t(std::chrono::steady_clock::now().time_since_epoch().count()) * 2654435761u) ^ 0x9e3779b9u;
 	if (!seed) seed = 1;
-	return start_blob(board, secret, own_extra, seed);
+	return start_blob_random(board, secret, own_extra, seed);
 }
 
 // (a frame's bytes go at once, a guessed frame's as much as a certain one's, so no sound waits for the other
@@ -149,18 +165,24 @@ void Adapter::take_sound(std::vector<uint8_t> &out)
 bool Adapter::begin(const std::vector<uint8_t> &blob)
 {
 	const size_t backup_n = board.backup_ram().size();
-	const size_t FIXED = 4 + backup_n + 64 * 2 + 2 + 4 + 1;
+	// v0.1.16's blob ("VF2B": backup RAM, EEPROM, secret, stage), and a random fighters' match's after it ("VF2C": the
+	// seed, the host's fighter)
+	const size_t BASE = 4 + backup_n + 64 * 2 + 2, FIXED = BASE + 4 + 1;
 	uint32_t magic = 0, seed = 0;
-	if (blob.size() < FIXED || blob.size() != FIXED + blob[FIXED - 1]) return false;
+	if (random_fighters ? blob.size() < FIXED || blob.size() != FIXED + blob[FIXED - 1] : blob.size() != BASE) return false;
 	memcpy(&magic, blob.data(), 4);
-	if (magic != BLOB_MAGIC) return false;
-	const int secret = blob[FIXED - 7];
-	stage_offset = blob[FIXED - 6] % STAGES;
-	memcpy(&seed, blob.data() + FIXED - 5, 4);
+	if (magic != (random_fighters ? BLOB_MAGIC_RANDOM : BLOB_MAGIC)) return false;
+	const int secret = blob[BASE - 2];
+	stage_offset = blob[BASE - 1] % STAGES;
 	if (secret != 0 && secret != 9 && secret != 11 && secret != 12) return false;
 	// each player's fighter (Cheats' random fighters): the host's (player 1's) in its blob, the guest's in its hello
-	const std::string host_x(reinterpret_cast<const char *>(blob.data()) + FIXED, blob[FIXED - 1]);
-	if (!fighter_setting(host_x, board, fighters[0]) || !fighter_setting(hosting ? their_extra : own_extra, board, fighters[1])) return false;
+	fighters[0].clear();
+	fighters[1].clear();
+	if (random_fighters) {
+		memcpy(&seed, blob.data() + BASE, 4);
+		const std::string host_x(reinterpret_cast<const char *>(blob.data()) + FIXED, blob[FIXED - 1]);
+		if (!fighter_setting(host_x, board, fighters[0]) || !fighter_setting(hosting ? their_extra : own_extra, board, fighters[1])) return false;
+	}
 	const bool random = !fighters[0].empty() || !fighters[1].empty();
 	if (settle) settle();
 	if (on_begin) on_begin();
