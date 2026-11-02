@@ -1416,7 +1416,9 @@ void random_fighters::frame()
 				const u32 flags = select_flags(pl);
 				if (!mode[pl] || o < 0 || bl < 0 || !(flags >> 31) || !(flags & 8)) continue;
 				const tex_side &t = tex[ram[bl + 4] & 1];
-				if ((flags & 2) || ram[bl + 0x1b0] != 11 + pl || !t.applied || t.busy) hide_until[pl] = m.m_frame_number + 6;
+				// (a Dural head: the select's portrait is a face list's (face list 7, 0x31c94), and Dural has none: the
+				// carrier's, Lion's face drawn in her chrome, would show. None drawn)
+				if ((flags & 2) || ram[bl + 0x1b0] != 11 + pl || !t.applied || t.busy || head_of[11 + pl] == DURAL) hide_until[pl] = m.m_frame_number + 6;
 				hide[pl] = m.m_frame_number <= hide_until[pl];
 			}
 		model2_video &v = *m.m_video;
