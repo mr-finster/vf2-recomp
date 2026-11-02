@@ -10,7 +10,9 @@ JACPAIWOLF, SAJACWOLF, WOLFLAURAH.
 Type that name as a **Seed** and you get that fighter again: the same build and the same moves, on any machine. Only
 the colours change: they're new every game.
 
-- Menu → Cheats → **Player 1 fighter** (or **Player 2 fighter**) → **Seed**, then type the name.
+- **Offline:** Menu → Cheats → **Player 1 fighter** (or **Player 2 fighter**) → **Seed**, then type the name.
+- **Online:** Online → Settings → **Your fighter** → **Seed**, then type the name. Your opponent sees it under your
+  name on the VS screen. (With a random fighter you meet players who have one too.)
 
 A name that isn't in this book says "No fighter has the seed ...". Every Random fighter you meet has one of these
 names (Random and Random opponents draw from the whole book), so if you liked one, write down its name from the
@@ -26,6 +28,44 @@ made by `vf2random --recipes`; `vf2random --book` makes the table below.
 What the columns mean: **Body** is the torso and hips, **Arms** the upper arms, forearms and hands, **Legs** the
 thighs, shins and feet. **Moves** lists the three, the stance's owner first, each with its move groups: P, K, P+K,
 K+G, P+K+G, throws (P+G), and the rest.
+
+## Featured fighters
+
+Twenty-four of them, a moment into round 1 (on player 1's side). Their colours will be different in your game.
+
+<!-- seeds-sheet-1.png: drag it in here (edit this file on GitHub), in place of this line -->
+
+| Seed | Head | Body | Arms | Legs | Moves (stance first; move groups dealt) | Voice |
+|---|---|---|---|---|---|---|
+| **SALIWOLF** | Sarah | Lion | Lion | Lion, Sarah, Wolf | Sarah P; Wolf P+K K+G P+K+G; Lion K throws the rest | Sarah |
+| **SAPAIKY** | Sarah | Jacky | Jacky | Pai, Sarah | Sarah K+G P+K+G; Pai K P+K; Jacky P throws the rest | Sarah |
+| **PAISAGE** | Sarah | Kage | Kage | Pai, Sarah | Pai P K K+G; Sarah P+K+G throws the rest; Kage P+K | Pai |
+| **AKILAURAH** | Pai | Akira | Lau, Akira, Sarah | Akira, Sarah | Akira P P+K K+G P+K+G the rest; Lau K; Sarah throws | Akira |
+| **KALIFRY** | Sarah | Kage | Kage | Jeffry, Kage | Kage K; Jeffry P P+K K+G throws the rest; Lion P+K+G | Kage |
+| **SHUNJACRA** | Pai | Akira | Jacky, Akira | Shun, Jacky | Shun P K+G P+K+G; Akira the rest; Jacky K P+K throws | Shun |
+| **JEFPAILAU** | Jeffry | Pai | Pai | Jeffry, Lau | Pai P K P+K+G throws; Lau K+G the rest; Jeffry P+K | Pai |
+| **JEFSASHUN** | Jeffry | Sarah | Sarah | Sarah, Jeffry, Shun | Jeffry K P+K K+G the rest; Sarah throws; Shun P P+K+G | Jeffry |
+| **WOLFSHUN** | Wolf | Pai | Pai, Shun, Wolf | Shun, Wolf | Wolf P+K throws the rest; Pai P K+G P+K+G; Shun K | Wolf |
+| **JEFWOLFRAH** | Jeffry | Sarah | Sarah | Jeffry, Wolf | Jeffry P+K+G; Sarah K K+G; Wolf P P+K throws the rest | Jeffry |
+| **LAUWOLFPAI** | Lau | Pai | Pai | Wolf, Pai | Lau P K P+K; Pai P+K+G throws the rest; Wolf K+G | Lau |
+| **SHUNKAPAI** | Shun | Pai | Pai | Shun | Shun P K K+G; Kage P+K throws the rest; Pai P+K+G | Shun |
+
+<!-- seeds-sheet-2.png: drag it in here (edit this file on GitHub), in place of this line -->
+
+| Seed | Head | Body | Arms | Legs | Moves (stance first; move groups dealt) | Voice |
+|---|---|---|---|---|---|---|
+| **WOLFJEFRAH** | Dural | Jeffry | Jeffry | Sarah, Jeffry | Wolf P+K the rest; Jeffry P K+G P+K+G; Sarah K throws | Wolf |
+| **PAIJACWOLF** | Dural | Pai | Pai | Pai, Jacky | Pai K P+K K+G; Jacky throws; Wolf P P+K+G the rest | Pai |
+| **KAJACON** | Dural | Lion | Lion | Kage | Kage P+K K+G throws; Jacky the rest; Lion P K P+K+G | Kage |
+| **WOLFKIRAH** | Dural | Sarah | Sarah | Akira, Wolf | Wolf P K+G P+K+G the rest; Sarah P+K throws; Akira K | Wolf |
+| **PAILAUWOLF** | Pai | Wolf | Wolf | Pai, Lau | Pai P; Lau K+G P+K+G throws the rest; Wolf K P+K | Pai |
+| **SAPAIFRY** | Wolf | Jeffry | Jeffry | Sarah, Pai | Sarah K+G the rest; Pai P K P+K P+K+G throws; Jeffry | Sarah |
+| **WOLFPAIGE** | Wolf | Wolf | Wolf | Wolf, Pai | Wolf K throws; Pai P+K; Kage P K+G P+K+G the rest | Wolf |
+| **KASHUNWOLF** | Kage | Wolf | Wolf | Shun, Kage | Kage K+G; Wolf P K P+K; Shun P+K+G throws the rest | Kage |
+| **PAIJEFGE** | Jeffry | Jeffry | Jeffry, Pai | Kage, Jeffry | Pai K K+G the rest; Jeffry P+K throws; Kage P P+K+G | Pai |
+| **SAWOLFPAI** | Dural | Wolf | Wolf | Pai, Sarah | Sarah; Pai P P+K K+G the rest; Wolf K P+K+G throws | Sarah |
+| **JACPAIWOLF** | Jacky | Pai | Pai | Jacky, Pai | Jacky P P+K throws the rest; Pai K K+G; Wolf P+K+G | Jacky |
+| **SAJACWOLF** | Sarah | Sarah | Sarah | Sarah, Wolf | Sarah P+K throws; Wolf P K K+G the rest; Jacky P+K+G | Sarah |
 
 ## Every seed
 
