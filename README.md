@@ -63,6 +63,8 @@ screen's refresh rate.
 
 ## Random fighters
 
+<img width="1920" height="1084" alt="vf2random" src="https://github.com/user-attachments/assets/66745bae-52f1-4376-9a05-2786a5b60c2e" />
+
 Menu > Cheats > **Player 1 fighter** (and **Player 2 fighter**):
 
 - **Random:** a new fighter every game, made of three of the cast: its head, body and limbs from the three, and its
