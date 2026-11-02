@@ -690,10 +690,13 @@ struct settings
 	//      at 20 it's now too quiet); a 20 chosen later is kept (the file then says version 2)
 	//   4: Rounds to win (vs player) 2 (the factory's, every player's until now) to 3, VF3's and the tournaments' (in the
 	//      game's own settings, as the boot starts: vs_rounds_to_3); a 2 chosen later is kept
-	static constexpr int VERSION = 4;   // (3: GPU failures saved by older builds forgotten once)
+	//   5: the same once more, for everyone (2 Nov: online matches always first to 3, the offline setting 3 too): a 2
+	//      kept in the NVRAM by an install whose settings.ini was then deleted had never moved. No settings.ini at all
+	//      moves it too (the NVRAM may be an old one's); a 2 chosen after the move is kept (the file then says 5)
+	static constexpr int VERSION = 5;   // (3: GPU failures saved by older builds forgotten once)
 	int version = VERSION;
 	bool upgraded = false;   // (an upgrade made as it was read: saved at once)
-	bool vs_rounds_to_3 = false;   // (version 4's, for the boot: the game's settings aren't read yet)
+	bool vs_rounds_to_3 = true;   // (version 5's, for the boot: the game's settings aren't read yet; no settings.ini: on)
 	// the 3D's renderer (Display > 3D renderer): 0 the CPU, 1 the GPU, 2 Auto (whichever is faster
 	// here); the GPU's quality (0 exact, 1 fast); and Auto's choices so far on this machine, by
 	// scale and antialiasing ("3x1:g 2x1:c": a start there starts on that one, then checks it)
@@ -750,7 +753,8 @@ struct settings
 			music = 50; upgraded = true;
 			fprintf(stderr, "settings: the music volume 20 (the old default) moved to 50, the new one\n");
 		}
-		if (version < 4) { vs_rounds_to_3 = true; upgraded = true; }
+		vs_rounds_to_3 = version < 5;
+		if (vs_rounds_to_3) upgraded = true;
 		version = VERSION;
 		num("effects_volume", effects, 0, 100);
 		num("screen_filter", filter, 0, 2);
@@ -1224,9 +1228,11 @@ int main(int argc, char **argv)
 			// player's choice after that kept
 			m.set_assignment(model2a::game_assignment::match_vs, 3);
 		}
-		// (settings.ini from before version 4: a 2, the old default, to 3 once, as a new player's)
+		// (settings.ini from before version 5, or none: a 2, the old default, to 3 once, as a new player's; settings.ini
+		// written, so a 2 chosen after stays)
 		if (cfg.vs_rounds_to_3) {
 			cfg.vs_rounds_to_3 = false;
+			cfg_dirty = true;
 			if (m.assignment(model2a::game_assignment::match_vs) == 2 && m.set_assignment(model2a::game_assignment::match_vs, 3)) {
 				fprintf(stderr, "settings: Rounds to win (vs player) 2 (the old default) moved to 3, the new one\n");
 				save_nvram(false);
@@ -2871,7 +2877,7 @@ int main(int argc, char **argv)
 				m.set_ring_width(cfg.ring);
 			} });
 		choice("Rounds to win (vs CPU)", "Rounds needed to win a match against the computer.", ga::match_1p, [](int v) { return std::to_string(v); });
-		choice("Rounds to win (vs player)", "Rounds needed to win a match between two players.", ga::match_vs, [](int v) { return std::to_string(v); });
+		choice("Rounds to win (vs player)", "Rounds needed to win a match between two players. Online matches are always first to 3.", ga::match_vs, [](int v) { return std::to_string(v); });
 		choice("Continue", "Off ends the game when you lose to the computer.", ga::continues, [&](int v) { return on_off(v); });
 		choice("Demo sound", "Sound during the demo that plays between games.", ga::advertise_sound, [&](int v) { return on_off(v); });
 		choice("After a versus match", "Winner plays on: the winner carries on against the computer, as on the arcade. Both stop: the game ends for both players.",

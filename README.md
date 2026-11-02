@@ -279,7 +279,7 @@ On a controller, the code and name screens show letters to pick with A (X delete
 **In a match**
 - Each player uses their own **Player 1** controls.
 - Matches play the PC way (free play), with the host's arcade settings (rounds, difficulty, energy).
-- **The rounds are the host's.** How many rounds win a match is the host's Menu > Arcade settings > **Rounds to win (vs player)**: 3 out of the box since v0.1.16's update of 28 Oct, as in Virtua Fighter 3, SEGA's tournaments and Japan's arcades (the board's own is 2: an install from before it goes from 2 to 3 once, and a 2 you set after that stays). Host, and it's yours; join a friend, and it's theirs; with RANDOM, it's whoever the match makes host.
+- **Online matches are always first to 3.** Every online match is first to 3 rounds, as in Virtua Fighter 3, SEGA's tournaments and Japan's arcades, whatever either player's Menu > Arcade settings > **Rounds to win (vs player)**, which is for playing offline: 3 there too out of the box (the board's own is 2: an install that has a 2 goes to 3 once, even with its settings.ini gone, and a 2 you set after that stays). The host's game sets it for the match, so it's first to 3 against an older download of v0.1.17 or v0.1.16 too when this one hosts.
 - The stage is random, like a cabinet that's been on all day: a random one for the first fight, then the game's own order.
 - Whoever loses is asked to press Start for a rematch. As in the arcade, the winner plays on against the computer until they do.
 - After leaving, **Play again** reopens the same room code, and your friend rejoins by itself.
