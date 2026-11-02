@@ -1416,7 +1416,7 @@ void random_fighters::frame()
 	if (game == 7) select_cover();
 	{   // (a random player's portrait hidden till it's the random fighter's own, in its textures and colours: while it
 		// picks, its cursor walking to its head's slot, and till its side's textures are in; and 6 frames on, the picture
-		// behind the game's state. Drawing only)
+		// behind the game's state. Drawing only, but for a Dural head's, below)
 		bool hide[2] = { false, false };
 		if (game == 7 && !select_hidden())
 			for (int pl = 0; pl < 2; pl++) {
@@ -1426,7 +1426,14 @@ void random_fighters::frame()
 				const tex_side &t = tex[ram[bl + 4] & 1];
 				// (a Dural head: the select's portrait is a face list's (face list 7, 0x31c94), and Dural has none: the
 				// carrier's, Lion's face drawn in her chrome, would show. None drawn)
-				if ((flags & 2) || ram[bl + 0x1b0] != 11 + pl || !t.applied || t.busy || head_of[11 + pl] == DURAL) hide_until[pl] = m.m_frame_number + 6;
+				if ((flags & 2) || ram[bl + 0x1b0] != 11 + pl || !t.applied || t.busy) hide_until[pl] = m.m_frame_number + 6;
+				// (a Dural head: its portrait the head the block draws (+48, the face lists' head: she has none, the one before's
+				// stayed, Lion's), her chrome head, the record's part 2; and no hair (+768: the record's +48's, read as it loads))
+				if (head_of[11 + pl] == DURAL && ram[bl + 0x1b0] == 11 + pl) {
+					const u32 head = rdl(rdl(rdl(RECORDS + 4 * u32(11 + pl))) + 8), none = 0;
+					if (memcmp(&ram[bl + 0x48], &head, 4)) memcpy(&ram[bl + 0x48], &head, 4);
+					if (memcmp(&ram[bl + 0x768], &none, 4)) memcpy(&ram[bl + 0x768], &none, 4);
+				}
 				hide[pl] = m.m_frame_number <= hide_until[pl];
 			}
 		model2_video &v = *m.m_video;
