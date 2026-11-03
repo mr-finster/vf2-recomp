@@ -6,7 +6,7 @@
 // must be the straight board's, byte for byte; at the first that isn't, the two states are written out and the
 // parts that differ named.
 //   vf2soak <vf2.zip> [--script FILE | --random SEED] [--frames N] [--delay D] [--only-misses] [--interp]
-//           [--hashes FILE] [--quiet] [--draw] [--p1 F] [--p2 F] [--match-seed N]
+//           [--hashes FILE] [--quiet] [--draw] [--aspect A] [--p1 F] [--p2 F] [--match-seed N]
 // Both boards start as a netplay match does (vf2_netplay's begin: a cold start, free play, the boot run unseen,
 // the sound board held and the byte link). --script: inputs from a script (src/host/input_script.h, frames
 // counted from the match's start); --random SEED: two random players who press Start now and then (a versus: one
@@ -109,9 +109,10 @@ int main(int argc, char **argv)
 	long frames = -1, delay = 7;
 	uint32_t seed = 1;
 	bool quiet = false, interp = false, only_misses = false, synthetic = false, draw = false;
+	float aspect = 0;   // (0: the arcade's 4:3, as built)
 	std::string fighters[2];   // (--p1, --p2: each player's fighter, Cheats' random fighters, as the handshake has it: R, S<place>)
 	uint32_t match_seed = 1;
-	const char *usage = "usage: vf2soak <vf2.zip> [--script FILE | --random SEED] [--frames N] [--delay D] [--only-misses] [--interp] [--hashes FILE] [--quiet]\n"
+	const char *usage = "usage: vf2soak <vf2.zip> [--script FILE | --random SEED] [--frames N] [--delay D] [--only-misses] [--interp] [--hashes FILE] [--quiet] [--draw] [--aspect A]\n"
 	                    "       vf2soak --synthetic [--frames N] [--delay D] [--only-misses] [--hashes FILE] [--quiet]\n";
 	for (int i = 1; i < argc; i++) {
 		std::string a = argv[i];
@@ -125,6 +126,7 @@ int main(int argc, char **argv)
 		else if (a == "--synthetic") synthetic = true;
 		else if (a == "--quiet") quiet = true;
 		else if (a == "--draw") draw = true;   // (the pictures drawn as the game draws them: a frame run again, none)
+		else if (a == "--aspect" && i + 1 < argc) aspect = float(atof(argv[++i]));   // (the picture's shape, width / height: drawing only)
 		else if (a == "--p1" && i + 1 < argc) fighters[0] = argv[++i];
 		else if (a == "--p2" && i + 1 < argc) fighters[1] = argv[++i];
 		else if (a == "--match-seed" && i + 1 < argc) match_seed = uint32_t(strtoul(argv[++i], nullptr, 10));
@@ -160,6 +162,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "vf2soak: the match's start failed (not the ROM known?)\n");
 		return 1;
 	}
+	if (aspect > 0)   // both boards at the shape, the culling a match plays with (as the host sets it after a shape)
+		for (model2a *m : { &A, &B }) { m->set_aspect(aspect); m->set_scenery_culling(vf2net::MATCH_CULLING); }
 	if (draw) A.set_draw_3d(true);
 	input_script script;
 	std::string error;

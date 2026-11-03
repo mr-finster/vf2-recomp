@@ -195,7 +195,7 @@ public:
 	// 1 is MAME's picture, exactly.
 	void set_render_scale(int scale);
 	int render_scale() const { return m_scale; }
-	// Widescreen: the picture `aspect` wide (width / height, 4:3 to 32:9; the arcade's 496 x 384
+	// Widescreen: the picture `aspect` wide (width / height, 4:3 to 80:9; the arcade's 496 x 384
 	// fill a 4:3 tube, so its pixels are a little wide). Columns are added on each side
 	// (side_columns()), the arcade's picture in the middle. In a fight (wide_frame()) the 3D sees
 	// further to the sides (the same vertical view), the stage's backdrop panorama goes on and the

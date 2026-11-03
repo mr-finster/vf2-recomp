@@ -66,7 +66,7 @@
 // lowered a step at a time, down to 1 (for this run: the player's own choice is what's saved).
 //
 // --aspect sets the picture's shape; F6 steps through them. The default, fit, follows the window's
-// shape (between 4:3 and 32:9); the others keep theirs, with black bars. 4:3 is the arcade's
+// shape (between 4:3 and 80:9: five 16:9 screens side by side); the others keep theirs, with black bars. 4:3 is the arcade's
 // screen. Wider, the fights (the attract's demos too) see more to the sides: the 3D's view opens
 // out (the same vertical view, Hor+), the stage's backdrop panorama carries on and the scenery
 // the game leaves out by its 4:3 view is drawn; the HUD and text stay in the middle 4:3. The other
@@ -1506,13 +1506,13 @@ int main(int argc, char **argv)
 	if (!ren) ren = SDL_CreateRenderer(win, nullptr);
 	if (!ren) return fail(std::string("Couldn't start the graphics: ") + SDL_GetError());
 	SDL_SetRenderVSync(ren, getenv("VF2_NO_VSYNC") ? 0 : 1);   // (VF2_NO_VSYNC=1: tests, as a driver forcing it off)
-	// The picture's shape: the chosen one, or the window's (fit: between 4:3 and 32:9)
+	// The picture's shape: the chosen one, or the window's (fit: between 4:3 and 80:9)
 	auto window_aspect = [&] {
 		int w = 0, h = 0;
 		SDL_GetWindowSizeInPixels(win, &w, &h);
 		if ((SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN) && (SDL_GetWindowFlags(win) & SDL_WINDOW_HIDDEN))   // (it takes the screen's size once shown)
 			if (const SDL_DisplayMode *dm = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay())) { w = dm->w; h = dm->h; }
-		return h > 0 ? std::clamp(float(w) / float(h), 4.0f / 3.0f, 32.0f / 9.0f) : 16.0f / 9.0f;
+		return h > 0 ? std::clamp(float(w) / float(h), 4.0f / 3.0f, 80.0f / 9.0f) : 16.0f / 9.0f;
 	};
 	auto apply_aspect = [&] {   // true if the picture's shape changed
 		const float a = ASPECTS[aspect_i] > 0 ? ASPECTS[aspect_i] : window_aspect();

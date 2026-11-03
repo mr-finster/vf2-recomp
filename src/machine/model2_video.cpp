@@ -523,7 +523,7 @@ void model2_video::set_scale(int scale)
 
 void model2_video::set_ext(int ext)
 {
-	ext = std::clamp(ext, 0, 512);
+	ext = std::clamp(ext, 0, 1408);   // (80:9: 1,405)
 	if (ext == m_ext) return;
 	m_ext = ext;
 	m_renderer->allocate(m_scale, ext);

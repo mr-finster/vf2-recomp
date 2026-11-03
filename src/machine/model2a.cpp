@@ -2448,7 +2448,7 @@ void model2a::edge_smooth(u32 *px, size_t stride, const bitmap_rgb32 *layer3d, i
 	const int va = r0, vb = r1;   // (in parts, px's rows outside these are someone else's: nothing in 3D there)
 	r0 = std::max(r0, 1); r1 = std::min(r1, H - 1);
 	if (r1 <= r0 || X1 - X0 < 3) return;
-	static const std::vector<u32> none(size_t(8 * 1024 * 3), 0);   // a row of nothing (up to 8x of 32:9)
+	static const std::vector<u32> none(size_t(8 * 4096), 0);   // a row of nothing (up to 8x of 80:9: 8 x 3,306)
 	auto row = [&](int y) -> const u32 * { return !parts || (y >= va && y < vb) ? px + size_t(y) * stride : none.data(); };
 	auto drawn = [&](int x, int y) { return parts ? row(y)[x] != 0 : layer3d->pix(y, x) != 0; };
 	auto colour = [&](int x, int y) -> u32 {   // (beside the 3D: the picture beneath, by the one function either way)
@@ -2768,7 +2768,7 @@ void model2a::set_render_scale(int scale)
 void model2a::set_aspect(float aspect)
 {
 	render_wait();
-	m_aspect = std::clamp(aspect, 4.0f / 3.0f, 32.0f / 9.0f);
+	m_aspect = std::clamp(aspect, 4.0f / 3.0f, 80.0f / 9.0f);
 	// 496 x 384 fills a 4:3 tube: a picture `aspect` wide is 384 * aspect of the tube's square
 	// pixels, 372 * aspect of the arcade's
 	const float width = m_aspect * WIDTH * 3.0f / 4.0f;
