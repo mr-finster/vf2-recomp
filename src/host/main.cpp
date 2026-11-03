@@ -1548,7 +1548,12 @@ int main(int argc, char **argv)
 		const int most = cores >= 8 ? DEFAULT_MAX_SCALE : cores >= 6 ? 3 : 2;
 		scale = std::clamp(int(std::ceil(tall / double(model2a::HEIGHT) - 0.1)), 2, std::max(2, most));
 	}
-	auto aa_fit = [](int s, int a) { return std::max(1, std::min(a, 8 / s)); };   // (0, Low: at the scale, the 3D's edges smoothed)
+	// The picture drawn at most as wide as 32:9 at 8x (10,576 pixels: 80:9's 3,306 at 8x would be 26,448, and
+	// its buffers 1.5 GB): wider shapes at a lower scale and antialiasing, the player's own kept for narrower
+	auto scale_most = [&] { return std::max(1, (model2a::WIDTH + 2 * 413) * 8 / m.width()); };
+	int scale_wanted = scale;   // (the scale asked for, the player's or the governor's, before the width's limit)
+	scale = std::min(scale, scale_most());
+	auto aa_fit = [&](int s, int a) { return std::max(1, std::min({ a, 8 / s, scale_most() / std::max(1, s) })); };   // (0, Low: at the scale, the 3D's edges smoothed)
 	m.set_render_scale(scale * aa_fit(scale, aa));
 	m.set_edge_aa(aa == 0);
 	auto aa_now = [&] { return m.render_scale() / std::max(1, scale); };   // the antialiasing in use
@@ -2581,9 +2586,11 @@ int main(int argc, char **argv)
 	};
 	// a new render scale or antialiasing: a new picture size
 	auto set_scale = [&](int v, bool by_player = true) {
-		scale = std::clamp(v, 1, MAX_SCALE);
+		v = std::clamp(v, 1, MAX_SCALE);
+		scale_wanted = v;
+		scale = std::min(v, scale_most());
 		if (by_player) {
-			cfg.scale = scale; aa = cfg.aa; cfg_dirty = true;
+			cfg.scale = v; aa = cfg.aa; cfg_dirty = true;
 			load = load_window{ SDL_GetTicksNS() }; gov = gov_window{};   // the player's own choice starts the governor afresh
 			if (cfg.pipelined_at != scale) cfg.pipelined_at = 0;   // (what a run needed at another scale says nothing here)
 			pipelined = pipeline_wanted();            // (and the pipelining, and smooth motion's limit)
@@ -2593,13 +2600,17 @@ int main(int argc, char **argv)
 		m.set_render_scale(scale * aa_fit(scale, aa));
 		m.set_edge_aa(aa == 0);
 		if (!make_texture()) { running = false; return; }
-		if (by_player) { player_scale = scale; player_aa = aa; }
+		if (by_player) { player_scale = v; player_aa = aa; }
 		if (g3.mode == R3D_AUTO && (soft_render || getenv("VF2_AUTO_MEASURE"))) { g3.recheck = true; g3.want_real = false; g3.recheck_why = by_player ? "the player's scale or antialiasing" : "the governor's scale or antialiasing"; }   // (Auto measures no more: the GPU)
 		redraw_shown();   // the picture on show, at the new size
 		log_state(by_player ? "the player's scale or antialiasing" : "the governor's");
 	};
 	// a new shape: a new picture size (the 3D drawn from the next frame on)
 	auto reshape = [&] {
+		// the scale within the width's limit: lowered for a wider shape, back up to the player's (or the
+		// governor's) for a narrower one
+		scale = std::min(scale_wanted, scale_most());
+		if (m.render_scale() != scale * aa_fit(scale, aa)) { m.set_render_scale(scale * aa_fit(scale, aa)); m.set_edge_aa(aa == 0); }
 		if (!make_texture()) { running = false; return; }
 		present_shape();
 		redraw_shown();   // the picture on show, at the new shape (the 3D's lists set up again for the width)
@@ -2683,8 +2694,8 @@ int main(int argc, char **argv)
 		menu_page p{ "Display", "", {} };
 		p.items.push_back({ "Render scale",
 			"How sharp the 3D is. 1x is the original arcade resolution; higher is sharper but needs a faster computer. If yours can't keep up, the game lowers it for you. (F5)",
-			[&] { return std::to_string(scale) + "x"; },
-			[&](int d) { set_scale(std::clamp(scale + d, 1, MAX_SCALE)); } });
+			[&] { return std::to_string(scale) + "x" + (scale < scale_wanted ? " (" + std::to_string(scale_wanted) + "x narrower)" : std::string()); },
+			[&](int d) { set_scale(std::clamp(scale_wanted + d, 1, MAX_SCALE)); } });
 		p.items.push_back({ "Antialiasing",
 			"Smooths jagged edges on the 3D. Low smooths them after drawing and costs little; 2x and 3x draw the picture larger and look cleaner but take a lot more power.",
 			[&] { return aa == 0 ? std::string("Low") : aa_now() == 1 ? std::string(aa > 1 ? "Off (too large here)" : "Off") : std::to_string(aa_now()) + "x"; },
@@ -3951,7 +3962,7 @@ int main(int argc, char **argv)
 					if (!timings) SDL_SetWindowTitle(win, title_base);
 				}
 				else if (e.key.scancode == SDL_SCANCODE_F3) reset_game();
-				else if (e.key.scancode == SDL_SCANCODE_F5) set_scale(scale % MAX_SCALE + 1);
+				else if (e.key.scancode == SDL_SCANCODE_F5) set_scale(scale_wanted % MAX_SCALE + 1);
 				else if (e.key.scancode == SDL_SCANCODE_F6) set_shape((aspect_i + 1) % N_ASPECTS);
 				else if (e.key.scancode == SDL_SCANCODE_F11 || fullscreen_key(e.key)) set_fullscreen(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN));
 				else if (e.key.scancode == SDL_SCANCODE_F12) {
@@ -4104,7 +4115,7 @@ int main(int argc, char **argv)
 			if (quit_after >= 0 && int64_t(game_frame) >= quit_after) running = false;
 			switch (hk) {
 			case hotkey::menu: open_menu(); break;
-			case hotkey::scale: set_scale(scale % MAX_SCALE + 1); break;   // (as F5: 1x to 6x)
+			case hotkey::scale: set_scale(scale_wanted % MAX_SCALE + 1); break;   // (as F5: 1x to 6x)
 			case hotkey::aspect: set_shape((aspect_i + 1) % N_ASPECTS); break;
 			case hotkey::none: break;
 			}
@@ -4730,8 +4741,8 @@ int main(int argc, char **argv)
 				load.over = load.slow = 0;
 				log_state("the governor's");
 			} else
-			if (govern_cuts && !stepped && gov_calm >= gov_calm_need && (scale < player_scale || aa != player_aa)) {
-				if (scale < player_scale) {
+			if (govern_cuts && !stepped && gov_calm >= gov_calm_need && (scale < std::min(player_scale, scale_most()) || aa != player_aa)) {
+				if (scale < std::min(player_scale, scale_most())) {
 					fprintf(stderr, "%.1f frames a second, %.1f shown, busy %.0f%% of the time: render scale back up to %dx\n", fps, shown_fps, busy * 100, scale + 1);
 					set_scale(scale + 1, false);
 				} else {
