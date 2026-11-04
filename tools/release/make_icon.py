@@ -3,10 +3,12 @@
 from the game), as vf1-recomp's "VF1". Writes build/icon/icon_<variant>.png at 1024x1024 (the
 macOS icon grid: an 824px rounded tile with room for the shadow) and choices.png, a sheet of them.
 --final <variant> writes the icons the packages use: assets/icon/icon.png, VF2.icns (the Mac app,
-by iconutil) and VF2.ico (the Windows exe).
+by iconutil) and VF2.ico (the Windows exe). --android <variant> writes the Android app's icons
+(the launcher's own and the adaptive icon's two layers, see android()) into the android/ project.
 
     tools/release/make_icon.py [variant ...]      variants: see PALETTES
     tools/release/make_icon.py --final steel_red
+    tools/release/make_icon.py --android steel_red
 """
 import math, os, random, sys
 from PIL import Image, ImageDraw, ImageFilter
@@ -99,11 +101,15 @@ def chisel(d, quad, base, edge, light):
     for poly, col in faces:
         d.polygon([(skew(p)[0] * SS, skew(p)[1] * SS) for p in poly], fill=col)
 
-def tile(img, c1, c2):
-    """A rounded tile of flat-shaded triangles, darker toward one corner."""
+def tile(img, c1, c2, m=100, radius=185, shadow=True):
+    """A rounded tile of flat-shaded triangles, darker toward one corner. The margin, the corner
+    radius and the shadow are the desktop icon's by default; Android's adaptive icon wants the
+    background filling its whole canvas (m=0, radius=0, no shadow)."""
     mask = Image.new('L', (N, N), 0)
-    m = 100 * SS
-    ImageDraw.Draw(mask).rounded_rectangle((m, m, N - m, N - m), radius=185 * SS, fill=255)
+    if radius:
+        ImageDraw.Draw(mask).rounded_rectangle((m * SS, m * SS, N - m * SS, N - m * SS), radius=radius * SS, fill=255)
+    else:
+        ImageDraw.Draw(mask).rectangle((m * SS, m * SS, N - m * SS, N - m * SS), fill=255)
     layer = Image.new('RGB', (N, N))
     d = ImageDraw.Draw(layer)
     rnd = random.Random(7)
@@ -121,18 +127,18 @@ def tile(img, c1, c2):
                 cy = sum(p[1] for p in tri) / 3 / N
                 col = mix(c1, c2, min(1, max(0, (cx + cy) / 2 + rnd.uniform(-0.08, 0.08))))
                 d.polygon(tri, fill=shade(col, rnd.uniform(0.88, 1.12)))
-    # a soft drop shadow under the tile
-    shadow = Image.new('L', (N, N), 0)
-    ImageDraw.Draw(shadow).rounded_rectangle((m, m + 14 * SS, N - m, N - m + 14 * SS), radius=185 * SS, fill=110)
-    shadow = shadow.filter(ImageFilter.GaussianBlur(18 * SS))
-    img.paste((0, 0, 0, 255), (0, 0), shadow)
+    if shadow:
+        # a soft drop shadow under the tile
+        shadow_layer = Image.new('L', (N, N), 0)
+        ImageDraw.Draw(shadow_layer).rounded_rectangle(
+            (m * SS, (m + 14) * SS, N - m * SS, N - m * SS + 14 * SS), radius=(radius or 185) * SS, fill=110)
+        shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(18 * SS))
+        img.paste((0, 0, 0, 255), (0, 0), shadow_layer)
     img.paste(layer, (0, 0), mask)
 
-def make(name):
-    c1, c2, base, edge = PALETTES[name]
-    img = Image.new('RGBA', (N, N), (0, 0, 0, 0))
-    tile(img, c1, c2)
-    # the letters, with a dark outline (the same shapes, grown) for contrast on the tile
+def letters(img, base, edge):
+    """The "VF2" letters on the image (a 1024 design space), each stroke chiselled, with a dark
+    outline (the same shapes, grown) for contrast on the tile."""
     d = ImageDraw.Draw(img)
     for q in strokes():
         cx = sum(p[0] for p in q) / 4; cy = sum(p[1] for p in q) / 4
@@ -140,7 +146,20 @@ def make(name):
         d.polygon([(skew(p)[0] * SS, (skew(p)[1] + 10) * SS) for p in grown], fill=(0, 0, 0, 170))
     for q in strokes():
         chisel(d, q, base, edge, (-0.55, -0.83))
-    img = img.resize((1024, 1024), Image.LANCZOS)
+
+def render(name, tile_on=True, letters_on=True, **tile_kw):
+    """The 1024x1024 icon of a variant, its tile, its letters, or either alone (Android's adaptive
+    icon is the two layers apart)."""
+    c1, c2, base, edge = PALETTES[name]
+    img = Image.new('RGBA', (N, N), (0, 0, 0, 0))
+    if tile_on:
+        tile(img, c1, c2, **tile_kw)
+    if letters_on:
+        letters(img, base, edge)
+    return img.resize((1024, 1024), Image.LANCZOS)
+
+def make(name):
+    img = render(name)
     os.makedirs(OUT, exist_ok=True)
     img.save(os.path.join(OUT, f'icon_{name}.png'))
     return img
@@ -160,9 +179,41 @@ def final(name):
         subprocess.run(['iconutil', '-c', 'icns', iconset, '-o', os.path.join(FINAL, 'VF2.icns')], check=True)
     img.save(os.path.join(FINAL, 'VF2.ico'), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 
+def android(name):
+    """The Android app's icons, from the same variant as the desktop's: the launcher's own (the tile
+    and the letters, as the desktop icon) and the adaptive icon's two layers. Its background fills
+    the whole 108dp canvas (no margin, no corner, no shadow: the launcher's own shape is the mask
+    then) and its foreground is the letters alone at 94% of that canvas, which puts them inside the
+    66dp safe zone every launcher's mask keeps: the letters are 62.5% of the design space, so 59%
+    of the canvas, 63.4dp of 108.
+
+    Writes android/app/src/main/res/mipmap-*/: ic_launcher.png (48/72/96/144/192 px) and the
+    adaptive icon's ic_launcher_foreground.png / ic_launcher_background.png (108dp: 108/162/216/324/
+    432 px), which mipmap-anydpi-v26/ic_launcher.xml names.
+    """
+    res = os.path.join(ROOT, 'android', 'app', 'src', 'main', 'res')
+    full = render(name)
+    back = render(name, letters_on=False, m=0, radius=0, shadow=False)
+    fore = render(name, tile_on=False)
+    for density, px in (('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)):
+        dp = int(px * 2.25)     # the adaptive icon's 108dp canvas at this density
+        k = int(dp * 0.94)      # the letters at 94% of it (63.4dp of the 108)
+        out = os.path.join(res, f'mipmap-{density}')
+        os.makedirs(out, exist_ok=True)
+        full.resize((px, px), Image.LANCZOS).save(os.path.join(out, 'ic_launcher.png'))
+        back.resize((dp, dp), Image.LANCZOS).save(os.path.join(out, 'ic_launcher_background.png'))
+        f = fore.resize((k, k), Image.LANCZOS)
+        canvas = Image.new('RGBA', (dp, dp), (0, 0, 0, 0))
+        canvas.paste(f, ((dp - k) // 2, (dp - k) // 2), f)
+        canvas.save(os.path.join(out, 'ic_launcher_foreground.png'))
+    print(f'android icons for {name}: {os.path.relpath(res, ROOT)}/mipmap-*')
+
 if __name__ == '__main__':
     if sys.argv[1:2] == ['--final']:
         final(sys.argv[2] if len(sys.argv) > 2 else 'steel_red')
+        sys.exit(0)
+    if sys.argv[1:2] == ['--android']:
+        android(sys.argv[2] if len(sys.argv) > 2 else 'steel_red')
         sys.exit(0)
     names = sys.argv[1:] or list(PALETTES)
     ims = [make(n) for n in names]
