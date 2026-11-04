@@ -2089,8 +2089,14 @@ int main(int argc, char **argv)
 	// (keep: the driver it failed on saved, the next start tries SDL's other. Only for its start's check
 	// and its textures: a picture failing in play (a suspend and resume, a reset) is the CPU for this
 	// run only; saved, one bad moment on a Deck, Vulkan its only driver, put every later start on the CPU)
+	// The 3D gone to the CPU in play: the scale the player chose for the GPU, 3x with 2x antialiasing, was 0.5 pictures
+	// a second there (vf3-recomp #26's device lost). 1x without antialiasing for this run (cpu_cut, at the pass's end,
+	// said with the notice); the settings saved stay the player's (a graphics setting changed puts them back). Drawing
+	// only: the game's the same
+	bool cpu_cut = false;
 	auto g3_fail = [&](const char *why, bool keep = true) {
 		fprintf(stderr, "the 3D on the GPU: %s: on the CPU for this run%s\n", why, keep ? " (the driver noted for Windows' order)" : "");
+		cpu_cut = true;
 		// (its start's check or its textures: kept for this build, the menu tries again; a picture failing in play, a
 		// sleep or a GPU reset: for this run only)
 		bool other_next = false;   // (Windows: the other driver not tried yet, so the next start tries it by itself)
@@ -4807,6 +4813,15 @@ int main(int argc, char **argv)
 		if (new_shown || (hold_on && !stopped && !menu.is_open())) fps_shown++;
 		// (the 3D on the CPU with the setting not CPU: why, on screen once; not over online play: after it, and one up as
 		// a match is joined is taken down and said again after)
+		if (cpu_cut) {
+			cpu_cut = false;
+			if (scale > 1 || aa != 1) {
+				aa = 1;
+				set_scale(1, false);
+				fprintf(stderr, "the 3D on the CPU: drawn at 1x without antialiasing for this run (the settings kept)\n");
+				if (cpu_why_new) cpu_why += " Drawn at 1x without antialiasing for this run, as the CPU can keep up (Display's settings are kept).";
+			}
+		}
 		if (online.phase() != Online::Phase::off && !cpu_why.empty() && menu.toast_showing()) { menu.toast(""); cpu_why_new = true; }
 		if (cpu_why_new && online.phase() == Online::Phase::off) {
 			cpu_why_new = false;
