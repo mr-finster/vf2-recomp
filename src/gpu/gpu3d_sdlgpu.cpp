@@ -537,7 +537,24 @@ std::unique_ptr<gpu3d> gpu3d_create_sdlgpu(SDL_GPUDevice *dev)
 {
 	bool own = false;
 	if (!dev) {   // (GPU3D_VALIDATE=1: the driver's validation, Vulkan's layers)
-		dev = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL, getenv("GPU3D_VALIDATE") != nullptr, nullptr);
+		// A device of our own (the tools, and the day the renderer isn't "gpu"): made with the same
+		// optional Vulkan features SDL's own gpu renderer leaves off, so this runs wherever the
+		// renderer runs. shaderClipDistance, depthClamp, drawIndirectFirstInstance and
+		// samplerAnisotropy are true by default in SDL_GPU but are on only about 65%, 79% of Android
+		// devices and less (SDL_gpu_vulkan.c reads the four properties; SDL_render_gpu.c turns all
+		// four off, which is SDL #12652's fix - without it SDL_GPU excludes every Mali GPU). We use
+		// none of them: the 3D is compute pipelines into storage images, with no rasterizer state
+		// and no sampler at all. DEBUGMODE is what SDL_CreateGPUDevice's debug_mode was.
+		SDL_PropertiesID props = SDL_CreateProperties();
+		SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true);
+		SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, true);
+		SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, getenv("GPU3D_VALIDATE") != nullptr);
+		SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_CLIP_DISTANCE_BOOLEAN, false);
+		SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_DEPTH_CLAMPING_BOOLEAN, false);
+		SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_INDIRECT_DRAW_FIRST_INSTANCE_BOOLEAN, false);
+		SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_ANISOTROPY_BOOLEAN, false);
+		dev = SDL_CreateGPUDeviceWithProperties(props);
+		SDL_DestroyProperties(props);
 		if (!dev) { fprintf(stderr, "gpu3d sdl_gpu: no device: %s\n", SDL_GetError()); return nullptr; }
 		own = true;
 	}
