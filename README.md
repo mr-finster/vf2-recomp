@@ -102,9 +102,11 @@ fighter's mirror match). Changing them restarts the game.
 **Online**, your fighter is Online > Settings > **Your fighter** (Normal, Random or Seed, as here), whichever side you
 play: your opponent sees it as the match starts (RANDOM, or the seed's name), and both machines make the same fighters
 from the match's own seed (Random's draws and the colours), in step through every rollback. Random opponents stay
-offline (online, no one plays the computer). With Random or Seed, you only meet players who also have a random
-fighter (Random or Seed), on a version that has them: Random, room codes and addresses alike (the game says so if your
-opponent's is Normal). On Normal you play everyone else, players of v0.1.16 included, exactly as before.
+offline (online, no one plays the computer). Your fighter no longer splits players: Random, room codes and
+addresses meet everyone on this version or later, each player with their own choice (Normal against Random is fine).
+Against an older version, the match plays as that version would: one with a random fighter plays its random
+fighters' match, one on Normal plays Normal fighters on both sides (said as the match starts), so players of v0.1.16
+still play you.
 
 **How it works.** VF2 loads a fighter by its number from tables: its record (its body's 16 parts, skeleton, sizes,
 textures), its faces, its commands, its voices. A random fighter is a record of its own, its parts taken from the three
@@ -277,7 +279,7 @@ Open the menu (Esc, or View / Select on a controller) and choose **Online**. The
 - After a match, **New opponent** searches again.
 - **Random: max ping** (Online > Settings): Any, or 80 to 250 ms. A random opponent's ping is measured as you connect, before the match starts; over your limit, the game leaves and looks for someone else (and the two of you aren't matched again for 10 minutes). Room codes and addresses play whatever the ping.
 - **Match found chime** (Online > Settings): On (the default) plays a chime when an online match is found, and the game's window flashes in the taskbar or the Dock if it isn't the one in front, so you can wait for an opponent in another window.
-- **Your fighter** (Online > Settings): Normal (you pick at the select), Random (a new [random fighter](#random-fighters) at every select) or Seed (one random fighter by its name), in any match, whichever side you're on. Your opponent sees it as the match starts. You only meet players who also have a random fighter (Random or Seed); Normal plays everyone else, v0.1.16 included. It can't change while hosting, joining or playing.
+- **Your fighter** (Online > Settings): Normal (you pick at the select), Random (a new [random fighter](#random-fighters) at every select) or Seed (one random fighter by its name), in any match, whichever side you're on. Your opponent sees it as the match starts. It doesn't split players: you meet everyone (against an older version on Normal, the match plays Normal fighters), v0.1.16 included. It can't change while hosting, joining or playing.
 
 **HOST / JOIN: play a friend**
 1. One player picks **HOST**. It shows a 6-letter room code like `FR7-W25`. **Copy code** puts it on the clipboard: send it to your friend.

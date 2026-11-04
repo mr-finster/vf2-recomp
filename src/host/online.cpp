@@ -158,7 +158,7 @@ bool Online::open_host(std::string &error)
 	identity.name = started_with.name;
 	fighter_identity(started_with);   // (this player's fighter, in the hello: Cheats' random fighters)
 	adapter.hosting = true;
-	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, identity, config(started_with), true, adapter.host_blob());
+	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, match_identity(), config(started_with), true, adapter.host_blob());
 	session->trace = log_line;
 	ph = Phase::hosting;
 	return true;
@@ -266,7 +266,7 @@ bool Online::join(const OnlineSettings &s, std::string &error)
 	identity.name = s.name;
 	fighter_identity(s);
 	adapter.hosting = false;
-	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, identity, config(s), false);
+	session = std::make_unique<vfnet::Session>(lagged(*link), adapter, match_identity(), config(s), false);
 	session->trace = log_line;
 	joining_to = host + (p != 7700 ? ":" + std::to_string(p) : "");
 	ph = Phase::joining;
@@ -490,7 +490,8 @@ int Online::players_online(const OnlineSettings &s)
 			online_asked = now;
 			online_asking->store(true);
 			const std::string url = where + "/v1/random/count", body = "{\"game\":" + vfnet::json::quote(identity.game) + ",\"version\":" +
-				vfnet::json::quote(identity.build) + ",\"content\":" + vfnet::json::quote(hex64(identity.content)) + "}";
+				vfnet::json::quote(identity.build) + ",\"content\":" + vfnet::json::quote(hex64(identity.content)) +
+				(pool.empty() ? std::string() : ",\"pool\":" + vfnet::json::quote(pool) + ",\"accepts\":" + vfnet::json::list(accepts)) + "}";   // (the count: those this side can meet)
 			std::thread([url, body, count = online_count, asking = online_asking] {
 				const vfnet::http::Reply r = vfnet::http::request("POST", url, body, 5000);
 				vfnet::json::Value v;
@@ -545,7 +546,8 @@ std::string Online::me_json(const std::string &extra) const
 	}
 	return "{\"game\":" + vfnet::json::quote(identity.game) + ",\"version\":" + vfnet::json::quote(identity.build) + ",\"content\":" +
 	       vfnet::json::quote(hex64(identity.content)) + ",\"name\":" + vfnet::json::quote(identity.name) + ",\"cands\":" + vfnet::json::list(cands) +
-	       ",\"relay\":" + vfnet::json::quote(room ? room->relay_address() : "") + extra + "}";
+	       ",\"relay\":" + vfnet::json::quote(room ? room->relay_address() : "") +
+	       (pool.empty() ? std::string() : ",\"pool\":" + vfnet::json::quote(pool) + ",\"accepts\":" + vfnet::json::list(accepts)) + extra + "}";
 }
 
 vfnet::Link &Online::lagged(vfnet::Link &l)
@@ -563,7 +565,7 @@ void Online::room_session(bool host)
 	vfnet::Config c = config(started_with);
 	c.token = room_token;
 	adapter.hosting = host;
-	session = std::make_unique<vfnet::Session>(lagged(*room), adapter, identity, c, host, host ? adapter.host_blob() : std::vector<uint8_t>());
+	session = std::make_unique<vfnet::Session>(lagged(*room), adapter, match_identity(), c, host, host ? adapter.host_blob() : std::vector<uint8_t>());
 	session->trace = log_line;
 }
 
@@ -647,9 +649,27 @@ std::string lobby_says(const vfnet::http::Reply &r, const std::string &code, con
 // else); one with a code, the same code open again with a new token (the last player's no good for it)
 void Online::fighter_identity(const OnlineSettings &s)
 {
-	adapter.random_fighters = vf2net::random_version(identity.build);
-	identity.extra = adapter.random_fighters ? vf2net::fighter_extra(s.fighter, board) : std::string();
+	fighter_choice = s.fighter;
+	use_terms("");
+}
+
+bool Online::use_terms(const std::string &as)
+{
+	const std::string t = as.empty() ? identity.build : as;
+	bool random = false;
+	if (!vf2net::terms_of(t, identity.build, pool, random)) return false;
+	terms = t;
+	adapter.random_fighters = random;
+	identity.extra = random ? vf2net::fighter_extra(fighter_choice, board) : std::string();
 	adapter.own_extra = identity.extra;
+	if (t != identity.build) log_line("the match's terms: " + t + (t == pool ? " (each player's own fighter)" : " (the other player's version)"));
+	return true;
+}
+
+std::string Online::match_said() const
+{
+	if (adapter.random_fighters) return "each player's own fighter (Online > Settings > Your fighter)";
+	return !fighter_choice.empty() ? "Normal fighters (your opponent's version has no random fighters for this match)" : "Normal fighters";
 }
 
 void Online::host_again(const std::string &why)
@@ -753,6 +773,7 @@ void Online::room_poll()
 			key = v["key"].str();
 			room_token = strtoull(v["token"].str().c_str(), nullptr, 16);
 			job.reset();
+			use_terms("");   // (its own till a player comes: then the lobby's terms for the two)
 			room_session(true);
 			st = Step::waiting;
 			wait_errors = 0;
@@ -776,6 +797,9 @@ void Online::room_poll()
 				if (g.kind == vfnet::json::Value::object) {
 					peer_name = g["name"].str();
 					country_peer = country(g["country"].str());   // (the guest's flag: the lobby sends it, as it does the host's to the guest)
+					const std::string was = terms;
+					if (!use_terms(g["as"].str())) { host_again("their version's settings can't be played here."); return; }
+					if (terms != was) room_session(true);   // (the session for the two's terms: the pool's, or the player's version)
 					room->set_peer(g["cands"].strings(), g["relay"].str(), true);
 					st = Step::connecting;
 					step_at = now;
@@ -852,6 +876,7 @@ void Online::room_poll()
 				peer_name = v["name"].str();
 				country_peer = country(v["country"].str());
 				ticket.clear();
+				if (!use_terms(v["as"].str())) { room_failed("The online service matched you with a version this one can't play: update the game."); return; }
 				room_session(true);
 				st = Step::waiting;
 				retry_at = 0;
@@ -896,6 +921,7 @@ void Online::joined(const vfnet::json::Value &v)
 	room_token = strtoull(v["token"].str().c_str(), nullptr, 16);
 	peer_name = v["name"].str();
 	country_peer = country(v["country"].str());
+	if (!use_terms(v["as"].str())) { room_failed("The online service matched you with a version this one can't play: update the game."); return; }
 	room->set_peer(v["cands"].strings(), v["relay"].str(), false);
 	room_session(false);
 	st = Step::connecting;
@@ -989,6 +1015,8 @@ void Online::begin_match(const std::string &who)
 		close_room();   // (the code's done its job)
 	}
 	notices.push_back({ Notice::joined, "Playing " + who + ": press Start" });
+	notices.push_back({ Notice::tip, "This match: " + match_said() });
+	log_line("this match: " + match_said());
 	// (on one network through the relay, only because this Mac may not reach it: slower than need be, said on the
 	// versus screen)
 	local_slow = rooms && room && room->via_relay() && room->local_blocked();
@@ -1593,8 +1621,8 @@ void fighter_rows(Online &o, OnlineSettings &s, game_menu &menu, std::function<v
 	items.push_back({ "Your fighter",
 		"Online, whichever side you're on. Normal: you pick at the select. Random: a new random fighter at every select, three of the "
 		"cast made one. Seed: one such fighter, the same build and moves every game (its name from its energy bar). Your opponent sees "
-		"it before the fight. With Random or Seed you only meet players who also have a random fighter (Random or Seed); Normal "
-		"plays everyone else, older versions too. Not while hosting, joining or playing.",
+		"it before the fight. You meet everyone: each player plays their own choice, Normal or not. An older version with Normal plays "
+		"Normal fighters on both sides (said as the match starts). Not while hosting, joining or playing.",
 		[kind, label] { return label(kind()); },
 		[&o, &s, changed, kinds, kind, rebuild](int d) {
 			if (o.phase() != Online::Phase::off) return;   // (the online version goes with it: not while a match is on its way)

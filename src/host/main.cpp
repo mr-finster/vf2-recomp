@@ -3809,6 +3809,9 @@ int main(int argc, char **argv)
 		finish_async(false);
 		const bool random = !cfg.online.fighter.empty();
 		online.identity = { "vf2", vf2net::online_version(VF2_VERSION) + (random ? vf2net::RANDOM_TAG : ""), vf2net::content_hash(m), "" };   // (the online version, not the release's)
+		// (Random and rooms across Your fighter: the pool, each player's own fighter; and an older build's "+random")
+		online.pool = vf2net::pool_version(vf2net::online_version(VF2_VERSION));
+		online.accepts = { std::string(vf2net::RANDOM_TAG).substr(1) };
 		online_ready = true;
 	};
 	auto online_page = [&] {

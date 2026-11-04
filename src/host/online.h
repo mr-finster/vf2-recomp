@@ -67,6 +67,11 @@ public:
 	~Online();
 	vf2net::Adapter adapter;      // (its run, settle and program_changed set by main)
 	vfnet::Identity identity;     // the game, build and ROM hash (main's); the name from the settings
+	// What this side tells the lobby besides its own version (vf2_netplay.h's MIX_TAG): the pool, and the flags of an
+	// older version's it can play that version's way; a match plays the lobby's terms (use_terms), by address its own
+	std::string pool;
+	std::vector<std::string> accepts;
+	std::string terms;            // (the match's, as the session's identity has it)
 
 	// With a room code: open a room (the code comes in a moment: room_code()), or join one
 	// (want: the room's code from before, kept if it's free: a match's Play again; patient: no room yet is waited for,
@@ -234,6 +239,10 @@ private:
 	// (this player's fighter into the identity and the adapter: the random fighters' protocol only with a RANDOM_TAG
 	// online version, the identity's as main.cpp made it from Online > Settings > Your fighter; else v0.1.16's match)
 	void fighter_identity(const OnlineSettings &s);
+	std::string fighter_choice;   // (Your fighter, as fighter_identity had it)
+	bool use_terms(const std::string &as);   // the match's terms (the lobby's "as", or "": this side's own): the adapter and the hello set for them
+	vfnet::Identity match_identity() const { vfnet::Identity i = identity; i.build = terms; return i; }
+	std::string match_said() const;
 	void room_session(bool host);       // the session, with the lobby's token, on the room's link
 	void room_failed(const std::string &why);
 	void joined(const vfnet::json::Value &v);   // (the room found: connecting to its host)
