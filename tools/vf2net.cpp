@@ -5,7 +5,7 @@
 // state at every checkpoint. Reports the rollbacks and what a frame cost each side (the wall time of a session's
 // step: its rollback, its save and its frame). VF3's vf3net, for VF2.
 //   vf2net <vf2.zip> [--script FILE | --random SEED] [--frames N] [--latency MS] [--jitter MS] [--loss PERCENT]
-//          [--delay D] [--interp] [--soft] [--stage N] [--hashes FILE] [--p1 F] [--p2 F] [--match-seed N]
+//          [--delay D] [--interp] [--soft] [--stage N] [--hashes FILE] [--p1 F] [--p2 F] [--match-seed N] [--mix]
 // --p1, --p2: each player's fighter (Cheats' random fighters), as the handshake carries it (R, S<place>) or as the
 // Cheats page has it (*, a name), either one making it a random fighters' match (start_blob_random's; neither: v0.1.16's
 // match, start_blob's); --match-seed: the host's blob's seed (else a fixed one)
@@ -72,6 +72,7 @@ int main(int argc, char **argv)
 	int stage = -1;
 	int vs_rounds = 0;   // --vs-rounds N: the host's Rounds to win (vs player), set before the match (tests: the guest plays it)
 	const char *hashes_path = nullptr, *blob_out = nullptr, *blob_in = nullptr;
+	bool mix = false;   // --mix: a pool match (MIX_TAG): the random fighters' protocol, Normal fighters too
 	bool interp = false, soft = false, synthetic = false;   // soft: each side's clock a little slower while ahead, as the game's
 	std::string p1, p2;
 	uint32_t match_seed = 0x2545f491;
@@ -90,6 +91,7 @@ int main(int argc, char **argv)
 		else if (a == "--vs-rounds" && i + 1 < argc) vs_rounds = atoi(argv[++i]);
 		else if (a == "--hashes" && i + 1 < argc) hashes_path = argv[++i];
 		else if (a == "--blob-out" && i + 1 < argc) blob_out = argv[++i];
+		else if (a == "--mix") mix = true;
 		else if (a == "--blob-in" && i + 1 < argc) blob_in = argv[++i];
 		else if (a == "--p1" && i + 1 < argc) p1 = argv[++i];
 		else if (a == "--p2" && i + 1 < argc) p2 = argv[++i];
@@ -138,7 +140,8 @@ int main(int argc, char **argv)
 	p1 = extra(p1);
 	p2 = extra(p2);
 	// (a fighter on either side: a random fighters' match, both sides' online version vf2net::RANDOM_TAG's; else v0.1.16's)
-	const bool random = !p1.empty() || !p2.empty();
+	// (--mix: a pool match, vf2net::MIX_TAG's: the random fighters' protocol whatever each chose, Normal both included)
+	const bool random = mix || !p1.empty() || !p2.empty();
 	A.adapter->random_fighters = B.adapter->random_fighters = random;
 	A.adapter->hosting = true;
 	A.adapter->own_extra = p1;

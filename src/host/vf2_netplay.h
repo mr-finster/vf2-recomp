@@ -42,6 +42,16 @@ inline constexpr const char *NET_VERSION = "v0.1.16";
 // a new tag ("+random2"), the plain version untouched
 inline constexpr const char *RANDOM_TAG = "+random";
 bool random_version(const std::string &online_version);   // (the version has RANDOM_TAG: the random fighters' protocol)
+// Random and room matches across Your fighter (vf3-recomp #25's, for VF2): a build that has this sends the lobby, besides
+// its own online version, a pool (the version's base with MIX_TAG) and the flags of an older version's it can play that
+// version's way ("random"). The lobby answers with the match's terms ("as"): the pool's, the random fighters' protocol
+// whatever each chose (each player's own fighter in it: Normal is "" there, the select as ever), or one side's own
+// online version, played as a build of that version plays it (a plain one: Normal fighters, v0.1.16's match). The
+// handshake compares the terms. A change to the random fighters' match is a new tag here too ("+mix2")
+inline constexpr const char *MIX_TAG = "+mix1";
+std::string pool_version(const std::string &online);
+// (the terms' match: random_fighters for the pool's or a RANDOM_TAG version's; false: not one this build plays)
+bool terms_of(const std::string &terms, const std::string &own, const std::string &pool, bool &random_fighters);
 // The online version a build plays as: NET_VERSION for a release (its version a release's name: v0.1.16, or with a
 // word after it), else the build's own (git describe's between releases, a bare commit, "dev"): a test build, which
 // may carry a change to the game, plays only the same build

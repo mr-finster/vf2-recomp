@@ -66,6 +66,21 @@ bool random_version(const std::string &v)
 	return v.size() > n && v.compare(v.size() - n, n, RANDOM_TAG) == 0;
 }
 
+std::string pool_version(const std::string &online)
+{
+	return online.substr(0, online.find('+')) + MIX_TAG;
+}
+
+bool terms_of(const std::string &terms, const std::string &own, const std::string &pool, bool &random_fighters)
+{
+	random_fighters = false;
+	if (terms == pool) { random_fighters = true; return true; }
+	const std::string base = own.substr(0, own.find('+'));
+	if (terms == base) return true;
+	if (terms == base + RANDOM_TAG) { random_fighters = true; return true; }
+	return false;
+}
+
 // [magic "VF2B"][backup RAM][EEPROM][secret][stage]
 std::vector<uint8_t> start_blob(const model2a &b, int secret)
 {
