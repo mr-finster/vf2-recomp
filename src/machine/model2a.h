@@ -338,6 +338,13 @@ public:
 	// profile. Takes effect as a cursor next moves onto him: set before the game starts (the
 	// menu restarts it). False for another number, or if the program isn't the one known.
 	bool set_secret_character(int fighter);
+	// Cheats > Debug mode: the arcade's own debug mode, as its secret code gives it (hold Service, then P1 Left, P, K,
+	// Right, Right, Down, P, Up, K, K: bit 14 of 0x508000, which lets the game read all of the board's switches) with
+	// switch 1 on (bit 0 of port G, which turns it on: the CPU load, the polygon count and the hits on the screen; P2
+	// Start with P2 Guard held stops the game for its menu, held P2 Start shows it, P1's stick moves in it). Set before
+	// each frame while on; off, nothing (the game as ever). Offline only: never on an online match's board.
+	void set_debug_mode(bool on) { m_debug_mode = on; }
+	bool debug_mode() const { return m_debug_mode; }
 	// Cheats' random fighters (random_fighter.cpp). Each player's fighter: "" the select as ever, "*" a random
 	// fighter, a new one each game, or a name's (as on its energy bar: a seed's, the same fighter on any machine).
 	// Anything but "" is picked for that player at the select: three of the cast made one, its head, body and limbs
@@ -401,6 +408,7 @@ public:
 
 	// Inputs, active low as on the cabinet (IN0: coins, service, start; IN1/IN2: players)
 	u8 m_in0 = 0xff, m_in1 = 0xff, m_in2 = 0xff, m_sw = 0xff;
+	bool m_debug_mode = false;   // (set_debug_mode: not in the saved state, a setting)
 
 	// The sound board's output since the host last took it: stereo pairs at SOUND_RATE (the
 	// SCSP's 22.5792 MHz / 512). Empty while the board is held (set_sound(false)).

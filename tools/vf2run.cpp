@@ -46,6 +46,7 @@
 //                        tools/scripts/start_game.txt, --ko 2@1600 wins a 1P game to the ending and the
 //                        name entry, --ko 1@1600 loses it to the continue and game over
 //     --secret N         the player select's Akira is fighter N (model2a::set_secret_character)
+//     --debug-mode       the arcade's debug mode on (Cheats > Debug mode: model2a::set_debug_mode)
 //     --poke A=V@a[-b]   write byte V at address A (hex) at the end of every frame from a (to b)
 //     --sound            run the sound board (68000 and SCSP); without it the 68000 is held, as
 //                        in tools/mame_snap.sh's reference runs
@@ -134,6 +135,7 @@ int main(int argc, char **argv)
 	struct poke { u32 addr; u8 value; uint64_t from, to; };
 	std::vector<poke> pokes;
 	int secret = -1;
+	bool debug_mode = false;
 	for (int i = 3; i < argc; i++) {
 		std::string a = argv[i];
 		auto next = [&]() -> const char * { if (i + 1 >= argc) { fprintf(stderr, "%s needs a value\n", a.c_str()); exit(2); } return argv[++i]; };
@@ -192,6 +194,7 @@ int main(int argc, char **argv)
 			pokes.push_back(k);
 		}
 		else if (a == "--secret") secret = atoi(next());
+		else if (a == "--debug-mode") debug_mode = true;
 		else if (a == "--free-play") free_play = true;
 		else if (a == "--version") version = atoi(next());
 		else if (a == "--watch") watch_milestones = true;
@@ -326,6 +329,7 @@ int main(int argc, char **argv)
 	m.set_aspect(aspect);
 	if (culling >= 0 && !m.set_scenery_culling(culling)) fprintf(stderr, "--culling: not the program known\n");
 	if (secret >= 0 && !m.set_secret_character(secret)) fprintf(stderr, "--secret: not the program known\n");
+	m.set_debug_mode(debug_mode);
 	m.set_backdrop_filter(backdrop_filter);
 	if (!backgrounds.empty() && !load_backgrounds(m, backgrounds)) fprintf(stderr, "--backgrounds: nothing in %s\n", backgrounds.c_str());
 	m.set_volumes(music / 100.0f, effects / 100.0f);

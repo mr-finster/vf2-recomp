@@ -836,6 +836,7 @@ struct settings
 	std::string random_player[2];   // Cheats: each player's fighter: "" the select as ever, "*" a random one each game, or a name's (model2a::set_random_player)
 	std::string random_named[2];    // (each player's last name typed: Left / Right come back to it)
 	bool random_cpu = false;        // Cheats: Random opponents, every computer opponent a random fighter
+	bool debug_mode = false;        // Cheats: Debug mode, the arcade's own (model2a::set_debug_mode), offline only
 	// settings.ini's version: 2 from v0.1.2 (none before), 3 from the phone's fullscreen (this
 	// fork) or from the GPU's failures forgotten once (upstream v0.1.15), 4 the merged build. Its
 	// upgrades, once, as it's read:
@@ -981,6 +982,7 @@ struct settings
 			if (auto it = kv.find(p ? "random_p2_name" : "random_p1_name"); it != kv.end()) random_named[p] = trimmed(it->second);
 		}
 		flag("random_opponents", random_cpu);
+		flag("debug_mode", debug_mode);
 		if (ring && (ring < 1300 || ring % 100)) ring = 0;   // 0: by difficulty
 		flag("fullscreen", fullscreen);
 		flag("fullscreen_window", fs_window);
@@ -1051,6 +1053,7 @@ struct settings
 			if (!random_named[p].empty()) fprintf(f, "random_p%d_name = %s\n", p + 1, random_named[p].c_str());
 		}
 		if (random_cpu) fprintf(f, "random_opponents = 1\n");
+		if (debug_mode) fprintf(f, "debug_mode = 1\n");
 		fprintf(f, "crt_colours = %d\nbrightness = %d\ngamma = %d\n", crt_colours, brightness, gamma);
 		fprintf(f, "on_screen_controls = %d\n", on_screen);
 		if (graphics) fprintf(f, "graphics = %d\n", graphics);
@@ -3150,7 +3153,7 @@ int main(int argc, char **argv)
 	// Reset (the menu, F3): the menu closes, a paused game unpauses, and the screen goes black at
 	// once while the boot runs unseen, not the last picture held.
 	// the arcade settings as their page opened (and the ring): see arcade_page
-	std::optional<std::array<int, 11>> assign_before;
+	std::optional<std::array<int, 12>> assign_before;
 	auto reset_game = [&] {
 		// (never on a match's board: the host's settings booted, the same on both sides; end_match gives this player's
 		// back first)
@@ -3412,14 +3415,15 @@ int main(int argc, char **argv)
 	// starts, so closing the menu after changing one restarts it (only if something is different) ----
 	using ga = model2a::game_assignment;
 	constexpr int N_ASSIGN = 7;
-	static_assert(std::tuple_size_v<decltype(assign_before)::value_type> == N_ASSIGN + 4);
+	static_assert(std::tuple_size_v<decltype(assign_before)::value_type> == N_ASSIGN + 5);
 	auto assignments_now = [&] {
-		std::array<int, N_ASSIGN + 4> v;
+		std::array<int, N_ASSIGN + 5> v;
 		for (int i = 0; i < N_ASSIGN; i++) v[i] = m.assignment(ga(i));
 		v[N_ASSIGN] = cfg.ring;
 		v[N_ASSIGN + 1] = cfg.secret;   // (Cheats: the select sets the fighter as it opens, so it restarts too)
 		v[N_ASSIGN + 2] = cfg.random_cpu;   // (and the random fighters: each player's, Random opponents)
 		v[N_ASSIGN + 3] = int(std::hash<std::string>{}(cfg.random_player[0] + "/" + cfg.random_player[1]));
+		v[N_ASSIGN + 4] = cfg.debug_mode;   // (Debug mode: off, the game as ever from its start)
 		return v;
 	};
 	auto arcade_page = [&] {
@@ -3565,6 +3569,13 @@ int main(int argc, char **argv)
 				cfg.secret = SECRET[(i + d + n) % n];
 				cfg_dirty = true;   // (applied as the game restarts: boot)
 			} });
+		heading("ARCADE DEBUG MODE");
+		p.items.push_back({ "Debug mode",
+			"The arcade's hidden debug mode, as its secret code turns it on (no code to enter). It shows the CPU load, the polygon count and the hits on the screen. "
+			"In a fight, hold P2 Guard and press P2 Start: the game stops for the debug menu. Hold P2 Start to see it, move in it with P1's stick, let go and press P1 Start to choose "
+			"(camera, fighter and stage info, tests). P2 Start with P2 Guard again goes back to the game. Offline only: off online. Changing it restarts the game.",
+			[&] { return on_off(cfg.debug_mode); },
+			[&](int) { cfg.debug_mode = !cfg.debug_mode; cfg_dirty = true; } });   // (applied as the game restarts)
 		p.items.push_back(back_item());
 		return p;
 	};
@@ -4068,7 +4079,7 @@ int main(int argc, char **argv)
 							[&] { menu.push(arcade_page()); } });
 		p.items.push_back({ "Online", "Play someone over the network: a random opponent, or a friend with a room code.", {}, {}, [&] { menu.push(online_page()); } });
 		p.items.push_back({ "Controls", "Each player's controller, keys and buttons.", {}, {}, [&] { menu.push(controls_page()); } });
-		p.items.push_back({ "Cheats", "Random fighters (three of the cast made one, for you or every computer opponent), or play as Dural, MUE or KOJAC, unused fighters left in the game. Changing them restarts the game.", {}, {}, [&] { menu.push(cheats_page()); } });
+		p.items.push_back({ "Cheats", "Random fighters (three of the cast made one, for you or every computer opponent), or play as Dural, MUE or KOJAC, unused fighters left in the game, and the arcade's debug mode. Changing them restarts the game.", {}, {}, [&] { menu.push(cheats_page()); } });
 		p.items.push_back({ "Quit", "Saves and closes the game.", {}, {}, [&] { running = false; } });
 		return p;
 	};
@@ -4770,6 +4781,7 @@ int main(int argc, char **argv)
 			if (menu.is_open()) { into = show; held_now = !show; return false; }   // (this frame is the one on show)
 			return true;
 		};
+		m.set_debug_mode(cfg.debug_mode && !online.playing() && !g_match_board);   // (Cheats > Debug mode: offline only)
 		if (online.playing()) {
 			// A match: each frame through the session, with this player's input (either player's controls play this
 			// player's fighter; nothing while the menu's open); a frame that can't run yet (the other side behind, or

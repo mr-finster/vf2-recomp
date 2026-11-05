@@ -1194,10 +1194,14 @@ void model2a::run_frame()
 	keep_2d();
 	// (Cheats' random fighters at the select: a random player's controls let go, its cursor and pick pressed for it
 	// (random_fighter.cpp's select_inputs), this frame's only: the inputs as given after it)
-	const u8 in_were[2] = { m_in1, m_in2 };
+	const u8 in_were[2] = { m_in1, m_in2 }, sw_was = m_sw;
 	if (m_random) random_select_inputs();
+	if (m_debug_mode) {   // (Cheats > Debug mode: the secret code's flag, and switch 1 on, this frame's only)
+		write_dword(0x508000, read_dword(0x508000) | 0x4000);
+		m_sw = u8(m_sw & ~1);
+	}
 	while (m_frame_number == f) timeslice();
-	m_in1 = in_were[0]; m_in2 = in_were[1];
+	m_in1 = in_were[0]; m_in2 = in_were[1]; m_sw = sw_was;
 	take_audio();
 	m_scroll_hist[f % SCROLL_HIST] = { int64_t(f), m_tiles.tile_r(0x5002), m_tiles.tile_r(0x5006) };   // (smooth motion's backdrop)
 	record_scroll_input(f);

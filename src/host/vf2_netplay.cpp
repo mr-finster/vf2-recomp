@@ -32,6 +32,7 @@ void unpack(const uint16_t input[2], model2a &b)
 	b.m_in1 = uint8_t(~input[0]);
 	b.m_in2 = uint8_t(~input[1]);
 	b.m_sw = 0xff;
+	b.set_debug_mode(false);   // (Cheats > Debug mode: never online)
 }
 
 std::string online_version(const std::string &b)
@@ -204,6 +205,7 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	const bool random = !fighters[0].empty() || !fighters[1].empty();
 	if (settle) settle();
 	if (on_begin) on_begin();
+	board.set_debug_mode(false);   // (Cheats > Debug mode: never online, the match's boot neither)
 	collecting = false;
 	// the same game on both sides, whatever each plays offline: the program's patches (the culling widescreen
 	// uses, the host's secret character, the WARNING shortened), the FREE PLAY notices hidden, the sound board
