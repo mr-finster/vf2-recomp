@@ -275,7 +275,7 @@ that's gone now opens it in the middle of one that's there. (Not on Android, whe
 
 On Windows, fullscreen is a borderless window over the screen (a line taller than it, so no graphics driver takes it
 for a game's own fullscreen): switching to fullscreen froze on AMD cards in the driver's exclusive fullscreen
-(vf3-recomp #7). Display > **Fullscreen mode** (Windows only) switches to **Exclusive**, the old way, as does
+(vf3-recomp #7). Display > **Fullscreen mode** (Windows only) switches to **Standard**, the old way, as does
 `fullscreen_exclusive = 1` in settings.ini. A Mac (its green button too), Linux and the Steam Deck keep the system's own
 fullscreen (`fullscreen_window = 1` gives them the borderless window).
 
