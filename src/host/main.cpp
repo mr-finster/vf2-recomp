@@ -197,6 +197,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <array>
 #include <cerrno>
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <cerrno>
 #include <cstring>
@@ -882,6 +883,12 @@ struct settings
 	int frames_in_flight = 1;   // (SDL's renderer's own: the shortest delay to the screen)
 	int perf_hints = 0;   // (Android's performance hints: nothing here)
 #endif
+	int window_scale = 0;   // Display > Window size: the window k times the arcade's 384 lines high (4:3 and Fit 512 x k
+	                        // wide, wider shapes theirs), each arcade line k of the screen's; 0 Free (as the player sizes it)
+	// The window's place and size as last left in a window (VF3's issue #21), in the window's own units (points on a
+	// Mac, as SDL_CreateWindow takes them); window_w 0: none yet. Maximised: the size under it kept, maximised again
+	int window_w = 0, window_h = 0, window_x = 0, window_y = 0;
+	bool window_max = false;
 	player_controls ctl[2] = { player_controls::defaults(0), player_controls::defaults(1) };
 	std::vector<std::string> pad_mappings;   // pad_mapping lines: SDL mappings made in Controls > Set up buttons (one a pad)
 
@@ -986,6 +993,13 @@ struct settings
 		flag("arcade_mode", arcade);
 		flag("background_filter", smooth_bg);
 		flag("show_fps", show_fps);
+		num("window_scale", window_scale, 0, 16);
+		num("window_w", window_w, 0, 65535);
+		num("window_h", window_h, 0, 65535);
+		num("window_x", window_x, -65535, 65535);
+		num("window_y", window_y, -65535, 65535);
+		flag("window_maximised", window_max);
+		if (window_w < 64 || window_h < 48) window_w = window_h = 0;
 		flag("smooth_motion", smooth);
 		for (int p = 0; p < 2; p++) ctl[p].load(kv, p);
 		// settings from before the Menu button: Arcade mode's View tapped was a coin. It stays one
@@ -1018,6 +1032,8 @@ struct settings
 				"background_filter = %d\nmusic_volume = %d\neffects_volume = %d\nantialiasing = %d\nshow_fps = %d\nscreen_filter = %d\nring_size = %d\nsmooth_motion = %d\npipelined_at = %d\narcade_coins = %d\nvsync = %d\nframes_in_flight = %d\n", scale, aspect,
 				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin, vsync, frames_in_flight);
 		if (!log) fprintf(f, "log = 0\n");
+		fprintf(f, "window_scale = %d\n", window_scale);
+		if (window_w > 0) fprintf(f, "window_w = %d\nwindow_h = %d\nwindow_x = %d\nwindow_y = %d\nwindow_maximised = %d\n", window_w, window_h, window_x, window_y, int(window_max));
 		fprintf(f, "renderer_3d = %d\ngpu_quality = %d\nauto_3d = %s\n", renderer3d, gpu_quality, auto3d.c_str());
 		fprintf(f, "perf_hints = %d\n", perf_hints);
 		fprintf(f, "secret_character = %d\n", secret);
@@ -1540,12 +1556,42 @@ int main(int argc, char **argv)
 	int win_w = 1366, win_h = 768;   // 16:9 (within 90% of a smaller screen)
 	// testing: VF2_WINDOW=WxH, the window's size in points (a hidden one as large as a player's screen)
 	const bool fixed_window = getenv("VF2_WINDOW") && sscanf(getenv("VF2_WINDOW"), "%dx%d", &win_w, &win_h) == 2;
-	{
+	bool win_placed = false;   // (the window put where it was last left; not on a phone, whose window is the screen)
+	int win_x = 0, win_y = 0;
+	if (!fixed_window) {
 		SDL_Rect usable;
-		if (!fixed_window && SDL_GetDisplayUsableBounds(SDL_GetPrimaryDisplay(), &usable) && usable.w > 0 && usable.h > 0) {
+		if (SDL_GetDisplayUsableBounds(SDL_GetPrimaryDisplay(), &usable) && usable.w > 0 && usable.h > 0) {
 			const float k = std::min({ 1.0f, usable.w * 0.9f / win_w, usable.h * 0.9f / win_h });
 			win_w = int(win_w * k); win_h = int(win_h * k);
 		}
+#if !defined(__ANDROID__)
+		// The window as last left (settings.ini's window_w ...): there if it's still all on a connected screen's usable
+		// area; else at that size (no larger than the screen) in the middle of the screen it was most on, or the primary
+		if (cfg.window_w > 0) {
+			int n = 0;
+			SDL_DisplayID *ds = SDL_GetDisplays(&n);
+			const SDL_Rect r{ cfg.window_x, cfg.window_y, cfg.window_w, cfg.window_h };
+			SDL_Rect best{ 0, 0, 0, 0 };
+			long long best_area = -1;
+			for (int i = 0; ds && i < n; i++) {
+				SDL_Rect u, in;
+				if (!SDL_GetDisplayUsableBounds(ds[i], &u) || u.w <= 0 || u.h <= 0) continue;
+				const long long a = SDL_GetRectIntersection(&r, &u, &in) ? (long long)in.w * in.h : 0;
+				if (r.x >= u.x && r.y >= u.y && r.x + r.w <= u.x + u.w && r.y + r.h <= u.y + u.h) { best = u; best_area = LLONG_MAX; break; }
+				if (a > best_area || (best_area <= 0 && ds[i] == SDL_GetPrimaryDisplay())) { best = u; best_area = a; }
+			}
+			SDL_free(ds);
+			if (best.w > 0) {
+				win_w = std::min(cfg.window_w, best.w);
+				win_h = std::min(cfg.window_h, best.h);
+				if (best_area == LLONG_MAX) { win_x = cfg.window_x; win_y = cfg.window_y; }
+				else { win_x = best.x + (best.w - win_w) / 2; win_y = best.y + (best.h - win_h) / 2; }
+				win_placed = true;
+				fprintf(stderr, "the window as last left: %d x %d at %d, %d%s%s\n", win_w, win_h, win_x, win_y,
+				        best_area == LLONG_MAX ? "" : " (centred: not all on a screen now)", cfg.window_max ? ", maximised" : "");
+			}
+		}
+#endif
 	}
 	// hidden until it has the game's first picture to show
 	// A phone's window is the screen, and it can't be resized. SDL_WINDOW_RESIZABLE there also has
@@ -1553,12 +1599,23 @@ int main(int argc, char **argv)
 	// setOrientationBis: a resizable window with no orientation hint is SCREEN_ORIENTATION_FULL_USER)
 	// instead of the landscape the manifest asks for: a session on a phone held with the rotation
 	// locked came up portrait, 1220 x 2421 in the log, its picture a 4:3 band down the middle.
-	SDL_Window *win = SDL_CreateWindow("Virtua Fighter 2", win_w, win_h,
+	SDL_PropertiesID wp = SDL_CreateProperties();
+	SDL_SetStringProperty(wp, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "Virtua Fighter 2");
+	SDL_SetNumberProperty(wp, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, win_w);
+	SDL_SetNumberProperty(wp, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, win_h);
+	if (win_placed) {
+		SDL_SetNumberProperty(wp, SDL_PROP_WINDOW_CREATE_X_NUMBER, win_x);
+		SDL_SetNumberProperty(wp, SDL_PROP_WINDOW_CREATE_Y_NUMBER, win_y);
+	}
+	SDL_SetNumberProperty(wp, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER,
 #if defined(__ANDROID__)
 		SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_HIDDEN);
 #else
-		SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_HIDDEN);
+		SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) |
+		(win_placed && cfg.window_max ? SDL_WINDOW_MAXIMIZED : 0) | SDL_WINDOW_HIDDEN);
 #endif
+	SDL_Window *win = SDL_CreateWindowWithProperties(wp);
+	SDL_DestroyProperties(wp);
 	if (!win) return fail(std::string("Couldn't open the window: ") + SDL_GetError());
 	SDL_HideCursor();
 	int focus_checks = 600;   // about 5 s: going fullscreen on a Mac moves to a new Space, which takes a while
@@ -2930,18 +2987,105 @@ int main(int argc, char **argv)
 		smooth_limit = false;
 		gov_calm = 0; gov_raised = false; gov_calm_need = 5;
 	};
+	// Display > Window size: the window k times the arcade's 384 lines high, in the window's own pixels (a Mac's
+	// Retina window is sized in points: the pixel density's share of them), its width the picture shape's at that
+	// height (4:3 and Fit: 512 x k, the 496 x 384 picture on its 4:3 tube; wider shapes the picture's own width, its
+	// 384 * width / 372, times k), so the picture fills it and each arcade line is k of the screen's; only the sizes
+	// that fit the screen's usable area. In fullscreen it waits for the window. Resized by hand: Free again. Not on a
+	// phone (its window is the screen).
+	auto is_fullscreen = [&] { return (SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN) != 0; };
+	int win_expect_w = 0, win_expect_h = 0;   // (the window's pixels as Window size made them)
+	int win_set_w = 0, win_set_h = 0;         // (and its points)
+	bool window_moved = false;                // (moved, resized, maximised: remembered after the pass's events)
+	bool window_rescale = false;              // (made again after this pass's events: out of the OS's fullscreen, or
+	                                          // moved to a screen of another pixel density)
+	auto window_target = [&](int k, int &w, int &h) {
+		h = 384 * k;
+		w = aspect_i <= 1 ? 512 * k : int(std::lround(384.0 * m.width() / 372.0)) * k;
+	};
+	auto window_fits = [&](int k) {
+		int w, h;
+		window_target(k, w, h);
+		const float d = std::max(SDL_GetWindowPixelDensity(win), 0.25f);
+		SDL_Rect usable;
+		if (!SDL_GetDisplayUsableBounds(SDL_GetDisplayForWindow(win), &usable) || usable.w <= 0 || usable.h <= 0) return k == 1;
+		int top = 0, left = 0, bottom = 0, right = 0;
+		if (!SDL_GetWindowBordersSize(win, &top, &left, &bottom, &right)) top = left = bottom = right = 0;
+		return w / d + left + right <= usable.w && h / d + top + bottom <= usable.h;
+	};
+	auto window_scale_most = [&] {
+		int k = 0;
+		while (k < 16 && window_fits(k + 1)) k++;
+		return k;
+	};
+	auto apply_window_scale = [&] {
+#if defined(__ANDROID__)
+		return;
+#endif
+		if (cfg.window_scale <= 0 || is_fullscreen() || fixed_window) return;
+		const int most = window_scale_most();
+		if (cfg.window_scale > most) {
+			fprintf(stderr, "window size %dx: larger than the screen, %s\n", cfg.window_scale, most ? "the largest that fits" : "Free");
+			cfg.window_scale = most;
+			cfg_dirty = true;
+			if (!most) return;
+		}
+		int w, h;
+		window_target(cfg.window_scale, w, h);
+		if (SDL_GetWindowFlags(win) & SDL_WINDOW_MAXIMIZED) { SDL_RestoreWindow(win); SDL_SyncWindow(win); }
+		const float d = std::max(SDL_GetWindowPixelDensity(win), 0.25f);
+		int pw = int(std::lround(w / d)), ph = int(std::lround(h / d));
+		SDL_SetWindowSize(win, pw, ph);
+		SDL_SyncWindow(win);
+		int gw = 0, gh = 0;
+		SDL_GetWindowSizeInPixels(win, &gw, &gh);
+		if ((gw != w || gh != h) && gw > 0 && gh > 0) {   // (a fractional density's rounding: a point more or less)
+			pw += gw < w ? 1 : gw > w ? -1 : 0;
+			ph += gh < h ? 1 : gh > h ? -1 : 0;
+			SDL_SetWindowSize(win, pw, ph);
+			SDL_SyncWindow(win);
+			SDL_GetWindowSizeInPixels(win, &gw, &gh);
+		}
+		win_expect_w = gw; win_expect_h = gh;
+		win_set_w = pw; win_set_h = ph;
+		SDL_FlushEvent(SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED);   // (its own sizes on the way: not the player's resize)
+		fprintf(stderr, "window size %dx: %d x %d pixels (%d x %d points, density %.2f)%s\n", cfg.window_scale, gw, gh, pw, ph, d,
+		        gw == w && gh == h ? "" : ": not the size asked");
+		if (!aspect_i && apply_aspect()) reshape();   // (Fit: the picture's shape the window's new one)
+	};
+	// the window's place and size kept in the settings as the player leaves them, in a window only (not fullscreen;
+	// maximised: said so, the size under it kept); not for VF2_WINDOW's tests, nor a phone
+	auto remember_window = [&] {
+#if defined(__ANDROID__)
+		return;
+#endif
+		if (fixed_window || is_fullscreen()) return;
+		const SDL_WindowFlags fl = SDL_GetWindowFlags(win);
+		if (fl & SDL_WINDOW_MINIMIZED) return;
+		const bool mx = (fl & SDL_WINDOW_MAXIMIZED) != 0;
+		int w = cfg.window_w, h = cfg.window_h, x = cfg.window_x, y = cfg.window_y;
+		if (!mx || w <= 0) { SDL_GetWindowSize(win, &w, &h); SDL_GetWindowPosition(win, &x, &y); }   // (maximised from the first: its size then)
+		if (w <= 0 || h <= 0) return;
+		if (w == cfg.window_w && h == cfg.window_h && x == cfg.window_x && y == cfg.window_y && mx == cfg.window_max) return;
+		cfg.window_w = w; cfg.window_h = h; cfg.window_x = x; cfg.window_y = y; cfg.window_max = mx;
+		cfg_dirty = true;
+	};
+	auto set_window_scale = [&](int k) { cfg.window_scale = std::max(k, 0); cfg_dirty = true; apply_window_scale(); };
 	auto set_shape = [&](int v) {
 		aspect_i = cfg.aspect = v; cfg_dirty = true;
 		apply_aspect();
 		reshape();   // (the title too)
+		apply_window_scale();   // (Window size: the new shape's width)
 		gov_fresh();
 	};
 	auto set_fullscreen = [&](bool on) {
 		cfg.fullscreen = on; cfg_dirty = true;
 		SDL_SetWindowFullscreen(win, on);
 		SDL_SyncWindow(win);     // macOS animates into fullscreen: wait for it to finish
+		if (!on) apply_window_scale();
 		gov_fresh();
 	};
+	apply_window_scale();   // (the saved Window size from the start; VF2_WINDOW's tests: the size they ask)
 	// The game on a thread of its own while the screen waits (VF3's job_start and job_wait, VF1's
 	// game thread): with smooth motion, a frame that will be due by the next refresh is run during
 	// the present's wait for vsync, its inputs set as the frame before it ended (as ever); what
@@ -3133,6 +3277,19 @@ int main(int argc, char **argv)
 				"Android's own hint session over the threads that put a frame together, with a frame's 17.4 ms as its target: the phone then keeps their cores and the GPU at their clocks instead of taking the game for a program in the background. Off, to compare a run without it.",
 				[&] { return on_off(cfg.perf_hints); },
 				[&](int) { cfg.perf_hints = !cfg.perf_hints; cfg_dirty = true; apply_perf_hints(); } });
+#endif
+#if !defined(__ANDROID__)
+		p.items.push_back({ "Window size",
+			"Sizes the window to a whole multiple of the arcade's 384 lines (1x: 512 x 384 for the 4:3 picture, wider for a wider shape), each arcade line that many of your screen's: Render scale 1x with Window size 1x shows the arcade's 384 lines one to one, Window size 2x with Render scale 1x doubles each of them. Only the sizes your screen holds; for playing in a window (in fullscreen it waits for the window). Resizing the window by hand sets it back to Free. The window's size and place are remembered either way.",
+			[&] {
+				if (cfg.window_scale <= 0) return std::string("Free");
+				int w, h;
+				window_target(cfg.window_scale, w, h);
+				std::string v = std::to_string(cfg.window_scale) + "x (" + std::to_string(w) + " x " + std::to_string(h) + ")";
+				if (is_fullscreen()) v += " in a window";
+				return v;
+			},
+			[&](int d) { set_window_scale(wrap(cfg.window_scale + d, window_scale_most() + 1)); } });
 #endif
 		p.items.push_back({ "Fullscreen", "Play fullscreen or in a window. (F11, F or Alt+Enter)",
 			[&] { return on_off(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN); },
@@ -4293,10 +4450,50 @@ int main(int argc, char **argv)
 		}
 		for (int64_t at : resets_at)
 			if (at == pass) { SDL_Event r{}; r.type = SDL_EVENT_RENDER_DEVICE_RESET; SDL_PushEvent(&r); }
+		if (static const char *rs = getenv("VF2_TEST_RESIZE"); rs) {   // (tests: the window resized as by hand, "WxH@pass", "WxH+X+Y@pass")
+			int rw = 0, rh = 0, rx = 0, ry = 0;
+			long long at = 0;
+			if (sscanf(rs, "%dx%d+%d+%d@%lld", &rw, &rh, &rx, &ry, &at) == 5 && pass == at) { SDL_SetWindowSize(win, rw, rh); SDL_SetWindowPosition(win, rx, ry); SDL_SyncWindow(win); }
+			else if (sscanf(rs, "%dx%d@%lld", &rw, &rh, &at) == 3 && pass == at) { SDL_SetWindowSize(win, rw, rh); SDL_SyncWindow(win); }
+		}
+		if (getenv("VF2_TEST_WINDOW_LOG") && pass % 20 == 0) {   // (tests: the window's pixels and Window size)
+			int pw = 0, ph = 0, x = 0, y = 0, lw = 0, lh = 0;
+			SDL_RendererLogicalPresentation mode;
+			SDL_GetWindowSizeInPixels(win, &pw, &ph);
+			SDL_GetWindowPosition(win, &x, &y);
+			SDL_GetRenderLogicalPresentation(ren, &lw, &lh, &mode);
+			fprintf(stderr, "test: pass %lld: the window %d x %d pixels at %d, %d, window_scale %d, the picture %d x %d\n",
+			        (long long)pass, pw, ph, x, y, cfg.window_scale, lw, lh);
+		}
+		if (window_rescale) { window_rescale = false; apply_window_scale(); menu.refresh(); }   // (the last pass's events asked)
+		if (window_moved) { window_moved = false; remember_window(); }
 		SDL_Event e;
 		const bool menu_was_open = menu.is_open();
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_EVENT_JOYSTICK_ADDED) give_unknown_sticks();   // (a gamepad's added event follows for one given a layout)
+			if (e.type == SDL_EVENT_WINDOW_MOVED || e.type == SDL_EVENT_WINDOW_RESIZED || e.type == SDL_EVENT_WINDOW_MAXIMIZED ||
+				e.type == SDL_EVENT_WINDOW_RESTORED)
+				window_moved = true;
+			// (fullscreen by the system's own way, a Mac's green button: remembered as the menu's is)
+			if ((e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN || e.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN) &&
+				cfg.fullscreen != (e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN)) {
+				cfg.fullscreen = e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN;
+				cfg_dirty = true;
+			}
+			if (e.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN && cfg.window_scale > 0) window_rescale = true;
+			// Window size: the window resized by hand (a corner dragged, maximised): Free again
+			if (e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED && cfg.window_scale > 0 && !window_rescale && !is_fullscreen() &&
+				(e.window.data1 != win_expect_w || e.window.data2 != win_expect_h)) {
+				int pw = 0, ph = 0;
+				SDL_GetWindowSize(win, &pw, &ph);
+				if (pw == win_set_w && ph == win_set_h) window_rescale = true;   // (the same points: another density)
+				else {
+					fprintf(stderr, "window size: resized to %d x %d pixels: Free\n", e.window.data1, e.window.data2);
+					cfg.window_scale = 0;
+					cfg_dirty = true;
+					menu.refresh();
+				}
+			}
 			if (e.type == SDL_EVENT_QUIT) running = false;
 			else if (e.type == SDL_EVENT_WILL_ENTER_BACKGROUND) {   // (Android: nothing runs in the background)
 				suspended = true;
@@ -5205,6 +5402,7 @@ int main(int argc, char **argv)
 	}
 	saver.finish();   // (an autosave still being written, done before the last save: the same files)
 	save_nvram(true);
+	remember_window();
 	if (cfg_dirty && (quit_after < 0 || test_saves)) save_settings();
 	for (auto &[id, j] : vpads) { if (j) SDL_CloseJoystick(j); SDL_DetachVirtualJoystick(id); }
 	if (chime_stream) SDL_DestroyAudioStream(chime_stream);

@@ -262,6 +262,17 @@ Arcade sticks the game doesn't know (DirectInput sticks such as HORI's Virtua St
 Mini) get a fighting stick's layout; Controls > Player 1 (or 2) > Set up buttons sets theirs by pressing each in turn. A
 `gamecontrollerdb.txt` (SDL's mappings) in the data folder or beside the program is read too.
 
+### Window size
+
+Display > **Window size** makes the window a whole multiple of the arcade's 384 lines (1x 512 x 384 for the 4:3
+picture, the board's 496 x 384 on its 4:3 tube; 2x 1024 x 768; up to 4x, as many as your screen holds; a wider picture
+shape makes it as wide as the shape), each arcade line that many of your screen's: Render scale 1x with Window size 1x
+shows the arcade's 384 lines one to one, Window size 2x with Render scale 1x doubles each of them. It's for playing in
+a window (fullscreen keeps it for when you're back in one), sized in the window's pixels on a Mac's Retina screen and
+a scaled Windows screen too, and resizing the window by hand sets it back to **Free**. The window's size, place,
+maximised and fullscreen are remembered from one start to the next (handy for capturing it in OBS); a place on a screen
+that's gone now opens it in the middle of one that's there. (Not on Android, where the window is the screen.)
+
 ## Online play (experimental)
 
 Rollback netcode, as modern fighting games and Virtua Fighter 3 Recomp have it: find a random opponent in one click, or send a friend a room code. There's nothing to set up and no ports to forward. The game runs at the Model 2 board's own 57.5 fps online too: input delay and rollback absorb the connection, so it never slows down to wait for it.
