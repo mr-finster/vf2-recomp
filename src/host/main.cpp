@@ -889,6 +889,10 @@ struct settings
 	// Mac, as SDL_CreateWindow takes them); window_w 0: none yet. Maximised: the size under it kept, maximised again
 	int window_w = 0, window_h = 0, window_x = 0, window_y = 0;
 	bool window_max = false;
+	// Fullscreen as a borderless window over the screen and a line past it (VF3's issue #7: AMD's driver on Windows
+	// froze in its own, exclusive fullscreen): the way on Windows unless fullscreen_exclusive = 1 (Display > Fullscreen
+	// mode); elsewhere the system's own fullscreen (a Mac's Spaces, the Deck's gamescope) unless fullscreen_window = 1
+	bool fs_window = false, fs_exclusive = false;
 	player_controls ctl[2] = { player_controls::defaults(0), player_controls::defaults(1) };
 	std::vector<std::string> pad_mappings;   // pad_mapping lines: SDL mappings made in Controls > Set up buttons (one a pad)
 
@@ -979,6 +983,8 @@ struct settings
 		flag("random_opponents", random_cpu);
 		if (ring && (ring < 1300 || ring % 100)) ring = 0;   // 0: by difficulty
 		flag("fullscreen", fullscreen);
+		flag("fullscreen_window", fs_window);
+		flag("fullscreen_exclusive", fs_exclusive);
 #if defined(__ANDROID__)
 		// (a phone's screen is the window: a file from before this version has the old default, 0,
 		//  which the player couldn't have chosen — the menu opens for the first time in this one.
@@ -1033,6 +1039,8 @@ struct settings
 				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin, vsync, frames_in_flight);
 		if (!log) fprintf(f, "log = 0\n");
 		fprintf(f, "window_scale = %d\n", window_scale);
+		if (fs_window) fprintf(f, "fullscreen_window = 1\n");
+		if (fs_exclusive) fprintf(f, "fullscreen_exclusive = 1\n");
 		if (window_w > 0) fprintf(f, "window_w = %d\nwindow_h = %d\nwindow_x = %d\nwindow_y = %d\nwindow_maximised = %d\n", window_w, window_h, window_x, window_y, int(window_max));
 		fprintf(f, "renderer_3d = %d\ngpu_quality = %d\nauto_3d = %s\n", renderer3d, gpu_quality, auto3d.c_str());
 		fprintf(f, "perf_hints = %d\n", perf_hints);
@@ -1599,6 +1607,15 @@ int main(int argc, char **argv)
 	// setOrientationBis: a resizable window with no orientation hint is SCREEN_ORIENTATION_FULL_USER)
 	// instead of the landscape the manifest asks for: a session on a phone held with the rotation
 	// locked came up portrait, 1220 x 2421 in the log, its picture a 4:3 band down the middle.
+	// Fullscreen's way (Config's fs_window): a borderless window over the screen and a line past it, so no driver
+	// takes it for a game's own fullscreen (VF3's issue #7: AMD's Vulkan on Windows froze there, every frame waiting),
+	// the window's place, size and maximised kept for the way back; or the system's own (SDL_WINDOW_FULLSCREEN)
+#ifdef _WIN32
+	static constexpr bool FS_BORDERLESS_DEFAULT = true;
+#else
+	static constexpr bool FS_BORDERLESS_DEFAULT = false;   // (a Mac's green button and Spaces, the Deck's gamescope)
+#endif
+	auto fs_borderless = [&] { return !cfg.fs_exclusive && (FS_BORDERLESS_DEFAULT || cfg.fs_window); };
 	SDL_PropertiesID wp = SDL_CreateProperties();
 	SDL_SetStringProperty(wp, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "Virtua Fighter 2");
 	SDL_SetNumberProperty(wp, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, win_w);
@@ -1611,10 +1628,13 @@ int main(int argc, char **argv)
 #if defined(__ANDROID__)
 		SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_HIDDEN);
 #else
-		SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) |
+		SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | (fullscreen && !fs_borderless() ? SDL_WINDOW_FULLSCREEN : 0) |
 		(win_placed && cfg.window_max ? SDL_WINDOW_MAXIMIZED : 0) | SDL_WINDOW_HIDDEN);
 #endif
 	SDL_Window *win = SDL_CreateWindowWithProperties(wp);
+	bool fs_win_on = false, fs_win_max = false;
+	SDL_Rect fs_win_was{ 0, 0, 0, 0 };
+	auto is_fullscreen = [&] { return fs_win_on || (SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN) != 0; };
 	SDL_DestroyProperties(wp);
 	if (!win) return fail(std::string("Couldn't open the window: ") + SDL_GetError());
 	SDL_HideCursor();
@@ -2624,9 +2644,14 @@ int main(int argc, char **argv)
 	crt::Colours crt_paint;
 	bool crt_on = false;   // (any of them set: the menu says when this renderer can't)
 	auto draw_filter = [&] {
-		SDL_FRect r;
-		if (!cfg.filter || !SDL_GetRenderLogicalPresentationRect(ren, &r)) return;
-		const int w = int(std::lround(r.w)), h = int(std::lround(r.h));
+		SDL_FRect pic;
+		if (!cfg.filter || !SDL_GetRenderLogicalPresentationRect(ren, &pic)) return;
+		// on whole pixels, one of the glass's to each (as VF3's, vf3-recomp #7): the picture's edges can fall between
+		// them (a borderless fullscreen's 1920 x 1081, 4:3: 1441.33 wide from 239.33), and the glass stretched by a
+		// fraction, sampled to the nearest, drew one column twice in the middle (a line down the screen)
+		const float x0 = std::round(pic.x), y0 = std::round(pic.y);
+		const SDL_FRect r{ x0, y0, std::round(pic.x + pic.w) - x0, std::round(pic.y + pic.h) - y0 };
+		const int w = int(r.w), h = int(r.h);
 		if (w < 1 || h < 1) return;
 		if (!glass || w != glass_w || h != glass_h || cfg.filter != glass_kind) {
 			if (glass) SDL_DestroyTexture(glass);
@@ -2684,7 +2709,13 @@ int main(int argc, char **argv)
 			SDL_UpdateTexture(glass, nullptr, px.data(), w * 4);
 			SDL_SetTextureScaleMode(glass, SDL_SCALEMODE_NEAREST);
 		}
-		SDL_RenderTexture(ren, glass, nullptr, nullptr);   // over the picture (the logical area), under the menu
+		// over the picture, under the menu: in the window's own pixels (the logical presentation off for it)
+		int lw = 0, lh = 0;
+		SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+		SDL_GetRenderLogicalPresentation(ren, &lw, &lh, &mode);
+		SDL_SetRenderLogicalPresentation(ren, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
+		SDL_RenderTexture(ren, glass, nullptr, &r);
+		SDL_SetRenderLogicalPresentation(ren, lw, lh, mode);
 	};
 
 	SDL_AudioStream *audio = nullptr;
@@ -2993,7 +3024,6 @@ int main(int argc, char **argv)
 	// 384 * width / 372, times k), so the picture fills it and each arcade line is k of the screen's; only the sizes
 	// that fit the screen's usable area. In fullscreen it waits for the window. Resized by hand: Free again. Not on a
 	// phone (its window is the screen).
-	auto is_fullscreen = [&] { return (SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN) != 0; };
 	int win_expect_w = 0, win_expect_h = 0;   // (the window's pixels as Window size made them)
 	int win_set_w = 0, win_set_h = 0;         // (and its points)
 	bool window_moved = false;                // (moved, resized, maximised: remembered after the pass's events)
@@ -3080,11 +3110,31 @@ int main(int argc, char **argv)
 	};
 	auto set_fullscreen = [&](bool on) {
 		cfg.fullscreen = on; cfg_dirty = true;
-		SDL_SetWindowFullscreen(win, on);
+		SDL_Rect b;
+		if (on && !fs_win_on && fs_borderless() && SDL_GetDisplayBounds(SDL_GetDisplayForWindow(win), &b)) {
+			if (SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN) { SDL_SetWindowFullscreen(win, false); SDL_SyncWindow(win); }
+			fs_win_max = (SDL_GetWindowFlags(win) & SDL_WINDOW_MAXIMIZED) != 0;
+			if (fs_win_max) { SDL_RestoreWindow(win); SDL_SyncWindow(win); }   // (the size under it, for the way back)
+			SDL_GetWindowPosition(win, &fs_win_was.x, &fs_win_was.y);
+			SDL_GetWindowSize(win, &fs_win_was.w, &fs_win_was.h);
+			SDL_SetWindowBordered(win, false);
+			SDL_SetWindowPosition(win, b.x, b.y);
+			SDL_SetWindowSize(win, b.w, b.h + 1);
+			fs_win_on = true;
+			fprintf(stderr, "fullscreen: a borderless window, %d x %d%s\n", b.w, b.h + 1,
+			        cfg.fs_window ? " (fullscreen_window)" : " (fullscreen_exclusive = 1 for the driver's own)");
+		} else if (!on && fs_win_on) {
+			SDL_SetWindowBordered(win, true);
+			if (fs_win_was.w > 0) { SDL_SetWindowSize(win, fs_win_was.w, fs_win_was.h); SDL_SetWindowPosition(win, fs_win_was.x, fs_win_was.y); }
+			if (fs_win_max) SDL_MaximizeWindow(win);
+			fs_win_on = false;
+		} else if (!fs_win_on) SDL_SetWindowFullscreen(win, on);
 		SDL_SyncWindow(win);     // macOS animates into fullscreen: wait for it to finish
 		if (!on) apply_window_scale();
 		gov_fresh();
 	};
+	// borderless fullscreen from the start: the window (made at its remembered place and size) over the screen
+	if (cfg.fullscreen && fs_borderless()) { const bool d = cfg_dirty; set_fullscreen(true); cfg_dirty = d; }
 	apply_window_scale();   // (the saved Window size from the start; VF2_WINDOW's tests: the size they ask)
 	// The game on a thread of its own while the screen waits (VF3's job_start and job_wait, VF1's
 	// game thread): with smooth motion, a frame that will be due by the next refresh is run during
@@ -3292,8 +3342,20 @@ int main(int argc, char **argv)
 			[&](int d) { set_window_scale(wrap(cfg.window_scale + d, window_scale_most() + 1)); } });
 #endif
 		p.items.push_back({ "Fullscreen", "Play fullscreen or in a window. (F11, F or Alt+Enter)",
-			[&] { return on_off(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN); },
-			[&](int) { set_fullscreen(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN)); } });
+			[&] { return on_off(is_fullscreen()); },
+			[&](int) { set_fullscreen(!is_fullscreen()); } });
+#ifdef _WIN32
+		p.items.push_back({ "Fullscreen mode",
+			"Borderless covers the screen with a window without a frame, which every graphics driver handles. Exclusive gives the screen to the graphics driver itself, the old way: some AMD cards froze in it.",
+			[&] { return std::string(fs_borderless() ? "Borderless" : "Exclusive"); },
+			[&](int) {
+				const bool was = is_fullscreen();
+				if (was) set_fullscreen(false);
+				cfg.fs_exclusive = fs_borderless(); cfg_dirty = true;
+				if (was) set_fullscreen(true);
+				menu.refresh();
+			} });
+#endif
 		p.items.push_back({ "On-screen controls",
 			"For a touch screen: a d-pad, Guard, Punch and Kick, Start and a Menu button over the picture, to play without a pad. Auto shows them while player 1 has no pad.",
 			[&] { return cfg.on_screen == 0 ? std::string("Off") : cfg.on_screen == 2 ? std::string("On") : std::string("Auto (no pad)"); },
@@ -4475,7 +4537,7 @@ int main(int argc, char **argv)
 				e.type == SDL_EVENT_WINDOW_RESTORED)
 				window_moved = true;
 			// (fullscreen by the system's own way, a Mac's green button: remembered as the menu's is)
-			if ((e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN || e.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN) &&
+			if ((e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN || e.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN) && !fs_win_on &&
 				cfg.fullscreen != (e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN)) {
 				cfg.fullscreen = e.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN;
 				cfg_dirty = true;
@@ -4515,7 +4577,7 @@ int main(int argc, char **argv)
 			// (F11 and Alt+Enter with the menu open too, unless it's waiting for a key: Alt+Enter was its Enter)
 			else if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat && menu.is_open() && !menu.capturing()
 					 && (e.key.scancode == SDL_SCANCODE_F11 || (e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT))))
-				set_fullscreen(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN));
+				set_fullscreen(!is_fullscreen());
 			else if (menu.handle_event(e)) continue;
 			else if (e.type == SDL_EVENT_FINGER_DOWN || e.type == SDL_EVENT_FINGER_MOTION ||
 					 e.type == SDL_EVENT_FINGER_UP || e.type == SDL_EVENT_FINGER_CANCELED) {
@@ -4543,7 +4605,7 @@ int main(int argc, char **argv)
 				else if (e.key.scancode == SDL_SCANCODE_F3) reset_game();
 				else if (e.key.scancode == SDL_SCANCODE_F5) set_scale(scale_wanted % MAX_SCALE + 1);
 				else if (e.key.scancode == SDL_SCANCODE_F6) set_shape((aspect_i + 1) % N_ASPECTS);
-				else if (e.key.scancode == SDL_SCANCODE_F11 || fullscreen_key(e.key)) set_fullscreen(!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN));
+				else if (e.key.scancode == SDL_SCANCODE_F11 || fullscreen_key(e.key)) set_fullscreen(!is_fullscreen());
 				else if (e.key.scancode == SDL_SCANCODE_F12) {
 					// F12: the picture as drawn, into Screenshots in the NVRAM folder (numbered, never overwritten)
 					const std::string shots = data + "/Screenshots";

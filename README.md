@@ -273,6 +273,12 @@ a scaled Windows screen too, and resizing the window by hand sets it back to **F
 maximised and fullscreen are remembered from one start to the next (handy for capturing it in OBS); a place on a screen
 that's gone now opens it in the middle of one that's there. (Not on Android, where the window is the screen.)
 
+On Windows, fullscreen is a borderless window over the screen (a line taller than it, so no graphics driver takes it
+for a game's own fullscreen): switching to fullscreen froze on AMD cards in the driver's exclusive fullscreen
+(vf3-recomp #7). Display > **Fullscreen mode** (Windows only) switches to **Exclusive**, the old way, as does
+`fullscreen_exclusive = 1` in settings.ini. A Mac (its green button too), Linux and the Steam Deck keep the system's own
+fullscreen (`fullscreen_window = 1` gives them the borderless window).
+
 ## Online play (experimental)
 
 Rollback netcode, as modern fighting games and Virtua Fighter 3 Recomp have it: find a random opponent in one click, or send a friend a room code. There's nothing to set up and no ports to forward. The game runs at the Model 2 board's own 57.5 fps online too: input delay and rollback absorb the connection, so it never slows down to wait for it.
