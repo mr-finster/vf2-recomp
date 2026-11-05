@@ -1196,7 +1196,7 @@ void model2a::run_frame()
 	// (random_fighter.cpp's select_inputs), this frame's only: the inputs as given after it)
 	const u8 in_were[2] = { m_in1, m_in2 }, sw_was = m_sw;
 	if (m_random) random_select_inputs();
-	if (m_debug_mode) {   // (Cheats > Debug mode: the secret code's flag, and switch 1 on, this frame's only)
+	if (m_debug_mode) {   // (Arcade settings > Debug mode: the secret code's flag, and switch 1 on, this frame's only)
 		write_dword(0x508000, read_dword(0x508000) | 0x4000);
 		m_sw = u8(m_sw & ~1);
 	}

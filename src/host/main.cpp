@@ -836,7 +836,7 @@ struct settings
 	std::string random_player[2];   // Cheats: each player's fighter: "" the select as ever, "*" a random one each game, or a name's (model2a::set_random_player)
 	std::string random_named[2];    // (each player's last name typed: Left / Right come back to it)
 	bool random_cpu = false;        // Cheats: Random opponents, every computer opponent a random fighter
-	bool debug_mode = false;        // Cheats: Debug mode, the arcade's own (model2a::set_debug_mode), offline only
+	bool debug_mode = false;        // Arcade settings: Debug mode, the arcade's own (model2a::set_debug_mode), offline only
 	// settings.ini's version: 2 from v0.1.2 (none before), 3 from the phone's fullscreen (this
 	// fork) or from the GPU's failures forgotten once (upstream v0.1.15), 4 the merged build. Its
 	// upgrades, once, as it's read:
@@ -1460,6 +1460,9 @@ int main(int argc, char **argv)
 		fprintf(stderr, "not the program known: the boot's WARNING runs in full (unseen)\n");
 	uint64_t game_frame = 0;   // frames drawn since the boot (the script's frame numbers)
 	auto boot = [&] {
+		// (Arcade settings > Debug mode: never on in the boot's frames, which a restart that turned it off ran with it
+		// on, from the frame before. The main loop turns it on again, offline, from the first frame after.)
+		m.set_debug_mode(false);
 		if (m.assignment(model2a::game_assignment::difficulty) < 0) {
 			m.reset();
 			for (int i = 0; i < 120 && m.assignment(model2a::game_assignment::difficulty) < 0; i++) m.run_frame();
@@ -3154,6 +3157,19 @@ int main(int argc, char **argv)
 	// once while the boot runs unseen, not the last picture held.
 	// the arcade settings as their page opened (and the ring): see arcade_page
 	std::optional<std::array<int, 12>> assign_before;
+	// Arcade settings > Debug mode changed: the board powered on before the restart, its backup RAM and EEPROM kept (as
+	// the netplay adapter's cold start). A restart keeps the work RAM, where the debug mode's bit (14 of 0x508000) and
+	// what it wrote stay: the game then as from a start, exactly
+	auto cold_start = [&] {
+		if (g_match_board) return;
+		finish_async(false);
+		const std::vector<u8> backup = m.backup_ram();
+		u16 eeprom[64];
+		memcpy(eeprom, m.eeprom_cells(), sizeof eeprom);
+		m.power_on();
+		m.backup_ram() = backup;
+		memcpy(m.eeprom_cells(), eeprom, sizeof eeprom);
+	};
 	auto reset_game = [&] {
 		// (never on a match's board: the host's settings booted, the same on both sides; end_match gives this player's
 		// back first)
@@ -3456,6 +3472,13 @@ int main(int argc, char **argv)
 			ga::vs_finish, [](int v) { return std::string(v ? "Both stop" : "Winner plays on"); });
 		choice("Version", "The arcade's own choice between the original game and its Version 2.1 update.",
 			ga::version, [](int v) { return std::string(v ? "2.1" : "Original"); });
+		// (Debug mode: Cheats' before, settings.ini's debug_mode key as it was; offline only, never on a match's board)
+		p.items.push_back({ "Debug mode",
+			"The arcade's hidden debug mode, as its secret code turns it on (no code to enter). It shows the CPU load, the polygon count and the hits on the screen. "
+			"In a fight, hold P2 Guard and press P2 Start: the game stops for the debug menu. Hold P2 Start to see it, move in it with P1's stick, let go and press P1 Start to choose "
+			"(camera, fighter and stage info, tests). P2 Start with P2 Guard again goes back to the game. Offline only: off online. Changing it restarts the game when the menu closes.",
+			[&] { return on_off(cfg.debug_mode); },
+			[&](int) { cfg.debug_mode = !cfg.debug_mode; cfg_dirty = true; } });   // (applied as the game restarts)
 		p.items.push_back({ "Service menu",
 			"The arcade's own test menu: input and sound tests, coin settings and bookkeeping. Down moves, Start selects (or 9 and F2 on a keyboard). Choose EXIT to come back.",
 			{}, {}, [&] { menu.close(); paused = false; g_test_pending = true; } });
@@ -3569,13 +3592,6 @@ int main(int argc, char **argv)
 				cfg.secret = SECRET[(i + d + n) % n];
 				cfg_dirty = true;   // (applied as the game restarts: boot)
 			} });
-		heading("ARCADE DEBUG MODE");
-		p.items.push_back({ "Debug mode",
-			"The arcade's hidden debug mode, as its secret code turns it on (no code to enter). It shows the CPU load, the polygon count and the hits on the screen. "
-			"In a fight, hold P2 Guard and press P2 Start: the game stops for the debug menu. Hold P2 Start to see it, move in it with P1's stick, let go and press P1 Start to choose "
-			"(camera, fighter and stage info, tests). P2 Start with P2 Guard again goes back to the game. Offline only: off online. Changing it restarts the game.",
-			[&] { return on_off(cfg.debug_mode); },
-			[&](int) { cfg.debug_mode = !cfg.debug_mode; cfg_dirty = true; } });   // (applied as the game restarts)
 		p.items.push_back(back_item());
 		return p;
 	};
@@ -4075,11 +4091,11 @@ int main(int argc, char **argv)
 							{}, {}, [&] { menu.push(display_page()); } });
 		p.items.push_back({ "Sound", "The overall, music and effects volumes.", {}, {}, [&] { menu.push(sound_page()); } });
 		p.items.push_back({ "Game", "Play style and reset.", {}, {}, [&] { menu.push(game_page()); } });
-		p.items.push_back({ "Arcade settings", "Difficulty, ring size, rounds, continues and the service menu. Changing them restarts the game.", {}, {},
+		p.items.push_back({ "Arcade settings", "Difficulty, ring size, rounds, continues, the arcade's debug mode and the service menu. Changing them restarts the game.", {}, {},
 							[&] { menu.push(arcade_page()); } });
 		p.items.push_back({ "Online", "Play someone over the network: a random opponent, or a friend with a room code.", {}, {}, [&] { menu.push(online_page()); } });
 		p.items.push_back({ "Controls", "Each player's controller, keys and buttons.", {}, {}, [&] { menu.push(controls_page()); } });
-		p.items.push_back({ "Cheats", "Random fighters (three of the cast made one, for you or every computer opponent), or play as Dural, MUE or KOJAC, unused fighters left in the game, and the arcade's debug mode. Changing them restarts the game.", {}, {}, [&] { menu.push(cheats_page()); } });
+		p.items.push_back({ "Cheats", "Random fighters (three of the cast made one, for you or every computer opponent), or play as Dural, MUE or KOJAC, unused fighters left in the game. Changing them restarts the game.", {}, {}, [&] { menu.push(cheats_page()); } });
 		p.items.push_back({ "Quit", "Saves and closes the game.", {}, {}, [&] { running = false; } });
 		return p;
 	};
@@ -4644,8 +4660,10 @@ int main(int argc, char **argv)
 			}
 			// the arcade settings are read as the game starts: restart it if one is different
 			if (assign_before) {
-				const bool changed = *assign_before != assignments_now();
+				const auto now = assignments_now();
+				const bool changed = *assign_before != now, cold = (*assign_before)[N_ASSIGN + 4] != now[N_ASSIGN + 4];
 				assign_before.reset();
+				if (cold) cold_start();   // (Debug mode: a start's game, exactly)
 				if (changed) reset_game();
 			}
 			pstate[0] = pstate[1] = pad_state{};   // the button that closed it isn't a move
@@ -4781,7 +4799,7 @@ int main(int argc, char **argv)
 			if (menu.is_open()) { into = show; held_now = !show; return false; }   // (this frame is the one on show)
 			return true;
 		};
-		m.set_debug_mode(cfg.debug_mode && !online.playing() && !g_match_board);   // (Cheats > Debug mode: offline only)
+		m.set_debug_mode(cfg.debug_mode && !online.playing() && !g_match_board);   // (Arcade settings > Debug mode: offline only)
 		if (online.playing()) {
 			// A match: each frame through the session, with this player's input (either player's controls play this
 			// player's fighter; nothing while the menu's open); a frame that can't run yet (the other side behind, or
