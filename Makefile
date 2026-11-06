@@ -83,7 +83,7 @@ RML_SRC = $(wildcard third_party/rmlui/Source/Core/*.cpp third_party/rmlui/Sourc
 	third_party/rmlui/Backends/RmlUi_Platform_SDL.cpp third_party/rmlui/Backends/RmlUi_Renderer_SDL.cpp
 RML_CFLAGS = -DRMLUI_STATIC_LIB -DRMLUI_FONT_ENGINE_FREETYPE -DRMLUI_SDL_VERSION_MAJOR=3 -Ithird_party/rmlui/Include -Ithird_party/rmlui/Backends
 $(OBJ)/third_party/rmlui/%.o: CXXFLAGS += $(RML_CFLAGS) $(FT_CFLAGS) $(SDL_CFLAGS) -w
-$(OBJ)/src/host/main.o $(OBJ)/src/host/menu.o $(OBJ)/src/host/online.o $(OBJ)/src/host/sysinfo.o $(OBJ)/src/host/d3d11_map.o: CXXFLAGS += $(SDL_CFLAGS) $(RML_CFLAGS)
+$(OBJ)/src/host/main.o $(OBJ)/src/host/menu.o $(OBJ)/src/host/online.o $(OBJ)/src/host/i18n.o $(OBJ)/tools/langtest.o $(OBJ)/src/host/sysinfo.o $(OBJ)/src/host/d3d11_map.o: CXXFLAGS += $(SDL_CFLAGS) $(RML_CFLAGS)
 $(OBJ)/src/host/main.o $(OBJ)/src/host/online.o: $(OBJ)/version.h
 $(OBJ)/src/host/main.o $(OBJ)/src/host/online.o: CXXFLAGS += -I$(OBJ)
 
@@ -109,7 +109,7 @@ $(OBJ)/src/gpu/gpu3d_sdlgpu.o: CXXFLAGS += $(SDL_CFLAGS)
 $(OBJ)/src/host/main.o: CXXFLAGS += -DVF2_GPU3D_SDL=1
 endif
 
-$(BIN)/vf2: $(call objs,src/host/main.cpp src/host/menu.cpp src/host/online.cpp src/host/links.cpp src/host/vf2_netplay.cpp $(NET_SRC) src/host/sysinfo.cpp src/host/d3d11_map.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ) $(GPU3D_OBJ)
+$(BIN)/vf2: $(call objs,src/host/main.cpp src/host/menu.cpp src/host/online.cpp src/host/i18n.cpp src/host/text.cpp src/host/links.cpp src/host/vf2_netplay.cpp $(NET_SRC) src/host/sysinfo.cpp src/host/d3d11_map.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ) $(GPU3D_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS) $(FT_LIBS) $(GPU3D_LIBS)
 
@@ -185,9 +185,16 @@ $(BIN)/vf2soundonly: $(call objs,tools/vf2soundonly.cpp $(MACHINE) $(HOST) $(COR
 
 # menutest: the Online pages as pictures, no ROM (a made-up one builds the board; SDL_VIDEO_DRIVER=offscreen)
 $(OBJ)/tools/menutest.o: CXXFLAGS += $(SDL_CFLAGS) $(RML_CFLAGS)
-$(BIN)/menutest: $(call objs,tools/menutest.cpp src/host/menu.cpp src/host/online.cpp src/host/links.cpp src/host/vf2_netplay.cpp $(NET_SRC) $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ)
+$(BIN)/menutest: $(call objs,tools/menutest.cpp src/host/menu.cpp src/host/online.cpp src/host/i18n.cpp src/host/text.cpp src/host/links.cpp src/host/vf2_netplay.cpp $(NET_SRC) $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS) $(FT_LIBS)
+
+# langtest: the strings' tables (src/host/lang): every ID in every language once, the same {places} as the English, each
+# language's letters in the menus' fonts, the settings' language codes; no ROM, no window
+$(BIN)/langtest: $(call objs,src/host/i18n.cpp src/host/text.cpp tools/langtest.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(SDL_LIBS) $(FT_LIBS)
+$(OBJ)/tools/langtest.o: CXXFLAGS += $(FT_CFLAGS)
 
 clean:
 	rm -rf $(OBJ) $(BIN)

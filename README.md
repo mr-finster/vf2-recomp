@@ -430,7 +430,7 @@ it's clearly slower than the CPU on that machine.
 | `src/host` | the SDL 3 host: window, input, pacing, scene sync, the GPU compositing (`d3d11_map.cpp`: Windows' texture uploads), the RmlUi menu |
 | `src/gpu` | the GPU renderer for the 3D: Metal (`gpu3d_metal.mm`), SDL_GPU (`gpu3d_sdlgpu.cpp`), its HLSL compute shaders (`gpu3d.hlsl`) and their compiled SPIR-V / DXIL (`gpu3d_shaders.h`) |
 | `tools/gpu/shaders.sh`, `tools/gpu3dcmp.cpp` | compiles `gpu3d.hlsl` into `gpu3d_shaders.h` with DXC; compares the GPU's 3D with the CPU's |
-| `assets/` | the app icon, the menu (`ui/`) and its font, the player select's painted sides |
+| `assets/` | the app icon, the menu (`ui/`) and its fonts, the player select's painted sides |
 | `third_party/` | MAME's i960 and 68000 cores and more, SLJIT, RmlUi, stb_image |
 | `tools/recomp` | the ahead-of-time recompiler (i960 to C++), for development |
 | `tools/*.cpp` | the headless runner (`vf2run`), disassembler, ROM set check, lockstep checker (`vf2lock`) |
@@ -478,7 +478,8 @@ the TGP (Olivier Galibert), the Model 2 driver and video (R. Belmont, Olivier Ga
 Matthew Daniels), the System 24 tile chip (Olivier Galibert), the SCSP and its DSP (ElSemi, R. Belmont), the
 polygon scan converter (Ville Linde, Aaron Giles) and more (`third_party/mame/README.md` lists every file and its
 authors), all BSD-3-Clause. Also RmlUi (MIT), stb_image (Sean Barrett, public domain / MIT), SDL 3 (zlib),
-FreeType (FreeType License), zlib, and the Barlow Condensed font (SIL Open Font License).
+FreeType (FreeType License), zlib, the Barlow Condensed font and, for the menus' Korean, Japanese, Chinese and
+Cyrillic, Noto Sans (all SIL Open Font License).
 
 Thanks to everyone who tested and reported: [duartepedro03](https://github.com/duartepedro03) and
 [MagitekArmor](https://github.com/MagitekArmor) (performance and the GPU renderer on Windows),
@@ -491,7 +492,8 @@ Virtua Fighter 2 is SEGA's. This project is not affiliated with or endorsed by S
 ## Licence
 
 MIT for this project's own code: see [LICENSE](LICENSE). Code from MAME keeps its BSD-3-Clause licence and notices;
-the rest of `third_party/` keeps its own, and the Barlow Condensed font the SIL Open Font License. The art, the
+the rest of `third_party/` keeps its own, and the fonts (Barlow Condensed, Noto Sans, JetBrains Mono:
+`assets/fonts/README.txt`) the SIL Open Font License. The art, the
 player select's painted sides (`assets/backgrounds/select.png`) and the app icon (`assets/icon/`, drawn by
 `tools/release/make_icon.py`), is by Mr Finster under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 

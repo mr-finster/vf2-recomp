@@ -67,7 +67,7 @@ add_custom_target(vf2_version ALL
 
 # ------------------------------------------------------------- the game's code
 set(VF2_APP
-    src/host/main.cpp src/host/menu.cpp src/host/online.cpp src/host/links.cpp src/host/vf2_netplay.cpp
+    src/host/main.cpp src/host/menu.cpp src/host/online.cpp src/host/i18n.cpp src/host/text.cpp src/host/links.cpp src/host/vf2_netplay.cpp
     src/host/sysinfo.cpp
     src/host/d3d11_map.cpp src/host/stb_image_impl.cpp
     src/rec/gen_none.cpp

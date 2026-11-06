@@ -66,6 +66,9 @@ echo "Portions of this software are copyright (c) The FreeType Project (www.free
 echo; tar xJf $D/freetype.tar.xz -O freetype-2.14.3/docs/FTL.TXT
 sec "zlib, Jean-loup Gailly and Mark Adler"; tar xzf $D/zlib.tar.gz -O zlib-1.3.1/LICENSE
 sec "Barlow Condensed font (SIL Open Font License 1.1)"; cat assets/fonts/OFL.txt
+sec "JetBrains Mono font (SIL Open Font License 1.1)"; cat assets/fonts/OFL-JetBrainsMono.txt
+sec "Noto Sans KR, JP, SC and TC fonts (SIL Open Font License 1.1)"; cat assets/fonts/OFL-NotoSansCJK.txt
+sec "Noto Sans font (SIL Open Font License 1.1)"; cat assets/fonts/OFL-NotoSans.txt
 if [ "$2" = --windows ]; then
 	sec "MinGW-w64 runtime (the Windows build links it in)"; cat tools/win/licenses/mingw-w64-runtime.txt
 	sec "winpthreads, the MinGW-w64 project (the Windows build links it in)"; cat tools/win/licenses/winpthreads.txt
