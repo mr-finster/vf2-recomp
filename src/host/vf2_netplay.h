@@ -71,6 +71,12 @@ std::vector<uint8_t> start_blob(const model2a &board, int secret = 0);
 // fighter_extra)
 std::vector<uint8_t> start_blob_random(const model2a &board, int secret, const std::string &host_fighter, uint32_t seed);
 
+// A watched match's start (src/net/watch.h, the host's to the lobby): the session's blob, then the guest's fighter
+// (player 2's Identity::extra, which only the guest's hello carries) and its length, then "VF2W", so a watcher plays
+// both fighters as the players do. Every new host's, a random fighters' match or not (the plain one: no letters)
+std::vector<uint8_t> watch_blob(const std::vector<uint8_t> &blob, const std::string &guest_extra);
+bool watch_blob_split(const std::vector<uint8_t> &watched, std::vector<uint8_t> &blob, std::string &guest_extra);
+
 // A player's fighter as the handshake carries it (Identity::extra), VF1's: "" the select as ever, "R" a random fighter
 // (a new one at every select), "S<place>" a named fighter's (its place in the book, model2a::random_fighter_names: the
 // same on any machine with the ROM and this online version; a change to the book, or its order, changes RANDOM_TAG). From Cheats' setting (model2a::set_random_player's: "",
@@ -154,6 +160,9 @@ public:
 	std::function<void(const std::vector<uint8_t> &)> sound_out;   // bytes for the sound board
 	std::function<void()> on_begin;            // a match's start, before the board is set up for it (keep the player's NVRAM and settings)
 	std::function<void()> booting;             // now and then in the match's boot (seconds of frames: the window's events)
+	// (a watcher catching up from the match's start, unseen: the frames' sound bytes dropped, not played in a burst;
+	// only what's heard, never the game)
+	bool mute = false;
 
 	bool begin(const std::vector<uint8_t> &blob) override;
 	void save(std::vector<uint8_t> &state) override;
@@ -181,6 +190,7 @@ public:
 	std::vector<uint8_t> host_blob(int secret = 0);   // (start_blob, or start_blob_random with this side's fighter and a fresh seed)
 	void peer_extra(const std::string &extra) override { their_extra = extra; }
 	std::string fighters[2];   // (the match's, as begin set them: "", "*" or "S<place>")
+	std::string extras[2];     // (and as the handshake carries them, fighter_extra's: "", "R" or "S<place>")
 
 	// tests: the state's hash after each frame a multiple of this, the last time it ran (0: none kept)
 	uint32_t checkpoint_every = 0;

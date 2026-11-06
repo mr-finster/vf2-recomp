@@ -32,6 +32,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<key>NSHighResolutionCapable</key><true/>
 	<key>LSApplicationCategoryType</key><string>public.app-category.arcade-games</string>
 	<key>GCSupportsControllerUserInteraction</key><true/>
+	<key>CFBundleURLTypes</key><array><dict>
+		<key>CFBundleURLName</key><string>recomp.vf2.unofficial.room</string>
+		<key>CFBundleURLSchemes</key><array><string>vf2recomp</string></array>
+	</dict></array>
 </dict>
 </plist>
 PLIST

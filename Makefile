@@ -109,7 +109,7 @@ $(OBJ)/src/gpu/gpu3d_sdlgpu.o: CXXFLAGS += $(SDL_CFLAGS)
 $(OBJ)/src/host/main.o: CXXFLAGS += -DVF2_GPU3D_SDL=1
 endif
 
-$(BIN)/vf2: $(call objs,src/host/main.cpp src/host/menu.cpp src/host/online.cpp src/host/vf2_netplay.cpp $(NET_SRC) src/host/sysinfo.cpp src/host/d3d11_map.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ) $(GPU3D_OBJ)
+$(BIN)/vf2: $(call objs,src/host/main.cpp src/host/menu.cpp src/host/online.cpp src/host/links.cpp src/host/vf2_netplay.cpp $(NET_SRC) src/host/sysinfo.cpp src/host/d3d11_map.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ) $(GPU3D_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS) $(FT_LIBS) $(GPU3D_LIBS)
 
@@ -185,7 +185,7 @@ $(BIN)/vf2soundonly: $(call objs,tools/vf2soundonly.cpp $(MACHINE) $(HOST) $(COR
 
 # menutest: the Online pages as pictures, no ROM (a made-up one builds the board; SDL_VIDEO_DRIVER=offscreen)
 $(OBJ)/tools/menutest.o: CXXFLAGS += $(SDL_CFLAGS) $(RML_CFLAGS)
-$(BIN)/menutest: $(call objs,tools/menutest.cpp src/host/menu.cpp src/host/online.cpp src/host/vf2_netplay.cpp $(NET_SRC) $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ)
+$(BIN)/menutest: $(call objs,tools/menutest.cpp src/host/menu.cpp src/host/online.cpp src/host/links.cpp src/host/vf2_netplay.cpp $(NET_SRC) $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(RML_SRC)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS) $(FT_LIBS)
 

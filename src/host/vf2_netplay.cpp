@@ -113,6 +113,32 @@ std::vector<uint8_t> start_blob_random(const model2a &b, int secret, const std::
 	return out;
 }
 
+namespace { constexpr uint32_t WATCH_TAIL = 0x57324656; }   // "VF2W"
+
+std::vector<uint8_t> watch_blob(const std::vector<uint8_t> &blob, const std::string &guest_extra)
+{
+	std::vector<uint8_t> out = blob;
+	const std::string x = guest_extra.substr(0, vfnet::MAX_EXTRA);
+	out.insert(out.end(), x.begin(), x.end());
+	out.push_back(uint8_t(x.size()));
+	for (int k = 0; k < 4; k++) out.push_back(uint8_t(WATCH_TAIL >> (8 * k)));
+	return out;
+}
+
+bool watch_blob_split(const std::vector<uint8_t> &w, std::vector<uint8_t> &blob, std::string &guest_extra)
+{
+	uint32_t tail = 0;
+	if (w.size() < 5) return false;
+	memcpy(&tail, w.data() + w.size() - 4, 4);
+	const size_t n = w[w.size() - 5];
+	if (tail != WATCH_TAIL || n > size_t(vfnet::MAX_EXTRA) || w.size() < 5 + n) return false;
+	const size_t at = w.size() - 5 - n;
+	guest_extra.assign(reinterpret_cast<const char *>(w.data()) + at, n);
+	for (char c : guest_extra) if (c < 0x21 || c > 0x7e) return false;   // (printable, as the hello's)
+	blob.assign(w.begin(), w.begin() + ptrdiff_t(at));
+	return true;
+}
+
 std::string fighter_extra(const std::string &setting, model2a &b)
 {
 	if (setting.empty()) return "";
@@ -197,10 +223,14 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	// each player's fighter (Cheats' random fighters): the host's (player 1's) in its blob, the guest's in its hello
 	fighters[0].clear();
 	fighters[1].clear();
+	extras[0].clear();
+	extras[1].clear();
 	if (random_fighters) {
 		memcpy(&seed, blob.data() + BASE, 4);
 		const std::string host_x(reinterpret_cast<const char *>(blob.data()) + FIXED, blob[FIXED - 1]);
 		if (!fighter_setting(host_x, board, fighters[0]) || !fighter_setting(hosting ? their_extra : own_extra, board, fighters[1])) return false;
+		extras[0] = host_x;
+		extras[1] = hosting ? their_extra : own_extra;
 	}
 	const bool random = !fighters[0].empty() || !fighters[1].empty();
 	if (settle) settle();
@@ -321,7 +351,7 @@ void Adapter::advance(const uint16_t input[2], bool resim)
 	if (!sound_taken) {
 		std::vector<uint8_t> out;
 		take_sound(out);
-		if (!out.empty() && sound_out) sound_out(out);
+		if (!out.empty() && sound_out && !mute) sound_out(out);
 	}
 	frame++;
 	if (checkpoint_every && frame % checkpoint_every == 0) {
