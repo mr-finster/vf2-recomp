@@ -7,7 +7,9 @@
   platform and renderer backends, as vf1-recomp has them. Three changes: RmlUi_Renderer_SDL.cpp loads images
   with SDL 3.4's own SDL_LoadSurface_IO (BMP, PNG) instead of SDL_image, has BeginOverlay(): BeginFrame without
   the clear, and uses SDL3's built-in premultiplied blend (the same blend as its custom one, which the software
-  renderer doesn't support).
+  renderer doesn't support). For the menus' languages, as VF3 has it: fallback faces ordered by language, then style
+  and weight (`Rml::SetFallbackFontOrder`, FontProvider, FontFaceHandleDefault), and lines broken between Chinese,
+  Japanese and Korean letters with the kinsoku rules (ElementText's BuildToken).
 - `stb/`: Sean Barrett's stb_image 2.30 (public domain / MIT, see the end of the file), for loading the
   widescreen's painted sides (PNG, JPG).
 
