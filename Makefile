@@ -48,7 +48,7 @@ M68000 = third_party/mame/m68000/m68000.cpp third_party/mame/m68000/m68000-decod
 	third_party/mame/m68000/m68000-sdf.cpp third_party/mame/m68000/m68000-sdp.cpp
 HOST = src/host/romset.cpp src/host/input_script.cpp
 # Netplay (src/net, VF3's, kept the same in all three): the game's Online play
-NET_SRC = src/net/session.cpp src/net/link.cpp src/net/room_link.cpp src/net/stun.cpp src/net/http.cpp
+NET_SRC = src/net/session.cpp src/net/link.cpp src/net/room_link.cpp src/net/stun.cpp src/net/http.cpp src/net/watch.cpp
 
 
 # SLJIT (BSD-2): the native code made at start-up. C, built by the C++ compiler's driver (-x c), so
@@ -126,10 +126,15 @@ $(BIN)/vf2run: $(call objs,tools/vf2run.cpp src/host/stb_image_impl.cpp $(MACHIN
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 # Netplay (src/net): rollback sessions and their links, nothing of the game's (the same files as VF1's and VF3's)
-NET = src/net/session.cpp src/net/link.cpp src/net/room_link.cpp src/net/stun.cpp src/net/http.cpp
+NET = src/net/session.cpp src/net/link.cpp src/net/room_link.cpp src/net/stun.cpp src/net/http.cpp src/net/watch.cpp
 
 # nettest: the session on a simulated network with a stand-in game (no ROM)
 $(BIN)/nettest: $(call objs,$(NET) tools/nettest.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+# watchsim: watching a match, simulated (no ROM): the players the same with 0, 1 or 50 watchers, each watcher's game theirs
+$(BIN)/watchsim: $(call objs,$(NET) tools/watchsim.cpp)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
@@ -147,6 +152,11 @@ $(BIN)/roomtest: $(call objs,$(NET) tools/roomtest.cpp)
 $(BIN)/netfuzz: $(NET) tools/netfuzz.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $^ -o $@
+
+# wsfuzz: the WebSocket frame reader against anything a server could send, with AddressSanitizer and UBSan
+$(BIN)/wsfuzz: src/net/http.cpp tools/wsfuzz.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $^ -o $@ -lpthread
 
 # The rollback soak test (tools/vf2soak.cpp): two boards, one rolled back every frame, byte for byte the same
 $(BIN)/vf2soak: $(call objs,tools/vf2soak.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
