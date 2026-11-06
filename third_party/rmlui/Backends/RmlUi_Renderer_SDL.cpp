@@ -2,6 +2,7 @@
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/FileInterface.h>
 #include <RmlUi/Core/Types.h>
+#include <algorithm>
 
 #if SDL_MAJOR_VERSION >= 3
 	// vf1-recomp: SDL 3.4 loads BMP and PNG itself (SDL_LoadSurface_IO); no SDL_image
@@ -38,6 +39,14 @@ RenderInterface_SDL::RenderInterface_SDL(SDL_Renderer* renderer) : renderer(rend
 #if SDL_MAJOR_VERSION >= 3
 	// vf1-recomp: the same blend, built in, so the software renderer does it too
 	blend_mode = SDL_BLENDMODE_BLEND_PREMULTIPLIED;
+	// vf3-recomp: but the software renderer's textured triangles don't take premultiplied colours as they should
+	// (a text shadow drew as a black box): there the colours and textures unpremultiplied, and SDL's plain blend
+	const char* name = SDL_GetRendererName(renderer);
+	if (name && SDL_strcmp(name, SDL_SOFTWARE_RENDERER) == 0)
+	{
+		straight = true;
+		blend_mode = SDL_BLENDMODE_BLEND;
+	}
 #else
 	blend_mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_ONE,
 		SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD);
@@ -89,11 +98,18 @@ void RenderInterface_SDL::RenderGeometry(Rml::CompiledGeometryHandle handle, Rml
 	{
 		SDL_Vertex& sdl_vertex = sdl_vertices[i];
 		sdl_vertex.position = {vertices[i].position.x + translation.x, vertices[i].position.y + translation.y};
+
 		sdl_vertex.tex_coord = {vertices[i].tex_coord.x, vertices[i].tex_coord.y};
 
 		const auto& color = vertices[i].colour;
 #if SDL_MAJOR_VERSION >= 3
-		sdl_vertex.color = {color.red / 255.f, color.green / 255.f, color.blue / 255.f, color.alpha / 255.f};
+		if (straight)
+		{
+			const float k = color.alpha ? 1.f / color.alpha : 0.f;
+			sdl_vertex.color = {color.red * k, color.green * k, color.blue * k, color.alpha / 255.f};
+		}
+		else
+			sdl_vertex.color = {color.red / 255.f, color.green / 255.f, color.blue / 255.f, color.alpha / 255.f};
 #else
 		sdl_vertex.color = {color.red, color.green, color.blue, color.alpha};
 #endif
@@ -101,6 +117,24 @@ void RenderInterface_SDL::RenderGeometry(Rml::CompiledGeometryHandle handle, Rml
 
 	SDL_Texture* sdl_texture = (SDL_Texture*)texture;
 
+#if SDL_MAJOR_VERSION >= 3
+	// vf3-recomp: the software renderer leaves a line of pixels out between two triangles turned opposite ways (a
+	// line through a rounded box's fill, a dot drawn as a "c"): every triangle turned the same way there
+	if (straight && !texture && num_indices >= 3)
+	{
+		if (sdl_indices.size() < num_indices)
+			sdl_indices.resize(num_indices);
+		for (size_t i = 0; i + 2 < num_indices; i += 3)
+		{
+			const SDL_FPoint a = sdl_vertices[indices[i]].position, b = sdl_vertices[indices[i + 1]].position, c = sdl_vertices[indices[i + 2]].position;
+			const bool turned = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) < 0;
+			sdl_indices[i] = indices[i];
+			sdl_indices[i + 1] = indices[turned ? i + 2 : i + 1];
+			sdl_indices[i + 2] = indices[turned ? i + 1 : i + 2];
+		}
+		indices = sdl_indices.data();
+	}
+#endif
 	SDL_RenderGeometry(renderer, sdl_texture, sdl_vertices.get(), (int)num_vertices, indices, (int)num_indices);
 }
 
@@ -173,7 +207,7 @@ Rml::TextureHandle RenderInterface_SDL::LoadTexture(Rml::Vector2i& texture_dimen
 	}
 
 	// Convert colors to premultiplied alpha, which is necessary for correct alpha compositing.
-	const size_t pixels_byte_size = surface->w * surface->h * 4;
+	const size_t pixels_byte_size = straight ? 0 : surface->w * surface->h * 4;
 	byte* pixels = static_cast<byte*>(surface->pixels);
 	for (size_t i = 0; i < pixels_byte_size; i += 4)
 	{
@@ -208,6 +242,20 @@ Rml::TextureHandle RenderInterface_SDL::GenerateTexture(Rml::Span<const Rml::byt
 	};
 	auto DestroySurface = [](SDL_Surface* surface) { SDL_FreeSurface(surface); };
 #endif
+
+	// (vf3-recomp: RmlUi's own textures come premultiplied: undone for the software renderer)
+	Rml::Vector<Rml::byte> unpremultiplied;
+	if (straight)
+	{
+		unpremultiplied.assign(source.begin(), source.end());
+		for (size_t i = 0; i < unpremultiplied.size(); i += 4)
+		{
+			const int a = unpremultiplied[i + 3];
+			for (size_t j = 0; j < 3; ++j)
+				unpremultiplied[i + j] = Rml::byte(a ? std::min(255, int(unpremultiplied[i + j]) * 255 / a) : 0);
+		}
+		source = {unpremultiplied.data(), unpremultiplied.size()};
+	}
 
 	SDL_Surface* surface = CreateSurface();
 
