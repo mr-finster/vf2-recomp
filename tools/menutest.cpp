@@ -1309,7 +1309,7 @@ int main(int argc, char **argv)
 		const std::string longest = "vf2recomp://vf2/watch/" + std::string(60, 'K');
 		check(!links::parse(longest, l), "not a link: one too long");
 	}
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)   // (a Mac's links come from the system to the running app: no pid file)
 	{   // two copies on one data folder: the one running first stays the one links are handed to (a link never starts a
 		// third); once it's gone, the other takes its place
 		namespace fs = std::filesystem;
