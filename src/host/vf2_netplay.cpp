@@ -373,6 +373,147 @@ void Adapter::advance(const uint16_t input[2], bool resim)
 	}
 }
 
+void UnheardQueue::look(const std::vector<uint8_t> &b, bool is_frame)
+{
+	for (const uint8_t x : b) {
+		if (x >= 0xf8) continue;
+		if (x & 0x80) { st = x; need = midi_data_bytes(x); got = 0; continue; }
+		if (!need) { need = midi_data_bytes(st); got = 0; }   // (running status)
+		if (!need) continue;
+		if (got++ == 0) d1 = x;
+		if (--need == 0 && st == MUSIC_CUE[0] && d1 == MUSIC_CUE[1]) cue = is_frame ? frames_in : frames_in + 1;
+	}
+}
+
+void UnheardQueue::heard(const std::vector<uint8_t> &b)
+{
+	const uint8_t st0 = st;
+	look(b, false);
+	q.push_back({ Piece::heard, b, 0, st0, std::move(carry_next) });
+	carry_next.clear();
+	if (strip) strip_front(q.size() - 1);
+}
+
+void UnheardQueue::frame(const std::vector<uint8_t> &b)
+{
+	const uint8_t st0 = st;
+	look(b, true);
+	q.push_back({ Piece::frame, b, frames_in++, st0, std::move(carry_next) });
+	carry_next.clear();
+	timed++;
+	if (strip) strip_front(q.size() - 1);
+	// past most_timed frames waiting (not counting those round the last cue), the oldest of the others let go: their
+	// notes (sounds that would have ended by now), but not the rest, which go with the next one (carry)
+	auto kept = [&](const Piece &p) { return cue != UINT64_MAX && p.n + before_cue >= cue && p.n < cue + cue_timed; };
+	size_t kept_n = 0;
+	for (const Piece &p : q) kept_n += p.kind == Piece::frame && kept(p);
+	while (timed - kept_n > most_timed) {
+		size_t i = 0;
+		while (i < q.size() && (q[i].kind != Piece::frame || kept(q[i]))) i++;
+		if (i == q.size()) break;
+		std::vector<uint8_t> c = std::move(q[i].carry);
+		carry(c, q[i].bytes, q[i].st0);
+		q.erase(q.begin() + ptrdiff_t(i));
+		timed--;
+		dropped++;
+		strip = true;
+		if (i < q.size()) {
+			carry(c, q[i].carry, 0);
+			q[i].carry = std::move(c);
+			strip_front(i);
+		} else {
+			carry(c, carry_next, 0);
+			carry_next = std::move(c);
+		}
+	}
+}
+
+// (a frame let go: its messages put after carry's, but its notes on (sounds over by now) and the music's cues (the last
+// one's never let go: those before it are over too); then each once, its last: a control's last value, a note's last
+// off, a channel's last program. s: the running status its bytes start with)
+void UnheardQueue::carry(std::vector<uint8_t> &c, const std::vector<uint8_t> &bytes, uint8_t s)
+{
+	struct M { uint8_t b[3]; int n; };
+	std::vector<M> ms;
+	auto read = [&](const std::vector<uint8_t> &v, uint8_t s) {
+		int need = 0;
+		M m{};
+		for (const uint8_t x : v) {
+			if (x >= 0xf8) continue;
+			if (x & 0x80) { s = x; need = 0; continue; }
+			if (!need) {
+				need = midi_data_bytes(s);
+				if (!need) continue;
+				m = { { s, 0, 0 }, 1 };
+			}
+			m.b[m.n++] = x;
+			if (--need == 0) ms.push_back(m);
+		}
+	};
+	read(c, 0);
+	read(bytes, s);
+	auto note = [](const M &m) { return (m.b[0] & 0xf0) == 0x90 && m.b[2] != 0; };
+	auto key = [](const M &m) {   // (a note off, either way it's sent, as one; a program, a pressure, a bend by its channel)
+		const uint8_t k = m.b[0] & 0xf0;
+		const uint8_t st = k == 0x90 ? uint8_t(0x80 | (m.b[0] & 0x0f)) : m.b[0];
+		return k >= 0xc0 ? int(st) << 8 : int(st) << 8 | m.b[1];
+	};
+	std::vector<M> out;
+	std::vector<int> seen;
+	for (size_t i = ms.size(); i-- > 0;) {
+		const M &m = ms[i];
+		if (note(m) || (m.b[0] == MUSIC_CUE[0] && m.b[1] == MUSIC_CUE[1])) continue;
+		if (std::find(seen.begin(), seen.end(), key(m)) != seen.end()) continue;
+		seen.push_back(key(m));
+		out.push_back(m);
+	}
+	c.clear();
+	for (size_t i = out.size(); i-- > 0;) c.insert(c.end(), out[i].b, out[i].b + out[i].n);
+}
+
+// (after bytes let go: the next ones from a status byte, a message's data without its status byte being taken for
+// another's)
+void UnheardQueue::strip_front(size_t i)
+{
+	for (; i < q.size() && strip; i++) {
+		std::vector<uint8_t> &u = q[i].bytes;
+		const auto st = std::find_if(u.begin(), u.end(), [](uint8_t x) { return x >= 0x80; });
+		strip = st == u.end();
+		u.erase(u.begin(), st);
+	}
+}
+
+bool UnheardQueue::next(Piece &p)
+{
+	if (q.empty()) return false;
+	p = std::move(q.front());
+	q.pop_front();
+	if (p.kind == Piece::frame) timed--;
+	return true;
+}
+
+void UnheardQueue::clear()
+{
+	q.clear();
+	timed = 0;
+	frames_in = 0;
+	cue = UINT64_MAX;
+	st = d1 = 0;
+	need = got = 0;
+	strip = false;
+	carry_next.clear();
+	dropped = 0;
+}
+
+void run_unheard(model2a &b, const UnheardQueue::Piece &p)
+{
+	b.sound_bytes(p.carry.data(), p.carry.size());
+	b.sound_bytes(p.bytes.data(), p.bytes.size());
+	if (p.kind == UnheardQueue::Piece::heard) return;
+	b.run_frame();
+	b.m_audio_out.clear();
+}
+
 uint8_t Score::players_in(const model2a &board)
 {
 	const uint8_t v = board.workram()[PLAYING];

@@ -4009,16 +4009,16 @@ int main(int argc, char **argv)
 		std::vector<uint8_t> in;
 		std::atomic<bool> quit{ false };
 		std::atomic<uint64_t> frames{ 0 }, bytes_in{ 0 };   // (the log's: what it played)
-		// (a watcher's frames caught up unseen, a frame's bytes each, for the board to run through unheard, in time, as
-		// fast as it can: after in's first unheard_at bytes; while there are some, put's go after them (heard), so the
-		// bytes keep their order)
-		std::deque<std::pair<bool, std::vector<uint8_t>>> unheard;   // (heard, the bytes)
+		// (a watcher's frames caught up unseen, for the board to run through unheard as fast as it can, in time while it
+		// keeps up (vf2net::UnheardQueue, bounded): after in's first unheard_at bytes; while there are some, put's go
+		// after them (heard), so the bytes keep their order)
+		vf2net::UnheardQueue unheard;
 		size_t unheard_at = 0;
 		std::atomic<bool> unheard_on{ false };
 		void put(const std::vector<uint8_t> &b)
 		{
 			std::lock_guard<std::mutex> lk(mx);
-			if (unheard_on) unheard.emplace_back(true, b);
+			if (unheard_on) unheard.heard(b);
 			else in.insert(in.end(), b.begin(), b.end());
 			bytes_in += b.size();
 		}
@@ -4027,7 +4027,7 @@ int main(int argc, char **argv)
 			if (!th.joinable()) return;   // (no board playing: none to run them through)
 			std::lock_guard<std::mutex> lk(mx);
 			if (!unheard_on) unheard_at = in.size();
-			unheard.emplace_back(false, b);
+			unheard.frame(b);
 			unheard_on = true;
 		}
 		void stop()
@@ -4081,22 +4081,16 @@ int main(int argc, char **argv)
 			}
 			while (!msound.quit) {
 				if (msound.unheard_on) {   // (a watcher's frames caught up unseen: run through unheard, the bytes put before them first)
-					std::deque<std::pair<bool, std::vector<uint8_t>>> un;
+					vf2net::UnheardQueue::Piece piece;
 					{
 						std::lock_guard<std::mutex> lk(msound.mx);
 						const size_t at = std::min(msound.unheard_at, msound.in.size());
 						b.sound_bytes(msound.in.data(), at);
 						msound.in.erase(msound.in.begin(), msound.in.begin() + ptrdiff_t(at));
-						un.swap(msound.unheard);
-						msound.unheard_on = false;
+						msound.unheard_at = 0;
+						if (!msound.unheard.next(piece)) { msound.unheard_on = false; continue; }
 					}
-					for (const auto &[heard, f] : un) {
-						if (msound.quit) break;
-						b.sound_bytes(f.data(), f.size());
-						if (heard) continue;
-						b.run_frame();
-						b.m_audio_out.clear();
-					}
+					vf2net::run_unheard(b, piece);
 					continue;
 				}
 				if (SDL_GetAudioStreamQueued(audio) >= target) { SDL_DelayNS(1000000); continue; }
