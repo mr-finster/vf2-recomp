@@ -305,6 +305,7 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	}
 	started_secret = secret;
 	sound_sent.clear();
+	sound_starts = dropped = false;
 	checkpoints.clear();
 	return true;
 }
@@ -345,13 +346,25 @@ void Adapter::advance(const uint16_t input[2], bool resim)
 		if (board.game_mode() == 7 && ram[VERSUS] == 1 && ram[FIGHTS] == 0 && ram[STREAK] == 0 && stage_offset)
 			ram[FIGHTS] = ram[STAGE] = u8(stage_offset);
 	}
+	if (sound_starts) {   // (a watcher's first frame)
+		sound_starts = false;
+		if (sound_begin) sound_begin();
+	}
 	sound_taken = false;
 	if (run) run(resim);
 	else board.run_frame();
 	if (!sound_taken) {
 		std::vector<uint8_t> out;
 		take_sound(out);
-		if (!out.empty() && sound_out && !mute) sound_out(out);
+		if (mute) {   // (a watcher catching up: unheard, in time)
+			if (sound_unheard) sound_unheard(out);
+			else dropped = dropped || !out.empty();
+		} else if (!out.empty() && sound_out) {
+			if (dropped)   // (bytes dropped before these: from a status byte, their first data bytes no message's start)
+				out.erase(out.begin(), std::find_if(out.begin(), out.end(), [](uint8_t x) { return x >= 0x80; }));
+			dropped = false;
+			if (!out.empty()) sound_out(out);
+		}
 	}
 	frame++;
 	if (checkpoint_every && frame % checkpoint_every == 0) {

@@ -160,9 +160,16 @@ public:
 	std::function<void(const std::vector<uint8_t> &)> sound_out;   // bytes for the sound board
 	std::function<void()> on_begin;            // a match's start, before the board is set up for it (keep the player's NVRAM and settings)
 	std::function<void()> booting;             // now and then in the match's boot (seconds of frames: the window's events)
-	// (a watcher catching up from the match's start, unseen: the frames' sound bytes dropped, not played in a burst;
-	// only what's heard, never the game)
+	// (a watcher catching up unseen: the frames' bytes for the sound board not played as they run, a burst, but given
+	// to sound_unheard, a frame's at a time (none too), for the sound board to run through unheard, in time: they're
+	// commands sent once (a stage's music is started by one); dropped, a watcher who came in mid-fight heard its
+	// effects and voices but no music till the next cue. Only what's heard, never the game)
 	bool mute = false;
+	std::function<void(const std::vector<uint8_t> &)> sound_unheard;   // (none: they're dropped)
+	// (a watcher's: sound_begin called as its first frame runs, before its bytes go anywhere, for the host to start
+	// the sound board (boot_sound's ready), so the frames it catches up unseen run through it. begin sets it off)
+	bool sound_starts = false;
+	std::function<void()> sound_begin;
 
 	bool begin(const std::vector<uint8_t> &blob) override;
 	void save(std::vector<uint8_t> &state) override;
@@ -205,6 +212,7 @@ private:
 	std::map<uint32_t, std::vector<uint8_t>> sound_sent;
 	std::vector<uint8_t> check_buf;
 	bool sound_taken = false;
+	bool dropped = false;   // (bytes for the sound board muted with no sound_unheard: none heard since)
 	int started_secret = 0;
 	std::string their_extra;
 };

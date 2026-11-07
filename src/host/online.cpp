@@ -872,15 +872,16 @@ bool Online::watch_start(const vfnet::watch::Start &sent, tr::line &why)
 	// match as the guest does, both fighters known; checked before anything here's set for it)
 	vfnet::watch::Start st = sent;
 	std::string guest;
-	if (!vf2net::watch_blob_split(sent.blob, st.blob, guest)) { why = tr::line(tr::WATCH_OTHER_VERSION, { { "version", online_menu::clean_name(sent.meta.build) } }); return false; }
+	if (!vf2net::watch_blob_split(sent.blob, st.blob, guest)) { why = tr::WATCH_START_BAD; return false; }
 	if (!use_terms(sent.meta.terms)) { why = tr::line(tr::WATCH_OTHER_VERSION, { { "version", online_menu::clean_name(sent.meta.build) } }); return false; }
 	adapter.hosting = false;
 	adapter.own_extra = adapter.random_fighters ? guest : std::string();
 	watch_meta = st.meta;
 	score = {};
-	adapter.mute = true;   // (catching up unseen: its sound dropped)
+	adapter.mute = false;   // (heard from its first frame seen; muted as it catches up unseen: on_catch_up)
 	if (adapter.settle) adapter.settle();
 	if (!spec->start(st)) { why = tr::WATCH_START_BAD; return false; }
+	adapter.sound_starts = true;   // (its sound board started as its first frame runs: Adapter::sound_begin)
 	log_line("watching " + online_menu::clean_name(st.meta.name[0]) + " vs " + online_menu::clean_name(st.meta.name[1]) + " (" + st.meta.terms + ")");
 	return true;
 }
@@ -969,7 +970,7 @@ void Online::watch_poll()
 		Spectator::Config c;
 		stream_stop();
 		spec = std::make_unique<Spectator>(adapter, c);
-		spec->on_catch_up = [this](bool on) { adapter.mute = on || !watch_shown; };   // (catching up, unseen: no sound, then none late)
+		spec->on_catch_up = [this](bool on) { adapter.mute = on; };   // (catching up, unseen: its sound kept, run through unheard before the next frame heard)
 		watch_job.reset();
 		watch_shown = false;
 		watch_gone = false;
@@ -2037,9 +2038,8 @@ bool Online::step(uint16_t input)
 		bool shown = false;
 		const int ran = spec->tick(&shown, 10.0);
 		if (ran) score.frame(board);
-		if (shown && !watch_shown) {   // (caught up: its first picture, the sound from now on)
+		if (shown && !watch_shown) {   // (caught up: its first picture, its sound with it)
 			watch_shown = true;
-			adapter.mute = false;
 			notices.push_back({ Notice::watching, tr::line(tr::WATCHING_P1_VS_P2, { { "p1", player_name(0) }, { "p2", player_name(1) } }) });
 		}
 		return shown;
