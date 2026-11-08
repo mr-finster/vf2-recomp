@@ -4646,7 +4646,7 @@ int main(int argc, char **argv)
 		if (k.scancode == SDL_SCANCODE_RETURN && (k.mod & SDL_KMOD_ALT)) return true;
 		if (k.scancode != SDL_SCANCODE_F || (k.mod & (SDL_KMOD_CTRL | SDL_KMOD_ALT | SDL_KMOD_GUI))) return false;
 		for (const auto &c : cfg.ctl)
-			for (SDL_Scancode s : c.key) if (s == SDL_SCANCODE_F) return false;
+			for (int a = 0; a < C_COUNT; a++) if (c.key[a] == SDL_SCANCODE_F || c.key2[a] == SDL_SCANCODE_F) return false;   // (first or second)
 		return true;
 	};
 	while (running) {
