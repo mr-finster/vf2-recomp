@@ -579,7 +579,7 @@ template <unsigned NumVerts>
 void model2_video::model2_3d_process_polygon(raster_state *raster, u32 attr)
 {
 	quad_m2 object;
-	u16 *th, *tp;
+	// (the texture points and header: read through tpr and thr below)
 	int32_t tho;
 	u32 i;
 	bool cull;
@@ -631,37 +631,32 @@ void model2_video::model2_3d_process_polygon(raster_state *raster, u32 attr)
 
 	/* read in the texture information */
 
-	/* texture point data */
-	if (raster->command_buffer[0] & 0x800000)
-		tp = &raster->texture_ram[raster->command_buffer[0] & 0xffff];
-	else
-		tp = &raster->texture_rom[raster->command_buffer[0] & raster->texture_rom_mask];
-
-	object.v[0].pv = *tp++;
-	object.v[0].pu = *tp++;
-	object.v[1].pv = *tp++;
-	object.v[1].pu = *tp++;
-	object.v[2].pv = *tp++;
-	object.v[2].pu = *tp++;
+	/* texture point data (each word's address kept to the memory, as the first's: points at its end, a display list
+	   from a snapshot's RAM, read past it) */
+	const u32 tpa = raster->command_buffer[0];
+	auto tpr = [&](u32 k) -> u16 { return tpa & 0x800000 ? raster->texture_ram[(tpa + k) & 0xffff] : raster->texture_rom[(tpa + k) & raster->texture_rom_mask]; };
+	object.v[0].pv = tpr(0);
+	object.v[0].pu = tpr(1);
+	object.v[1].pv = tpr(2);
+	object.v[1].pu = tpr(3);
+	object.v[2].pv = tpr(4);
+	object.v[2].pu = tpr(5);
 	if (NumVerts == 4)
 	{
-		object.v[3].pv = *tp++;
-		object.v[3].pu = *tp++;
+		object.v[3].pv = tpr(6);
+		object.v[3].pu = tpr(7);
 	}
 
 	/* update the address */
 	raster->command_buffer[0] += NumVerts * 2;
 
-	/* texture header data */
-	if (raster->command_buffer[1] & 0x800000)
-		th = &raster->texture_ram[raster->command_buffer[1] & 0xffff];
-	else
-		th = &raster->texture_rom[raster->command_buffer[1] & raster->texture_rom_mask];
-
-	object.texheader[0] = *th++;
-	object.texheader[1] = *th++;
-	object.texheader[2] = *th++;
-	object.texheader[3] = *th++;
+	/* texture header data (as the points') */
+	const u32 tha = raster->command_buffer[1];
+	auto thr = [&](u32 k) -> u16 { return tha & 0x800000 ? raster->texture_ram[(tha + k) & 0xffff] : raster->texture_rom[(tha + k) & raster->texture_rom_mask]; };
+	object.texheader[0] = thr(0);
+	object.texheader[1] = thr(1);
+	object.texheader[2] = thr(2);
+	object.texheader[3] = thr(3);
 
 	/* extract the texture header offset */
 	tho = (attr >> 12) & 0x1f;
@@ -721,7 +716,7 @@ void model2_video::model2_3d_process_polygon(raster_state *raster, u32 attr)
 				verts_in[j] = verts_out[j];
 		}
 
-		if (clipped_verts > 2)
+		if (clipped_verts > 2 && raster->poly_list_index < MAX_POLYGONS - 1)   // (a full list: the polygon left out, not the process stopped (MAME's fatal error), as a display list from a snapshot's RAM can fill it)
 		{
 			polygon *zpoly;
 
@@ -733,11 +728,6 @@ void model2_video::model2_3d_process_polygon(raster_state *raster, u32 attr)
 
 			/* go through the clipped vertex list, adding polygons */
 			polygon *poly = &raster->poly_list[raster->poly_list_index++];
-
-			if (raster->poly_list_index >= MAX_POLYGONS)
-			{
-				fatalerror("SEGA 3D: Max polygon limit exceeded\n");
-			}
 
 			/* copy the object information */
 			poly->z = object.z;
@@ -1538,9 +1528,9 @@ void model2_video::model2_3d_push(raster_state *raster, u32 input)
 			}
 			break;
 
-			default:
+			default:   // (a command it hasn't: dropped, not the process stopped (MAME's fatal error); the game's lists have none)
 			{
-				fatalerror("SEGA 3D: Unknown rasterizer command %08x\n", raster->cur_command);
+				raster->cur_command = 0;
 			}
 		}
 	}
@@ -1571,6 +1561,13 @@ void model2_video::model2_3d_push(raster_state *raster, u32 input)
  *******************************************/
 
 /* Parse Polygons: Normals Present, No Specular case */
+// The geometrizer's reads of a display list's words, and of an object's in polygon RAM or ROM: none past the end of the
+// memory they're in (m_geo_end), whatever counts and addresses the list holds (a snapshot's RAM can hold anything; MAME's
+// read on past them). Past the end: zeros, and the loops over counts stop. The game's lists never get there: the same
+// words and polygons as before
+#define GEO_NEXT(p) ((p) < m_geo_end ? *(p)++ : 0u)
+#define GEO_SKIP(p, n) (m_geo_end - (p) > ptrdiff_t(n) ? (p) + (n) : m_geo_end)
+
 void model2_video::geo_parse_np_ns(geo_state *geo, u32 *input, u32 count)
 {
 	raster_state *raster = geo->raster;
@@ -1578,9 +1575,9 @@ void model2_video::geo_parse_np_ns(geo_state *geo, u32 *input, u32 count)
 	u32  attr, i;
 
 	/* read the 1st point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -1594,9 +1591,9 @@ void model2_video::geo_parse_np_ns(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* read the 2nd point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -1610,19 +1607,19 @@ void model2_video::geo_parse_np_ns(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* loop through the following links */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count && input < m_geo_end; i++)
 	{
 		if (m_build_obj.side >= 0) raster->build_tint = build_tint(i);   // (the random fighters' build)
 		/* read in the attributes */
-		attr = *input++;
+		attr = GEO_NEXT(input);
 
 		/* push to the 3d rasterizer */
 		model2_3d_push(raster, attr & 0x0003ffff);
 
 		/* read in the normal */
-		normal.x = u2f(*input++);
-		normal.y = u2f(*input++);
-		normal.pz = u2f(*input++);
+		normal.x = u2f(GEO_NEXT(input));
+		normal.y = u2f(GEO_NEXT(input));
+		normal.pz = u2f(GEO_NEXT(input));
 
 		/* transform with the current matrix */
 		transform_vector(&normal, geo->matrix);
@@ -1635,9 +1632,9 @@ void model2_video::geo_parse_np_ns(geo_state *geo, u32 *input, u32 count)
 			texture_parameter * texparam;
 
 			/* read in the next point */
-			point.x = u2f(*input++);
-			point.y = u2f(*input++);
-			point.pz = u2f(*input++);
+			point.x = u2f(GEO_NEXT(input));
+			point.y = u2f(GEO_NEXT(input));
+			point.pz = u2f(GEO_NEXT(input));
 
 			/* transform with the current matrix */
 			transform_point(&point, geo->matrix);
@@ -1687,9 +1684,9 @@ void model2_video::geo_parse_np_ns(geo_state *geo, u32 *input, u32 count)
 			if (attr & 1)
 			{
 				/* read in the next point */
-				point.x = u2f(*input++);
-				point.y = u2f(*input++);
-				point.pz = u2f(*input++);
+				point.x = u2f(GEO_NEXT(input));
+				point.y = u2f(GEO_NEXT(input));
+				point.pz = u2f(GEO_NEXT(input));
 
 				/* transform with the current matrix */
 				transform_point(&point, geo->matrix);
@@ -1705,7 +1702,7 @@ void model2_video::geo_parse_np_ns(geo_state *geo, u32 *input, u32 count)
 			else /* triangle */
 			{
 				/* skip the next 3 points */
-				input += 3;
+				input = GEO_SKIP(input, 3);
 			}
 		}
 		else /* we're done */
@@ -1726,9 +1723,9 @@ void model2_video::geo_parse_np_s(geo_state *geo, u32 *input, u32 count)
 	u32  attr, i;
 
 	/* read the 1st point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -1742,9 +1739,9 @@ void model2_video::geo_parse_np_s(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* read the 2nd point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -1758,19 +1755,19 @@ void model2_video::geo_parse_np_s(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* loop through the following links */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count && input < m_geo_end; i++)
 	{
 		if (m_build_obj.side >= 0) raster->build_tint = build_tint(i);   // (the random fighters' build)
 		/* read in the attributes */
-		attr = *input++;
+		attr = GEO_NEXT(input);
 
 		/* push to the 3d rasterizer */
 		model2_3d_push(raster, attr & 0x0003ffff);
 
 		/* read in the normal */
-		normal.x = u2f(*input++);
-		normal.y = u2f(*input++);
-		normal.pz = u2f(*input++);
+		normal.x = u2f(GEO_NEXT(input));
+		normal.y = u2f(GEO_NEXT(input));
+		normal.pz = u2f(GEO_NEXT(input));
 
 		/* transform with the current matrix */
 		transform_vector(&normal, geo->matrix);
@@ -1783,9 +1780,9 @@ void model2_video::geo_parse_np_s(geo_state *geo, u32 *input, u32 count)
 			texture_parameter * texparam;
 
 			/* read in the next point */
-			point.x = u2f(*input++);
-			point.y = u2f(*input++);
-			point.pz = u2f(*input++);
+			point.x = u2f(GEO_NEXT(input));
+			point.y = u2f(GEO_NEXT(input));
+			point.pz = u2f(GEO_NEXT(input));
 
 			/* transform with the current matrix */
 			transform_point(&point, geo->matrix);
@@ -1844,9 +1841,9 @@ void model2_video::geo_parse_np_s(geo_state *geo, u32 *input, u32 count)
 			if (attr & 1)
 			{
 				/* read in the next point */
-				point.x = u2f(*input++);
-				point.y = u2f(*input++);
-				point.pz = u2f(*input++);
+				point.x = u2f(GEO_NEXT(input));
+				point.y = u2f(GEO_NEXT(input));
+				point.pz = u2f(GEO_NEXT(input));
 
 				/* transform with the current matrix */
 				transform_point(&point, geo->matrix);
@@ -1862,7 +1859,7 @@ void model2_video::geo_parse_np_s(geo_state *geo, u32 *input, u32 count)
 			else /* triangle */
 			{
 				/* skip the next 3 points */
-				input += 3;
+				input = GEO_SKIP(input, 3);
 			}
 		}
 		else /* we're done */
@@ -1883,9 +1880,9 @@ void model2_video::geo_parse_nn_ns(geo_state *geo, u32 *input, u32 count)
 	u32  attr, i;
 
 	/* read the 1st point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -1902,9 +1899,9 @@ void model2_video::geo_parse_nn_ns(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* read the 2nd point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -1921,11 +1918,11 @@ void model2_video::geo_parse_nn_ns(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* loop through the following links */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count && input < m_geo_end; i++)
 	{
 		if (m_build_obj.side >= 0) raster->build_tint = build_tint(i);   // (the random fighters' build)
 		/* read in the attributes */
-		attr = *input++;
+		attr = GEO_NEXT(input);
 
 		/* push to the 3d rasterizer */
 		model2_3d_push(raster, attr & 0x0003ffff);
@@ -1938,12 +1935,12 @@ void model2_video::geo_parse_nn_ns(geo_state *geo, u32 *input, u32 count)
 			texture_parameter * texparam;
 
 			/* Skip normal */
-			input += 3;
+			input = GEO_SKIP(input, 3);
 
 			/* read in the next point */
-			point.x = u2f(*input++);
-			point.y = u2f(*input++);
-			point.pz = u2f(*input++);
+			point.x = u2f(GEO_NEXT(input));
+			point.y = u2f(GEO_NEXT(input));
+			point.pz = u2f(GEO_NEXT(input));
 
 			/* transform with the current matrix */
 			transform_point(&point, geo->matrix);
@@ -2002,9 +1999,9 @@ void model2_video::geo_parse_nn_ns(geo_state *geo, u32 *input, u32 count)
 			if (attr & 1)
 			{
 				/* read in the next point */
-				point.x = u2f(*input++);
-				point.y = u2f(*input++);
-				point.pz = u2f(*input++);
+				point.x = u2f(GEO_NEXT(input));
+				point.y = u2f(GEO_NEXT(input));
+				point.pz = u2f(GEO_NEXT(input));
 
 				/* transform with the current matrix */
 				transform_point(&point, geo->matrix);
@@ -2023,7 +2020,7 @@ void model2_video::geo_parse_nn_ns(geo_state *geo, u32 *input, u32 count)
 			else
 			{
 				/* skip the next 3 points */
-				input += 3;
+				input = GEO_SKIP(input, 3);
 
 				/* for triangles, the rope of P1(n) is achieved by P0(n-1) (linktype 3) */
 				p3.x = p2.x; p3.y = p2.y; p3.pz = p2.pz;
@@ -2074,9 +2071,9 @@ void model2_video::geo_parse_nn_s(geo_state *geo, u32 *input, u32 count)
 	u32  attr, i;
 
 	/* read the 1st point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -2093,9 +2090,9 @@ void model2_video::geo_parse_nn_s(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* read the 2nd point */
-	point.x = u2f(*input++);
-	point.y = u2f(*input++);
-	point.pz = u2f(*input++);
+	point.x = u2f(GEO_NEXT(input));
+	point.y = u2f(GEO_NEXT(input));
+	point.pz = u2f(GEO_NEXT(input));
 
 	/* transform with the current matrix */
 	transform_point(&point, geo->matrix);
@@ -2112,11 +2109,11 @@ void model2_video::geo_parse_nn_s(geo_state *geo, u32 *input, u32 count)
 	model2_3d_push(raster, f2u(point.pz) >> 8);
 
 	/* loop through the following links */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count && input < m_geo_end; i++)
 	{
 		if (m_build_obj.side >= 0) raster->build_tint = build_tint(i);   // (the random fighters' build)
 		/* read in the attributes */
-		attr = *input++;
+		attr = GEO_NEXT(input);
 
 		/* push to the 3d rasterizer */
 		model2_3d_push(raster, attr & 0x0003ffff);
@@ -2129,12 +2126,12 @@ void model2_video::geo_parse_nn_s(geo_state *geo, u32 *input, u32 count)
 			texture_parameter * texparam;
 
 			/* Skip normal */
-			input += 3;
+			input = GEO_SKIP(input, 3);
 
 			/* read in the next point */
-			point.x = u2f(*input++);
-			point.y = u2f(*input++);
-			point.pz = u2f(*input++);
+			point.x = u2f(GEO_NEXT(input));
+			point.y = u2f(GEO_NEXT(input));
+			point.pz = u2f(GEO_NEXT(input));
 
 			/* transform with the current matrix */
 			transform_point(&point, geo->matrix);
@@ -2202,9 +2199,9 @@ void model2_video::geo_parse_nn_s(geo_state *geo, u32 *input, u32 count)
 			if (attr & 1)
 			{
 				/* read in the next point */
-				point.x = u2f(*input++);
-				point.y = u2f(*input++);
-				point.pz = u2f(*input++);
+				point.x = u2f(GEO_NEXT(input));
+				point.y = u2f(GEO_NEXT(input));
+				point.pz = u2f(GEO_NEXT(input));
 
 				/* transform with the current matrix */
 				transform_point(&point, geo->matrix);
@@ -2223,7 +2220,7 @@ void model2_video::geo_parse_nn_s(geo_state *geo, u32 *input, u32 count)
 			else
 			{
 				/* skip the next 3 points */
-				input += 3;
+				input = GEO_SKIP(input, 3);
 
 				/* for triangles, the rope of P1(n) is achieved by P0(n-1) (linktype 3) */
 				p3.x = p2.x; p3.y = p2.y; p3.pz = p2.pz;
@@ -2287,10 +2284,10 @@ u32 *model2_video::geo_nop(geo_state *geo, u32 opcode, u32 *input)
 u32 *model2_video::geo_object_data(geo_state *geo, u32 opcode, u32 *input)
 {
 	raster_state *raster = geo->raster;
-	u32  tpa = *input++;     /* Texture Point Address */
-	u32  tha = *input++;     /* Texture Header Address */
-	u32  oba = *input++;     /* Object Address */
-	u32  obc = *input++;     /* Object Count */
+	u32  tpa = GEO_NEXT(input);     /* Texture Point Address */
+	u32  tha = GEO_NEXT(input);     /* Texture Header Address */
+	u32  oba = GEO_NEXT(input);     /* Object Address */
+	u32  obc = GEO_NEXT(input);     /* Object Count */
 
 	u32 *obp;                /* Object Pointer */
 
@@ -2342,6 +2339,9 @@ u32 *model2_video::geo_object_data(geo_state *geo, u32 opcode, u32 *input)
 		}
 	}
 
+	// (the object's words read up to the end of the memory it's in, never past it)
+	u32 *const end_was = m_geo_end;
+	m_geo_end = oba & 0x01000000 ? geo->polygon_ram1 + 0x8000 : oba & 0x00800000 ? geo->polygon_rom + geo->polygon_rom_mask + 1 : geo->polygon_ram0 + 0x8000;
 	switch (geo->mode & 3)
 	{
 		/* Normals present, No Specular */
@@ -2356,6 +2356,7 @@ u32 *model2_video::geo_object_data(geo_state *geo, u32 opcode, u32 *input)
 		/* No Normals present, Specular */
 		case 3: geo_parse_nn_s(geo, obp, obc); break;
 	}
+	m_geo_end = end_was;
 	if (swapped) memcpy(geo->matrix, kept, sizeof kept);
 	m_build_obj.side = -1;
 	raster->build_tint = 0;
@@ -2370,8 +2371,8 @@ u32 *model2_video::geo_object_data(geo_state *geo, u32 opcode, u32 *input)
 u32 *model2_video::geo_direct_data(geo_state *geo, u32 opcode, u32 *input)
 {
 	raster_state *raster = geo->raster;
-	u32  tpa = *input++;     /* Texture Point Address */
-	u32  tha = *input++;     /* Texture Header Address */
+	u32  tpa = GEO_NEXT(input);     /* Texture Point Address */
+	u32  tha = GEO_NEXT(input);     /* Texture Header Address */
 
 	/* push the initial set of data to the 3d rasterizer */
 	model2_3d_push(raster, (opcode >> 23) - 1);
@@ -2379,38 +2380,38 @@ u32 *model2_video::geo_direct_data(geo_state *geo, u32 opcode, u32 *input)
 	model2_3d_push(raster, tha);
 
 	/* push the initial points */
-	model2_3d_push(raster, (*input++) >> 8); /* x */
-	model2_3d_push(raster, (*input++) >> 8); /* y */
-	model2_3d_push(raster, (*input++) >> 8); /* z */
+	model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* x */
+	model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* y */
+	model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* z */
 
-	model2_3d_push(raster, (*input++) >> 8); /* x */
-	model2_3d_push(raster, (*input++) >> 8); /* y */
-	model2_3d_push(raster, (*input++) >> 8); /* z */
+	model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* x */
+	model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* y */
+	model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* z */
 
 	/* read in the attributes */
 	u32  attr;
-	while (((attr = *input++) & 3) != 0)
+	while (((attr = GEO_NEXT(input)) & 3) != 0)
 	{
 		/* push attributes */
 		model2_3d_push(raster, attr & 0x00ffffff);
 
 		/* push luma */
-		model2_3d_push(raster, (*input++) >> 8);
+		model2_3d_push(raster, (GEO_NEXT(input)) >> 8);
 
 		/* push distance */
-		model2_3d_push(raster, (*input++) >> 8);
+		model2_3d_push(raster, (GEO_NEXT(input)) >> 8);
 
 		/* push the next point */
-		model2_3d_push(raster, (*input++) >> 8); /* x */
-		model2_3d_push(raster, (*input++) >> 8); /* y */
-		model2_3d_push(raster, (*input++) >> 8); /* z */
+		model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* x */
+		model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* y */
+		model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* z */
 
 		/* if it's a quad, output another point */
 		if (attr & 1)
 		{
-			model2_3d_push(raster, (*input++) >> 8); /* x */
-			model2_3d_push(raster, (*input++) >> 8); /* y */
-			model2_3d_push(raster, (*input++) >> 8); /* z */
+			model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* x */
+			model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* y */
+			model2_3d_push(raster, (GEO_NEXT(input)) >> 8); /* z */
 		}
 	}
 
@@ -2443,7 +2444,7 @@ u32 *model2_video::geo_window_data(geo_state *geo, u32 opcode, u32 *input)
 	for (u32 i = 0; i < 6; i++)
 	{
 		/* read in the coordinate */
-		u32 y = *input++;
+		u32 y = GEO_NEXT(input);
 
 		/* convert to the 3d rasterizer format (00XXXYYY) */
 		u32 x = (y & 0x0fff0000) >> 4 ;
@@ -2465,17 +2466,17 @@ u32 *model2_video::geo_texture_data(geo_state *geo, u32 opcode, u32 *input)
 	model2_3d_push(raster, opcode >> 23);
 
 	/* push the starting address/dsp id */
-	model2_3d_push(raster, *input++);
+	model2_3d_push(raster, GEO_NEXT(input));
 
 	/* get the count */
-	u32 count = *input++;
+	u32 count = GEO_NEXT(input);
 
 	/* push the count */
 	model2_3d_push(raster, count);
 
 	/* loop and send the data */
-	for (u32 i = 0; i < count; i++)
-		model2_3d_push(raster, *input++);
+	for (u32 i = 0; i < count && input < m_geo_end; i++)
+		model2_3d_push(raster, GEO_NEXT(input));
 
 	return input;
 }
@@ -2489,26 +2490,27 @@ u32 *model2_video::geo_polygon_data(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* read in the address */
-	address = *input++;
+	address = GEO_NEXT(input);
 
 	/* prepare the pointer */
 	if (address & 0x01000000)
 	{
 		/* Fast polygon RAM */
-		p = &geo->polygon_ram1[address & 0x7fff];
+		p = geo->polygon_ram1;
 	}
 	else
 	{
 		/* Slow Polygon RAM */
-		p = &geo->polygon_ram0[address & 0x7fff];
+		p = geo->polygon_ram0;
 	}
 
 	/* read the count */
-	count = *input++;
+	count = GEO_NEXT(input);
 
-	/* move the data */
-	for (i = 0; i < count; i++)
-		*p++ = *input++;
+	/* move the data (the address kept to the RAM's 32K words: a count past its end, a display list from a snapshot's
+	   RAM, wrote past it) */
+	for (i = 0; i < count && input < m_geo_end; i++)
+		p[(address + i) & 0x7fff] = GEO_NEXT(input);
 
 	return input;
 }
@@ -2521,15 +2523,15 @@ u32 *model2_video::geo_texture_parameters(geo_state *geo, u32 opcode, u32 *input
 	(void)opcode;
 
 	/* read in the index */
-	index = (*input++) >> 2;
+	index = ((GEO_NEXT(input)) >> 2) & 0x1f;   // (the table's 32: the next ones' wrap as these do)
 
 	/* read in the conut */
-	count = *input++;
+	count = GEO_NEXT(input);
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count && input < m_geo_end; i++)
 	{
 		/* read in the texture parameters */
-		param = *input++;
+		param = GEO_NEXT(input);
 
 		geo->texture_parameters[index].diffuse = float(param & 0xff);
 		geo->texture_parameters[index].ambient = float((param >> 8) & 0xff);
@@ -2537,7 +2539,7 @@ u32 *model2_video::geo_texture_parameters(geo_state *geo, u32 opcode, u32 *input
 		geo->texture_parameters[index].specular_scale = float((param >> 16) & 0xff);
 
 		/* read in the distance coefficient */
-		geo->coef_table[index] = u2f(*input++);
+		geo->coef_table[index] = u2f(GEO_NEXT(input));
 
 		index = (index + 1) & 0x1f;
 	}
@@ -2551,7 +2553,7 @@ u32 *model2_video::geo_mode(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* read in the mode */
-	geo->mode = *input++;
+	geo->mode = GEO_NEXT(input);
 
 	return input;
 }
@@ -2565,7 +2567,7 @@ u32 *model2_video::geo_zsort_mode(geo_state *geo, u32 opcode, u32 *input)
 	model2_3d_push(raster, opcode >> 23);
 
 	/* push the mode */
-	model2_3d_push(raster, (*input++) >> 8);
+	model2_3d_push(raster, (GEO_NEXT(input)) >> 8);
 
 	return input;
 }
@@ -2576,10 +2578,10 @@ u32 *model2_video::geo_focal_distance(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* read the x focus value */
-	geo->focus.x = u2f(*input++);
+	geo->focus.x = u2f(GEO_NEXT(input));
 
 	/* read the y focus value */
-	geo->focus.y = u2f(*input++);
+	geo->focus.y = u2f(GEO_NEXT(input));
 
 	if (m_rec) smooth_note_focal(geo->focus.x, geo->focus.y);
 	else if (m_replay && m_replay_focal < m_focal_blend.size()) {
@@ -2597,13 +2599,13 @@ u32 *model2_video::geo_light_source(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* read the x light value */
-	geo->light.x = u2f(*input++);
+	geo->light.x = u2f(GEO_NEXT(input));
 
 	/* read the y light value */
-	geo->light.y = u2f(*input++);
+	geo->light.y = u2f(GEO_NEXT(input));
 
 	/* read the z light value */
-	geo->light.pz = u2f(*input++);
+	geo->light.pz = u2f(GEO_NEXT(input));
 
 	if (m_rec) smooth_note_light(geo->light.x, geo->light.y, geo->light.pz);
 	else if (m_replay && m_replay_light < m_light_blend.size()) {
@@ -2625,7 +2627,7 @@ u32 *model2_video::geo_matrix_write(geo_state *geo, u32 opcode, u32 *input)
 
 	/* read in the transformation matrix */
 	for (i = 0; i < 12; i++)
-		geo->matrix[i] = u2f(*input++);
+		geo->matrix[i] = u2f(GEO_NEXT(input));
 
 	return input;
 }
@@ -2639,7 +2641,7 @@ u32 *model2_video::geo_translate_write(geo_state *geo, u32 opcode, u32 *input)
 
 	/* read in the translation vector */
 	for (i = 0; i < 3; i++)
-		geo->matrix[i+9] = u2f(*input++);
+		geo->matrix[i+9] = u2f(GEO_NEXT(input));
 
 	return input;
 }
@@ -2665,16 +2667,16 @@ u32 *model2_video::geo_data_mem_push(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* read in the address */
-	address = *input++;
+	address = GEO_NEXT(input);
 
 	/* read in the count */
-	count = *input++;
+	count = GEO_NEXT(input);
 
 	logerror("SEGA GEO: Executing unsupported geo_data_mem_push (address = %08x, count = %08x)\n", address, count);
 
 	(void)i;
 /*
-    for (i = 0; i < count; i++)
+    for (i = 0; i < count && input < m_geo_end; i++)
         model2_3d_push(0);
 */
 
@@ -2693,7 +2695,7 @@ u32 *model2_video::geo_test(geo_state *geo, u32 opcode, u32 *input)
 
 	for (i = 0; i < 32; i++)
 	{
-		if (*input++ != data)
+		if (GEO_NEXT(input) != data)
 		{
 			/* TODO: Set Red LED on */
 			logerror("SEGA GEO: FIFO Test failed\n");
@@ -2703,28 +2705,28 @@ u32 *model2_video::geo_test(geo_state *geo, u32 opcode, u32 *input)
 	}
 
 	/* get the number of checksums we have to run */
-	blocks = *input++;
+	blocks = GEO_NEXT(input);
 
-	for (i = 0; i < blocks; i++)
+	for (i = 0; i < blocks && input < m_geo_end; i++)
 	{
 		u32  sum_even, sum_odd, j;
 
 		/* read in the address */
-		address = (*input++) & 0x7fffff;
+		address = (GEO_NEXT(input)) & 0x7fffff;
 
 		/* read in the count */
-		count = *input++;
+		count = GEO_NEXT(input);
 
 		/* read in the checksum */
-		checksum = *input++;
+		checksum = GEO_NEXT(input);
 
 		/* reset the checksum counters */
 		sum_even = 0;
 		sum_odd = 0;
 
-		for (j = 0; j < count; j++)
+		for (j = 0; j < count && j <= geo->polygon_rom_mask; j++)   // (the ROM's words: no more, and none past its end)
 		{
-			data = geo->polygon_rom[address++];
+			data = geo->polygon_rom[(address++) & geo->polygon_rom_mask];
 
 			address &= geo->polygon_rom_mask;
 
@@ -2772,8 +2774,8 @@ u32 *model2_video::geo_dummy(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* do the dummy read cycle */
-//  data = *input++;
-	input++;
+//  data = GEO_NEXT(input);
+	input = GEO_SKIP(input, 1);
 
 	return input;
 }
@@ -2788,18 +2790,18 @@ u32 *model2_video::geo_log_data(geo_state *geo, u32 opcode, u32 *input)
 	model2_3d_push(raster, opcode >> 23);
 
 	/* push the starting address/dsp id */
-	model2_3d_push(raster, *input++);
+	model2_3d_push(raster, GEO_NEXT(input));
 
 	/* get the count */
-	count = *input++;
+	count = GEO_NEXT(input);
 
 	/* push the count */
 	model2_3d_push(raster, count << 2);
 
 	/* loop and send the data */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count && input < m_geo_end; i++)
 	{
-		u32  data = *input++;
+		u32  data = GEO_NEXT(input);
 
 		model2_3d_push(raster, data & 0xff);
 		model2_3d_push(raster, (data >> 8) & 0xff);
@@ -2816,7 +2818,7 @@ u32 *model2_video::geo_lod(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* read in the LOD */
-	geo->lod = u2f(*input++);
+	geo->lod = u2f(GEO_NEXT(input));
 
 	return input;
 }
@@ -2838,24 +2840,24 @@ u32 *model2_video::geo_code_upload(geo_state *geo, u32 opcode, u32 *input)
 	(void)opcode;
 
 	/* read in the flags */
-//  flags = *input++;
-	input++;
+//  flags = GEO_NEXT(input);
+	input = GEO_SKIP(input, 1);
 
 	/* read in the count */
-	count = *input++;
+	count = GEO_NEXT(input);
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count && input < m_geo_end; i++)
 	{
 		[[maybe_unused]] u64  code;
 
 		/* read the top part of the opcode */
-		code = *input++;
+		code = GEO_NEXT(input);
 
 		code <<= 32;
 
 		/* the bottom part comes in two pieces */
-		code |= *input++;
-		code |= (*input++) << 16;
+		code |= GEO_NEXT(input);
+		code |= (GEO_NEXT(input)) << 16;
 	}
 
 	/*
@@ -2887,8 +2889,8 @@ u32 *model2_video::geo_code_jump(geo_state *geo, u32 opcode, u32 *input)
 
 	(void)opcode;
 
-//  address = *input++ & 0x3ff;
-	input++;
+//  address = GEO_NEXT(input) & 0x3ff;
+	input = GEO_SKIP(input, 1);
 
 /*
     code_jump(address)
@@ -2952,6 +2954,7 @@ void model2_video::geo_run(u32 *buffer, u32 start, geo_state *geo, raster_state 
 {
 	u32  address = (start & 0x1ffff)/4;
 	u32 *input = &buffer[address];
+	m_geo_end = buffer + 0x20000/4;   // (the commands' words read up to the buffer's end, never past it: GEO_NEXT)
 	u32  opcode;
 	u32  op_count = 0;
 	bool end_code = false;
@@ -3181,8 +3184,8 @@ u32 model2_renderer::fetch_bilinear_texel(const m2_poly_extra_data& object, s32 
 		tex_x = object.utexx;
 		tex_y = object.utexy;
 		sheet = object.texsheet[1];
-		u <<= 1 << object.utexminlod;
-		v <<= 1 << object.utexminlod;
+		u = s32(u32(u) << (1 << object.utexminlod));
+		v = s32(u32(v) << (1 << object.utexminlod));
 	}
 	else
 	{
@@ -3202,9 +3205,10 @@ u32 model2_renderer::fetch_bilinear_texel(const m2_poly_extra_data& object, s32 
 	if (tex_mirr_y && (v & (tex_height << 8)))
 		v = ~v;
 
-	// subtract 1/2 texel
-	u -= 0x80;
-	v -= 0x80;
+	// subtract 1/2 texel (as unsigned: a coordinate at the int's end (a display list from a snapshot's RAM) wraps, as it
+	// always did on the machines this runs on, rather than overflowing)
+	u = s32(u32(u) - 0x80u);
+	v = s32(u32(v) - 0x80u);
 
 	// extract the fractions to use as blending factors
 	u32 ufrac = u & 0xff;

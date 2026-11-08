@@ -1376,7 +1376,7 @@ void random_fighters::frame()
 {
 	auto &ram = m.m_workram;
 	auto rd_ram = [&](u32 o) { u32 v; memcpy(&v, &ram[o], 4); return v; };
-	auto block = [&](int pl) -> int { const u32 b = rd_ram(0x804 + 4 * u32(pl)); return b >= 0x500000 && b - 0x500000 + 0x200 < ram.size() ? int(b - 0x500000) : -1; };
+	auto block = [&](int pl) -> int { const u32 b = rd_ram(0x804 + 4 * u32(pl)); return b >= 0x500000 && b - 0x500000 + 0x800 < ram.size() ? int(b - 0x500000) : -1; };   // (all of the block this reads and writes, to +76c: a pointer near RAM's end, a snapshot's RAM, wrote past it)
 	const u8 game = ram[0x2b];
 	if (game == 7 && !from_select) select_at = u32(m.m_frame_number);   // (a select's first frame: select_inputs' pace from the next)
 	// (the select's objects, player 1's at [50083c], player 2's at [500840]: +4 the side, the first word's bit 31
@@ -2131,6 +2131,15 @@ void random_fighters::load(m2::StateReader &io)
 	random_host_state h{};
 	io.pod(h);
 	if (!io.ok || tag != STATE_TAG) { io.ok = false; return; }
+	// (what's used as an index or a fighter number: in range, as the board makes them, else the state's refused)
+	{
+		bool good = h.cpu <= 1 && h.from_select <= 1 && h.seeded <= 1;
+		for (int i = 0; i < 2; i++)
+			good = good && h.mode[i] <= 2 && h.picking[i] <= 1 && h.at_select[i] <= 1 && h.fighting[i] <= 1 && h.tex_applied[i] <= 1 && h.tex_busy[i] <= 1 &&
+			       (h.cpu_made[i] == ~0u || h.cpu_made[i] < u32(N_RECORDS)) && (h.tex_fighter[i] == ~0u || h.tex_fighter[i] < u32(N_RECORDS));
+		for (int f = 0; f < N_RECORDS; f++) good = good && (h.hair_hue[f] == ~0u || h.hair_hue[f] < 1000) && int(h.head_of[f]) >= -1 && int(h.head_of[f]) < 64;
+		if (!io.check(good)) return;
+	}
 	// (the players' fighters the state had: made again, from their places and colours' draws, if they're others now)
 	for (int i = 0; i < 2; i++) {
 		const made_key k{ h.made[i][0], h.made[i][1] };

@@ -66,6 +66,7 @@ public:
 	// Between frames only (after run_frame()).
 	void save_state(std::vector<uint8_t> &out, std::vector<m2::StateSection> *sections = nullptr);
 	bool load_state(const uint8_t *p, size_t n);
+	size_t fixed_state_size() const;   // (the memories' part, and its header: a state's least)
 	static constexpr uint32_t STATE_MAGIC = 0x53324656, STATE_VERSION = 1;   // "VF2S"
 	// The state's first bytes are for this board's saves alone (which board, since which reset, which save): two
 	// boards in the same state have the same bytes after them, and only those are compared or hashed
@@ -473,6 +474,7 @@ private:
 	// written since (each page's save number when last written). The RAMs the recompiled code writes directly,
 	// and buffer RAM (the TGP's too), are copied whole.
 	template <class IO> void state(IO &io);
+	bool state_sane() const;
 	// (Cheats' random fighters in a save state, while they're on: the ROM's bytes they change as a match goes, and what
 	// they know of them; a load puts back the fighters the state had, made again if they're others now)
 	void random_state(m2::StateWriter &io);
@@ -485,7 +487,6 @@ private:
 	void touch(int r, size_t byte) { m_page_gen[r][byte / PAGE] = m_snap_gen; }
 	u8 *paged_base(int r);   // (where each is now: swap_2d swaps the vectors)
 	size_t paged_bytes(int r) const;
-	size_t fixed_state_size() const;
 	void setup_pages();
 
 	romset::result m_roms;

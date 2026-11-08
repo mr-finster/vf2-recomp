@@ -57,9 +57,14 @@ bool mame_log_enabled()
 	return on;
 }
 
+thread_local jmp_buf *g_mame_trap = nullptr;
+
 void mame_fatal(const std::string &msg)
 {
 	fprintf(stderr, "fatal: %s", msg.c_str());
 	if (msg.empty() || msg.back() != '\n') fputc('\n', stderr);
+	// (in the i960's run: the CPU stopped, not the process (i960_device::execute_run). Only code the game's ROM doesn't
+	// run gets here: a state from elsewhere's, a watcher's snapshot from a hostile host)
+	if (g_mame_trap) longjmp(*g_mame_trap, 1);
 	throw std::runtime_error(msg);
 }

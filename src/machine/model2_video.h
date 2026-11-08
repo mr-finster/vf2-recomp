@@ -362,6 +362,7 @@ private:
 	// raster functions
 	// main data input port
 	void model2_3d_push(raster_state *raster, u32 input);
+	u32 *m_geo_end = nullptr;   // (the end of the memory the geometrizer reads words from now: GEO_NEXT)
 	// polygon push path
 	template <unsigned NumVerts>
 	void model2_3d_process_polygon(raster_state *raster, u32 attr);

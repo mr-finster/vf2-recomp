@@ -403,9 +403,29 @@ void Adapter::snap_extra(uint32_t at, std::vector<uint8_t> &out)
 	out.insert(out.end(), part.begin(), part.begin() + ptrdiff_t(std::min<size_t>(part.size(), 255)));
 }
 
-bool Adapter::load_snap(const std::vector<uint8_t> &state, const std::vector<uint8_t> &extra)
+std::pair<size_t, size_t> Adapter::snap_state_bytes() const
 {
-	if (!load(state)) return false;
+	// (the memories, then the small parts (the CPUs, the scheduler, the FIFOs and queues: tens of KB at most), then the frame)
+	const size_t fixed = board.fixed_state_size();
+	return { fixed + 4, fixed + (256u << 10) };
+}
+
+bool Adapter::load_snap(const std::vector<uint8_t> &state, const std::vector<uint8_t> &extra, uint32_t snap_frame)
+{
+	const auto [least, most] = snap_state_bytes();
+	if (state.size() < least || state.size() > most) return false;
+	// (a match with Cheats' random fighters: none taken. Their part of the state is the ROM's bytes they write as a
+	// match goes, records and tables of addresses into the ROM that their code follows as its own; from another
+	// process that code would follow anything. The watcher catches up from the match's start, as without snapshots)
+	if (board.random_fighters_on()) return false;
+	{   // (refused, the game as it was: its own state back, every part of it, not half another's)
+		std::vector<uint8_t> was;
+		save(was);
+		if (!load(state) || frame != snap_frame) {
+			load(was);
+			return false;
+		}
+	}
 	sound_frames.clear();
 	tail.clear();
 	dropped = false;

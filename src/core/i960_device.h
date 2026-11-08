@@ -53,11 +53,22 @@ public:
 		io.pod(m_stall_state.t1); io.pod(m_stall_state.t2); io.pod(m_stall_state.index); io.pod(m_stall_state.size);
 		io.pod(m_stall_state.burst_mode); io.pod(m_stall_state.iswriteop);
 		io.pod(m_icount);
+		if constexpr (IO::loading) m_stopped = false;   // (a state loaded: running, as it was saved)
+		if constexpr (IO::loading) {   // (what's used as an index, a count or a vector: in range, else the state's refused)
+			bool lines = true;
+			for (s8 l : m_irq_line_state) lines = lines && (l == CLEAR_LINE || l == ASSERT_LINE);
+			io.check(lines && m_rcache_pos >= 0 && m_rcache_pos <= (1 << 24) &&
+			         m_stall_state.size >= 0 && m_stall_state.size <= 4 && m_stall_state.index >= 0 && m_stall_state.index <= m_stall_state.size &&
+			         m_stall_state.t2 <= 32u - u32(m_stall_state.size) && (m_immediate_irq == 0 || m_immediate_irq == 1) &&
+			         m_immediate_vector >= 0 && m_immediate_vector <= 255 && m_immediate_pri >= 0 && m_immediate_pri <= 31 &&
+			         m_icount >= -(1 << 24) && m_icount <= (1 << 24));
+		}
 	}
 	// A cold start's: everything state() lists to what a board just switched on has (MAME's reset leaves the
 	// floating-point registers, the stall state and more as they were). reset() after it.
 	void power_on()
 	{
+		m_stopped = false;
 		memset(m_r, 0, sizeof m_r); memset(m_rcache, 0, sizeof m_rcache); memset(m_rcache_frame_addr, 0, sizeof m_rcache_frame_addr);
 		m_rcache_pos = 0;
 		for (double &d : m_fp) d = 0;
@@ -74,8 +85,13 @@ public:
 	bool time_runs = false;
 	uint64_t run_ns = 0, runs = 0;
 
+	bool stopped() const { return m_stopped; }   // (an instruction it couldn't run: it runs nothing till a reset or a load)
+	void device_reset() override { m_stopped = false; i80960kb_device::device_reset(); }
+
 protected:
 	void execute_run() override;
+	void run_trapped();
+	bool m_stopped = false;
 
 private:
 	static inline machine_config s_config;

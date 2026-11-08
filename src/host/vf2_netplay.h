@@ -239,7 +239,10 @@ public:
 	// its sound board unheard as one catching up from the start would (the stage's song from its cue, UnheardQueue)
 	uint32_t snap_format() const override;
 	void snap_extra(uint32_t frame, std::vector<uint8_t> &out) override;
-	bool load_snap(const std::vector<uint8_t> &state, const std::vector<uint8_t> &extra) override;
+	// (a snapshot's state, any host's: refused unless the board would make it (model2a::state_sane, the reader's checks)
+	// and its frame is the snapshot's; refused, the board and this as they were)
+	bool load_snap(const std::vector<uint8_t> &state, const std::vector<uint8_t> &extra, uint32_t frame) override;
+	std::pair<size_t, size_t> snap_state_bytes() const override;
 	bool sound_log = false;   // (the host's, while its match may be watched)
 	// The frame's bytes for the sound board to send now, whole MIDI messages only, each with its status byte (a
 	// message the frame's bytes end in the middle of goes with the frame that finishes it): the first time a frame

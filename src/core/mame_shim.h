@@ -75,6 +75,9 @@ template <typename... A> std::string string_format(const char *f, const A &...a)
 // Logging: MAME_LOG=1 in the environment prints the cores' logerror() lines to stderr.
 bool mame_log_enabled();
 [[noreturn]] void mame_fatal(const std::string &msg);
+// (where mame_fatal goes while a CPU's run has set it: i960_device::execute_run; else it throws, as it always has)
+#include <csetjmp>
+extern thread_local jmp_buf *g_mame_trap;
 template <typename... A> void logerror(const char *f, const A &...a)
 {
 	if (mame_log_enabled()) fputs(mame_fmt::fmt(f, a...).c_str(), stderr);
