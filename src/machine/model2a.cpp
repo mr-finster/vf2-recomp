@@ -163,7 +163,7 @@ mb86233_device &model2a::tgp() { return m_tgp->cpu; }
 
 // ---------------------------------------------------------------------------------------------
 
-model2a::model2a(romset::result &&roms)
+model2a::model2a(romset::result &&roms, bool recompile)
 	: m_roms(std::move(roms)), m_rom(m_roms.regions[romset::MAINCPU]), m_data(m_roms.regions[romset::MAIN_DATA]),
 	  m_cpu(*this)
 {
@@ -202,7 +202,7 @@ model2a::model2a(romset::result &&roms)
 	m_sched[CPU_Z80].set_rate(32000000 / 4);
 	// the i960's program recompiled to native code now (src/rec), unless VF2_INTERP is set (MAME's
 	// interpreter: the reference, cycle for cycle the same)
-	if (!getenv("VF2_INTERP")) use_native();
+	if (recompile && !getenv("VF2_INTERP")) use_native();
 }
 
 // device_execute_interface::clock_changed

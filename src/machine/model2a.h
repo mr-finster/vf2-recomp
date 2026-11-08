@@ -45,7 +45,7 @@ public:
 	static constexpr uint64_t VBLANK_CYCLES = CYCLES_PER_LINE * (LINES - VBLANK_LINE);
 	static constexpr int WIDTH = 496, HEIGHT = 384;
 
-	explicit model2a(romset::result &&roms);
+	explicit model2a(romset::result &&roms, bool recompile = true);   // (recompile false: a sound board alone, set_sound_only, never runs the i960)
 	~model2a() override;
 
 	void reset();

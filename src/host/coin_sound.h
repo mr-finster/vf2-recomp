@@ -22,7 +22,7 @@ constexpr int RATE = model2a::SOUND_RATE;
 inline std::vector<int16_t> make(const romset::result &roms, float level)
 {
 	if (!roms.ok) return {};
-	auto board = std::make_unique<model2a>(romset::result(roms));
+	auto board = std::make_unique<model2a>(romset::result(roms), false);   // (its i960 never runs: not recompiled)
 	model2a &b = *board;
 	b.set_draw_3d(false);
 	b.set_sound(true);
