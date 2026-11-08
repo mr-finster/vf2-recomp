@@ -230,9 +230,13 @@ public:
 	// (the state's hash without its header: that's this board's own bookkeeping, not the game's)
 	uint64_t hash(const std::vector<uint8_t> &state);
 	size_t hash_skip() const override { return model2a::STATE_HEADER; }
-	// The frame's bytes for the sound board to send now: all of them the first time a frame runs; run again after a
-	// rollback, none if its bytes went already (the sound board can't take back what it played: a wrong guess's
-	// sound stays), and if it sent none and has some now, those (late)
+	// The frame's bytes for the sound board to send now, whole MIDI messages only, each with its status byte (a
+	// message the frame's bytes end in the middle of goes with the frame that finishes it): the first time a frame
+	// runs, all of them; run again after a rollback, those it has that weren't sent for it (late). Issue #35: a frame
+	// run again had sent nothing if its first run had sent anything (the right timeline's sounds and music cues lost),
+	// and a message cut at a frame's end could meet another timeline's bytes (a status byte with another's data, data
+	// bytes under another message's running status): measured in vf2net at 20 ms, delay 0, 20,000 frames, 2-7 cut
+	// short and 1-2 lost a side; now none of either, only a wrong guess's own sounds extra (they can't be taken back)
 	void take_sound(std::vector<uint8_t> &out);
 	// The match's boot's bytes for the sound board, a frame's each (begin): a sound board made for the match runs a
 	// frame for each with them as it starts, as it would have booted alongside this board, before the match's own
@@ -260,8 +264,10 @@ private:
 	uint32_t frame = 0;   // the session's frame the board is at
 	std::vector<uint8_t> pending;   // the bytes the game sent the sound board in the frame running
 	bool collecting = false;
-	// per frame: the bytes the sound board was sent for it (a frame run again sends only what wasn't)
-	std::map<uint32_t, std::vector<uint8_t>> sound_sent;
+	// per frame (the last 64): where its bytes' messages stood as it started (the running status, an unfinished
+	// message's bytes), from the frame before's last run, and the messages the sound board was sent for it
+	struct sound_frame { uint8_t status = 0; std::vector<uint8_t> part; std::vector<std::vector<uint8_t>> sent; };
+	std::map<uint32_t, sound_frame> sound_frames;
 	std::vector<uint8_t> check_buf;
 	bool sound_taken = false;
 	bool dropped = false;   // (bytes for the sound board muted with no sound_unheard: none heard since)

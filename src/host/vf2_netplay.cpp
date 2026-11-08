@@ -191,20 +191,54 @@ std::vector<uint8_t> Adapter::host_blob(int secret)
 }
 
 // (a frame's bytes go at once, a guessed frame's as much as a certain one's, so no sound waits for the other
-// side's input)
+// side's input; whole messages, see the header)
+namespace {
+// MIDI bytes into whole messages: status, running status, an unfinished message carried in `part`
+void midi_messages(const std::vector<uint8_t> &bytes, uint8_t &status, std::vector<uint8_t> &part, std::vector<std::vector<uint8_t>> &out)
+{
+	for (const uint8_t x : bytes) {
+		if (x >= 0xf8) { out.push_back({ x }); continue; }   // (a timing byte: alone, wherever it comes)
+		if (x & 0x80) {   // (a message's start: one cut short before it is dropped)
+			part.assign(1, x);
+			status = x >= 0xf0 ? 0 : x;   // (a system message ends running status)
+			if (!midi_data_bytes(x)) { out.push_back(part); part.clear(); }
+			continue;
+		}
+		if (part.empty()) {
+			if (!status) { out.push_back({ x }); continue; }   // (data with no status known: as it came)
+			part.assign(1, status);   // (running status: another of the last kind)
+		}
+		part.push_back(x);
+		if (int(part.size()) == 1 + midi_data_bytes(part[0])) { out.push_back(part); part.clear(); }
+	}
+}
+} // namespace
+
 void Adapter::take_sound(std::vector<uint8_t> &out)
 {
 	sound_taken = true;
 	out.clear();
-	auto it = sound_sent.find(frame);
-	const bool sent = it != sound_sent.end() && !it->second.empty();
-	if (!pending.empty() && !sent) {
-		out = pending;
-		sound_sent[frame] = pending;
-	} else if (it == sound_sent.end())
-		sound_sent[frame] = {};
+	sound_frame &f = sound_frames[frame];
+	uint8_t status = f.status;
+	std::vector<uint8_t> part = f.part;
+	std::vector<std::vector<uint8_t>> msgs;
+	midi_messages(pending, status, part, msgs);
 	pending.clear();
-	while (!sound_sent.empty() && sound_sent.begin()->first + 64 < frame) sound_sent.erase(sound_sent.begin());
+	sound_frame &next = sound_frames[frame + 1];   // (where the next frame's bytes start: this run's, the latest)
+	next.status = status;
+	next.part = std::move(part);
+	// the messages not sent for this frame yet (those sent that it doesn't have now can't be taken back: a wrong guess's
+	// sound stays)
+	std::vector<bool> matched(f.sent.size(), false);
+	for (auto &m : msgs) {
+		size_t k = 0;
+		while (k < f.sent.size() && (matched[k] || f.sent[k] != m)) k++;
+		if (k < f.sent.size()) { matched[k] = true; continue; }
+		out.insert(out.end(), m.begin(), m.end());
+		f.sent.push_back(std::move(m));
+		matched.push_back(true);
+	}
+	while (!sound_frames.empty() && sound_frames.begin()->first + 64 < frame) sound_frames.erase(sound_frames.begin());
 }
 
 bool Adapter::begin(const std::vector<uint8_t> &blob)
@@ -304,7 +338,12 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 		if (FILE *f = fopen((std::string(d) + ".txt").c_str(), "w")) { for (auto &x : sec) fprintf(f, "%s %zu\n", x.name, x.offset); fclose(f); }
 	}
 	started_secret = secret;
-	sound_sent.clear();
+	sound_frames.clear();
+	{   // (the match's first frame's bytes start where the boot's ended)
+		sound_frame &f0 = sound_frames[0];
+		std::vector<std::vector<uint8_t>> none;
+		for (const auto &b : boot_sound) midi_messages(b, f0.status, f0.part, none);
+	}
 	sound_starts = dropped = false;
 	checkpoints.clear();
 	return true;
