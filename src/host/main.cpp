@@ -3433,7 +3433,7 @@ int main(int argc, char **argv)
 			[&](int) { cfg.show_fps = !cfg.show_fps; cfg_dirty = true; if (!cfg.show_fps) menu.set_fps(""); } });
 		p.items.push_back({ tr::D_HUD, tr::D_HUD_HELP,
 			[&] { return on_off(cfg.hud); },
-			[&](int) { cfg.hud = !cfg.hud; cfg_dirty = true; m.set_hud_hidden(!cfg.hud); } });
+			[&](int) { cfg.hud = !cfg.hud; cfg_dirty = true; m.set_hud_hidden(!cfg.hud); redraw_shown(); } });
 		{
 			int now = 0;
 			if (SDL_GetRenderVSync(ren, &now))
