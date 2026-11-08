@@ -5061,6 +5061,7 @@ int main(int argc, char **argv)
 		if (smooth_limit) picture_cap = std::min(picture_cap, 60.0);
 		const bool capped_low = picture_cap < FRAME_HZ * 0.95;
 		const bool frame_picture = !capped_low || smooth_budget >= 1 || stopped;
+		if (online.playing() && !frame_picture) draw_into_texture = false;   // (a match's frames too, by the budget: as VF3's)
 		// the frame run during the last present: its picture drawn now, as if it had run here
 		const bool took_ahead = ahead.carried;   // (counted as a frame run in this pass, below)
 		if (took_ahead) { draw_into_texture = ahead.into; held = ahead.held; ahead.carried = false; }
