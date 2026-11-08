@@ -224,6 +224,13 @@ void Adapter::take_sound(std::vector<uint8_t> &out)
 	std::vector<std::vector<uint8_t>> msgs;
 	midi_messages(pending, status, part, msgs);
 	pending.clear();
+	if (sound_log) {   // (this run's messages, whole: the frame's, once it's confirmed, for a snapshot)
+		while (!logged.empty() && logged.back().first >= frame) logged.pop_back();   // (run again: from here, as it is now)
+		std::vector<uint8_t> all;
+		for (const auto &m : msgs) all.insert(all.end(), m.begin(), m.end());
+		logged.push_back({ frame, std::move(all) });
+		while (logged.size() > SOUND_TAIL + 64) logged.pop_front();
+	}
 	sound_frame &next = sound_frames[frame + 1];   // (where the next frame's bytes start: this run's, the latest)
 	next.status = status;
 	next.part = std::move(part);
@@ -360,6 +367,75 @@ uint64_t Adapter::hash(const std::vector<uint8_t> &state)
 	return vfnet::hash64(state.data() + skip, state.size() - skip);
 }
 
+uint32_t Adapter::snap_format() const
+{
+	const std::string k = std::string("vf2|") + NET_VERSION + "|" + std::to_string(model2a::STATE_VERSION) + "|" + std::to_string(board.backup_ram().size()) + "|" +
+	                      std::to_string(board.workram().size()) + "|" + std::to_string(sizeof(void *));
+	uint32_t h = 2166136261u;
+	for (const char c : k) h = (h ^ uint8_t(c)) * 16777619u;
+	return h ? h : 1;
+}
+
+// (the extra: "VF2T", the first frame, how many, each frame's bytes (u16 length, them), then where the frame's bytes'
+// messages stand: the running status and an unfinished message's bytes (u8 length, them))
+void Adapter::snap_extra(uint32_t at, std::vector<uint8_t> &out)
+{
+	out.clear();
+	std::vector<const std::pair<uint32_t, std::vector<uint8_t>> *> v;
+	for (const auto &e : logged)
+		if (e.first < at && e.first + SOUND_TAIL >= at) v.push_back(&e);
+	while (!v.empty() && v.front()->first + v.size() != at) v.erase(v.begin());   // (one frame after another up to it: none missing)
+	auto u32 = [&](uint32_t x) { for (int k = 0; k < 4; k++) out.push_back(uint8_t(x >> (8 * k))); };
+	u32(TAIL_MAGIC);
+	u32(v.empty() ? at : v.front()->first);
+	u32(uint32_t(v.size()));
+	for (const auto *e : v) {
+		const size_t n = std::min<size_t>(e->second.size(), 65535);
+		out.push_back(uint8_t(n));
+		out.push_back(uint8_t(n >> 8));
+		out.insert(out.end(), e->second.begin(), e->second.begin() + ptrdiff_t(n));
+	}
+	const auto f = sound_frames.find(at);
+	const uint8_t status = f != sound_frames.end() ? f->second.status : 0;
+	const std::vector<uint8_t> part = f != sound_frames.end() ? f->second.part : std::vector<uint8_t>();
+	out.push_back(status);
+	out.push_back(uint8_t(std::min<size_t>(part.size(), 255)));
+	out.insert(out.end(), part.begin(), part.begin() + ptrdiff_t(std::min<size_t>(part.size(), 255)));
+}
+
+bool Adapter::load_snap(const std::vector<uint8_t> &state, const std::vector<uint8_t> &extra)
+{
+	if (!load(state)) return false;
+	sound_frames.clear();
+	tail.clear();
+	dropped = false;
+	// (the host's sound bytes before it, if they read whole; else none: the music from its next cue)
+	size_t at = 0;
+	auto need = [&](size_t n) { return extra.size() - at >= n; };
+	auto u32 = [&] { uint32_t x = 0; for (int k = 0; k < 4; k++) x |= uint32_t(extra[at++]) << (8 * k); return x; };
+	if (!need(12) || u32() != TAIL_MAGIC) return true;
+	const uint32_t first = u32(), n = u32();
+	if (n > SOUND_TAIL || uint64_t(first) + n != frame) return true;
+	std::vector<std::vector<uint8_t>> got;
+	for (uint32_t i = 0; i < n; i++) {
+		if (!need(2)) return true;
+		const size_t len = extra[at] | size_t(extra[at + 1]) << 8;
+		at += 2;
+		if (!need(len)) return true;
+		got.emplace_back(extra.begin() + ptrdiff_t(at), extra.begin() + ptrdiff_t(at + len));
+		at += len;
+	}
+	if (!need(2)) return true;
+	const uint8_t status = extra[at], pl = extra[at + 1];
+	at += 2;
+	if (!need(pl)) return true;
+	sound_frame &sf = sound_frames[frame];
+	sf.status = status >= 0x80 && status < 0xf0 ? status : 0;
+	sf.part.assign(extra.begin() + ptrdiff_t(at), extra.begin() + ptrdiff_t(at + pl));
+	tail = std::move(got);
+	return true;
+}
+
 void Adapter::save(std::vector<uint8_t> &state)
 {
 	if (settle) settle();
@@ -393,6 +469,11 @@ void Adapter::advance(const uint16_t input[2], bool resim)
 	if (sound_starts) {   // (a watcher's first frame)
 		sound_starts = false;
 		if (sound_begin) sound_begin();
+	}
+	if (!tail.empty()) {   // (a watcher's first frame after a snapshot: the host's frames before it, for the sound board unheard)
+		if (sound_unheard)
+			for (const auto &b : tail) sound_unheard(b);
+		tail.clear();
 	}
 	sound_taken = false;
 	if (run) run(resim);

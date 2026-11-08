@@ -131,17 +131,17 @@ NET = src/net/session.cpp src/net/link.cpp src/net/room_link.cpp src/net/stun.cp
 # nettest: the session on a simulated network with a stand-in game (no ROM)
 $(BIN)/nettest: $(call objs,$(NET) tools/nettest.cpp)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 # watchsim: watching a match, simulated (no ROM): the players the same with 0, 1 or 50 watchers, each watcher's game theirs
 $(BIN)/watchsim: $(call objs,$(NET) tools/watchsim.cpp)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 # delaytest: Auto's input delay against simulated pings (full speed at any; raised and lowered as it should)
 $(BIN)/delaytest: $(call objs,$(NET) tools/delaytest.cpp)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 # roomtest: room links against a TURN server on 127.0.0.1:3478 (coturn: tools/roomtest.cpp)
 $(BIN)/roomtest: $(call objs,$(NET) tools/roomtest.cpp)
@@ -151,7 +151,7 @@ $(BIN)/roomtest: $(call objs,$(NET) tools/roomtest.cpp)
 # netfuzz: the session against a peer who sends anything, with AddressSanitizer and UBSan (its own objects)
 $(BIN)/netfuzz: $(NET) tools/netfuzz.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $^ -o $@
+	$(CXX) -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $^ -o $@ $(LDLIBS)
 
 # wsfuzz: the WebSocket frame reader against anything a server could send, with AddressSanitizer and UBSan
 $(BIN)/wsfuzz: src/net/http.cpp tools/wsfuzz.cpp

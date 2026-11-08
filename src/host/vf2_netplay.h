@@ -157,6 +157,9 @@ private:
 // 420 frames' work behind when the picture's up, under half a second's (VF2's sound board takes about 1 ms a frame),
 // the heard sound after it; the music then from its song's start, not where the players are in it
 constexpr size_t UNHEARD_TIMED = 180, MUSIC_CUE_BEFORE = 180, MUSIC_CUE_FRAMES = 60;
+// (a snapshot's sound bytes: the frames before it the host keeps, about 4 minutes, past a fight's song's cue; "VF2T")
+constexpr size_t SOUND_TAIL = 14400;
+constexpr uint32_t TAIL_MAGIC = 0x54324656;
 constexpr uint8_t MUSIC_CUE[2] = { 0xad, 0x10 };   // (AD 10 nn: the song, from the bytes a match sends: one at each scene, the stage's as its fight starts)
 class UnheardQueue
 {
@@ -230,6 +233,14 @@ public:
 	// (the state's hash without its header: that's this board's own bookkeeping, not the game's)
 	uint64_t hash(const std::vector<uint8_t> &state);
 	size_t hash_skip() const override { return model2a::STATE_HEADER; }
+	// A watched match's snapshot (src/net/watch.h): this build's states (its online version, the state's version and
+	// size); with it, the host's sound bytes of the frames before it (sound_log: each frame's whole messages as its last
+	// run had them, the last SOUND_TAIL), and where its bytes' messages stood, so a watcher loading it runs them through
+	// its sound board unheard as one catching up from the start would (the stage's song from its cue, UnheardQueue)
+	uint32_t snap_format() const override;
+	void snap_extra(uint32_t frame, std::vector<uint8_t> &out) override;
+	bool load_snap(const std::vector<uint8_t> &state, const std::vector<uint8_t> &extra) override;
+	bool sound_log = false;   // (the host's, while its match may be watched)
 	// The frame's bytes for the sound board to send now, whole MIDI messages only, each with its status byte (a
 	// message the frame's bytes end in the middle of goes with the frame that finishes it): the first time a frame
 	// runs, all of them; run again after a rollback, those it has that weren't sent for it (late). Issue #35: a frame
@@ -271,6 +282,8 @@ private:
 	std::vector<uint8_t> check_buf;
 	bool sound_taken = false;
 	bool dropped = false;   // (bytes for the sound board muted with no sound_unheard: none heard since)
+	std::deque<std::pair<uint32_t, std::vector<uint8_t>>> logged;   // (sound_log's: frame, its messages)
+	std::vector<std::vector<uint8_t>> tail;   // (a snapshot's sound bytes, for the sound board as its first frame after runs)
 	int started_secret = 0;
 	std::string their_extra;
 };

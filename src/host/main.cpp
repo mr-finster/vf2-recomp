@@ -4098,6 +4098,9 @@ int main(int argc, char **argv)
 		vf2net::UnheardQueue unheard;
 		size_t unheard_at = 0;
 		std::atomic<bool> unheard_on{ false };
+		// (a watcher catching up, unseen: the board runs through what it's given unheard, and nothing more, not on to the
+		// real clock meanwhile; heard again at the live point, from where those frames left it: Online::watch_hushed)
+		std::atomic<bool> held{ false };
 		void put(const std::vector<uint8_t> &b)
 		{
 			std::lock_guard<std::mutex> lk(mx);
@@ -4176,6 +4179,7 @@ int main(int argc, char **argv)
 					vf2net::run_unheard(b, piece);
 					continue;
 				}
+				if (msound.held) { SDL_DelayNS(1000000); continue; }   // (catching up: no sound to the real clock, none sped up)
 				if (SDL_GetAudioStreamQueued(audio) >= target) { SDL_DelayNS(1000000); continue; }
 				{ std::lock_guard<std::mutex> lk(msound.mx); bytes.swap(msound.in); }
 				take_volumes();
@@ -4366,6 +4370,7 @@ int main(int argc, char **argv)
 	};
 	auto online_pass = [&] {
 		online.poll(double(SDL_GetTicksNS()) / 1e6);
+		msound.held = online.watch_hushed();
 		Online::Notice n;
 		while (online.next_notice(n)) {
 			if (n.kind == Online::Notice::joined || n.kind == Online::Notice::watching) {
