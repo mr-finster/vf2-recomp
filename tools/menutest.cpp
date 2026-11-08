@@ -44,6 +44,7 @@ std::string out;
 SDL_Texture *backdrop = nullptr;   // MENUTEST_BACKDROP: a picture of the game instead of the stand-in
 std::vector<std::string> overflows;   // (each picture's text past its box: game_menu::overflow)
 std::vector<uint32_t> last_px;   // (the last picture written, its pixels)
+std::vector<std::string> unfit;   // (a page of rows that doesn't fit whole: game_menu::page_fit)
 std::vector<std::string> misaligned;   // (a page's rows whose labels don't start where the others' do)
 
 // a stand-in for the game's picture: a dark stage, two energy bars and a timer, so the notices are seen over something
@@ -75,6 +76,7 @@ void shot(const char *name, int w, int h)
 	menu->render(false);
 	if (!*name) return;   // (a frame only)
 	for (const std::string &o : menu->overflow()) overflows.push_back(std::string(name) + ": " + o);
+	if (const std::string f = menu->page_fit(); !f.empty()) unfit.push_back(std::string(name) + ": " + f);
 	SDL_Surface *s = SDL_RenderReadPixels(ren, nullptr);
 	SDL_Surface *c = s ? SDL_ConvertSurface(s, SDL_PIXELFORMAT_XRGB8888) : nullptr;   // (png.h takes red in the high byte)
 	if (s) SDL_DestroySurface(s);
@@ -246,12 +248,11 @@ void pages(game_menu &gm, int w, int h)
 		{ M_RESUME, M_RESUME_HELP, "" }, { P_DISPLAY, M_DISPLAY_HELP, "" }, { P_SOUND, M_SOUND_HELP, "" }, { P_GAME, M_GAME_HELP, "" },
 		{ M_ARCADE, M_ARCADE_HELP, "" }, { P_ONLINE, M_ONLINE_HELP, "" }, { P_CONTROLS, M_CONTROLS_MATCH_HELP, "" },
 		{ P_CHEATS, M_CHEATS_HELP, "" }, { M_QUIT, M_QUIT_HELP, "" } });
-	page_shots(gm, w, h, "pages_display.png", P_DISPLAY, {
+	page_shots(gm, w, h, "pages_display.png", P_DISPLAY, {   // (Windows' rows, the most of any: 20 and Back)
 		{ D_SCALE, D_SCALE_HELP, F(D_SCALE_NARROWER, { { "n", "2" }, { "want", "6" } }) },
 		{ D_AA, D_AA_HELP, D_AA_OFF_TOO_LARGE },
 		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_BUILD },
 		{ D_DRIVER, D_DRIVER_HELP, D_DRIVER_AUTO },
-		{ D_GPU_QUALITY, D_GPU_QUALITY_HELP, D_EXACT },
 		{ D_SHAPE, D_SHAPE_HELP, D_SHAPE_FIT },
 		{ D_BG_FILTER, D_BG_FILTER_HELP, D_SMOOTH },
 		{ D_SMOOTH_MOTION, D_SMOOTH_MOTION_HELP, on },
@@ -260,12 +261,31 @@ void pages(game_menu &gm, int w, int h)
 		{ D_BRIGHTNESS, D_BRIGHTNESS_HELP, F(N_PERCENT, { { "n", "100" } }) },
 		{ D_GAMMA, D_GAMMA_HELP, F(NOT_WITH_RENDERER, { { "what", F(N_PERCENT, { { "n", "100" } }) } }) },
 		{ D_SHOW_FPS, D_SHOW_FPS_HELP, off },
+		{ D_HUD, D_HUD_HELP, on },
 		{ D_VSYNC, D_VSYNC_HELP, on },
+		{ D_FRAME_LIMIT, D_FRAME_LIMIT_HELP, F(D_FRAME_LIMIT_SCREEN, { { "n", "144" } }) },
 		{ D_FRAMES_IN_FLIGHT, D_FRAMES_IN_FLIGHT_HELP, "2" },
-		{ D_PERF_HINTS, D_PERF_HINTS_HELP, on },
 		{ D_WINDOW_SIZE, D_WINDOW_SIZE_HELP, F(D_WINDOW_N_IN_WINDOW, { { "n", "3" }, { "w", "1536" }, { "h", "1152" } }) },
 		{ D_FULLSCREEN, D_FULLSCREEN_HELP, on },
 		{ D_FS_MODE, D_FS_MODE_HELP, D_BORDERLESS },
+		{ D_ON_SCREEN, D_ON_SCREEN_HELP, D_ON_SCREEN_AUTO } });
+	page_shots(gm, w, h, "pages_display_mac.png", P_DISPLAY, {   // (a Mac's: GPU quality, no Graphics driver or Fullscreen mode)
+		{ D_SCALE, D_SCALE_HELP, F(D_SCALE_NARROWER, { { "n", "2" }, { "want", "6" } }) }, { D_AA, D_AA_HELP, D_AA_OFF_TOO_LARGE },
+		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_BUILD }, { D_GPU_QUALITY, D_GPU_QUALITY_HELP, D_EXACT }, { D_SHAPE, D_SHAPE_HELP, D_SHAPE_FIT },
+		{ D_BG_FILTER, D_BG_FILTER_HELP, D_SMOOTH }, { D_SMOOTH_MOTION, D_SMOOTH_MOTION_HELP, on }, { D_SCREEN_FILTER, D_SCREEN_FILTER_HELP, D_SCANLINES },
+		{ D_CRT_COLOURS, D_CRT_COLOURS_HELP, F(NOT_WITH_RENDERER, { { "what", CRT_PAL } }) }, { D_BRIGHTNESS, D_BRIGHTNESS_HELP, F(N_PERCENT, { { "n", "100" } }) },
+		{ D_GAMMA, D_GAMMA_HELP, F(NOT_WITH_RENDERER, { { "what", F(N_PERCENT, { { "n", "100" } }) } }) }, { D_SHOW_FPS, D_SHOW_FPS_HELP, off },
+		{ D_HUD, D_HUD_HELP, on }, { D_VSYNC, D_VSYNC_HELP, on }, { D_FRAME_LIMIT, D_FRAME_LIMIT_HELP, F(D_FRAME_LIMIT_SCREEN, { { "n", "120" } }) },
+		{ D_FRAMES_IN_FLIGHT, D_FRAMES_IN_FLIGHT_HELP, "2" }, { D_WINDOW_SIZE, D_WINDOW_SIZE_HELP, D_FREE }, { D_FULLSCREEN, D_FULLSCREEN_HELP, on },
+		{ D_ON_SCREEN, D_ON_SCREEN_HELP, D_ON_SCREEN_AUTO } });
+	page_shots(gm, w, h, "pages_display_android.png", P_DISPLAY, {   // (Android's: Performance hints, no Window size)
+		{ D_SCALE, D_SCALE_HELP, F(D_SCALE_NARROWER, { { "n", "2" }, { "want", "6" } }) }, { D_AA, D_AA_HELP, D_AA_OFF_TOO_LARGE },
+		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_BUILD }, { D_SHAPE, D_SHAPE_HELP, D_SHAPE_FIT }, { D_BG_FILTER, D_BG_FILTER_HELP, D_SMOOTH },
+		{ D_SMOOTH_MOTION, D_SMOOTH_MOTION_HELP, on }, { D_SCREEN_FILTER, D_SCREEN_FILTER_HELP, D_SCANLINES },
+		{ D_CRT_COLOURS, D_CRT_COLOURS_HELP, F(NOT_WITH_RENDERER, { { "what", CRT_PAL } }) }, { D_BRIGHTNESS, D_BRIGHTNESS_HELP, F(N_PERCENT, { { "n", "100" } }) },
+		{ D_GAMMA, D_GAMMA_HELP, F(NOT_WITH_RENDERER, { { "what", F(N_PERCENT, { { "n", "100" } }) } }) }, { D_SHOW_FPS, D_SHOW_FPS_HELP, off },
+		{ D_HUD, D_HUD_HELP, on }, { D_VSYNC, D_VSYNC_HELP, on }, { D_FRAME_LIMIT, D_FRAME_LIMIT_HELP, F(D_FRAME_LIMIT_SCREEN, { { "n", "120" } }) },
+		{ D_FRAMES_IN_FLIGHT, D_FRAMES_IN_FLIGHT_HELP, "2" }, { D_PERF_HINTS, D_PERF_HINTS_HELP, on }, { D_FULLSCREEN, D_FULLSCREEN_HELP, on },
 		{ D_ON_SCREEN, D_ON_SCREEN_HELP, D_ON_SCREEN_AUTO } });
 	page_shots(gm, w, h, "pages_display_more.png", P_DISPLAY, {   // (the other values of its rows)
 		{ D_RENDERER, D_RENDERER_HELP, D_R3D_CRASHED }, { D_RENDERER, D_RENDERER_HELP, F(D_R3D_NEXT_START, { { "what", AUTO } }) },
@@ -288,7 +308,8 @@ void pages(game_menu &gm, int w, int h)
 	page_shots(gm, w, h, "pages_arcade.png", P_ARCADE, {
 		{ A_DIFFICULTY, A_DIFFICULTY_HELP, A_HARDEST }, { A_RING, A_RING_HELP, A_RING_XL }, { A_ROUNDS_CPU, A_ROUNDS_CPU_HELP, "3" },
 		{ A_ROUNDS_VS, A_ROUNDS_VS_HELP, "3" }, { A_CONTINUE, A_CONTINUE_HELP, on }, { A_DEMO_SOUND, A_DEMO_SOUND_HELP, on },
-		{ A_AFTER_VS, A_AFTER_VS_HELP, A_WINNER_ON }, { A_VERSION, A_VERSION_HELP, A_ORIGINAL }, { A_DEBUG, A_DEBUG_HELP, off },
+		{ A_AFTER_VS, A_AFTER_VS_HELP, A_WINNER_ON }, { A_VERSION, A_VERSION_HELP, A_ORIGINAL },
+		{ A_STAGE_SELECT, A_STAGE_SELECT_HELP, A_STAGE_DURAL }, { A_DEBUG, A_DEBUG_HELP, off },
 		{ A_SERVICE, A_SERVICE_HELP, "" } });
 	page_shots(gm, w, h, "pages_arcade_more.png", P_ARCADE, {
 		{ A_DIFFICULTY, A_DIFFICULTY_HELP, A_EASY }, { A_DIFFICULTY, A_DIFFICULTY_HELP, A_NORMAL }, { A_DIFFICULTY, A_DIFFICULTY_HELP, A_HARD },
@@ -326,7 +347,8 @@ void pages(game_menu &gm, int w, int h)
 		{ P_PLAYER_1, CTL_P1_HELP, F(CTL_ANY_PAD, { { "pad", "Xbox Series X Controller" } }) }, { P_PLAYER_2, CTL_P2_HELP, CTL_ANY_PAD_NONE },
 		{ CTL_SWAP, CTL_SWAP_HELP, "" } });
 	page_shots(gm, w, h, "pages_player.png", P_PLAYER_1, {
-		{ CTL_PAD, CTL_PAD_HELP, CTL_CHOSEN_PAD_GONE }, { CTL_KEYBOARD, CTL_KEYBOARD_HELP, "" }, { CTL_PAD_BUTTONS, CTL_PAD_BUTTONS_HELP, "" },
+		{ CTL_PAD, CTL_PAD_HELP, CTL_CHOSEN_PAD_GONE }, { CTL_KEYBOARD, CTL_KEYBOARD_HELP, "" }, { CTL_KEYBOARD2, CTL_KEYBOARD2_HELP, "" }, { CTL_PAD_BUTTONS, CTL_PAD_BUTTONS_HELP, "" },
+		{ CTL_PAD_BUTTONS2, CTL_PAD_BUTTONS2_HELP, "" },
 		{ CTL_SETUP, CTL_SETUP_HELP, "" }, { CTL_RESET, CTL_RESET_HELP, "" } });
 	{
 		const tr::text names[] = { CTL_UP, CTL_DOWN, CTL_LEFT, CTL_RIGHT, CTL_GUARD, CTL_PUNCH, CTL_KICK, CTL_GUARD_PUNCH, CTL_PUNCH_KICK, CTL_GUARD_KICK,
@@ -338,6 +360,8 @@ void pages(game_menu &gm, int w, int h)
 		}
 		page_shots(gm, w, h, "pages_keys.png", P_P2_KEYBOARD, keys);
 		page_shots(gm, w, h, "pages_pad.png", P_P2_PAD, pads);
+		page_shots(gm, w, h, "pages_keys2.png", P_P2_KEYBOARD2, keys);   // (the second keys' and buttons': the same rows)
+		page_shots(gm, w, h, "pages_pad2.png", P_P2_PAD2, pads);
 	}
 	// the prompts that take the help's place while a key, a button or a set-up step is waited for
 	{
@@ -1381,6 +1405,9 @@ int main(int argc, char **argv)
 	printf("%zu lines past their box\n", overflows.size());
 	for (const std::string &o : misaligned) check(false, ("a row out of line: " + o).c_str());
 	check(misaligned.empty(), "every page's rows start in line");
+	// every page of rows whole, none scrolling (a scroll can't be seen: the rows below the panel's foot looked missing)
+	for (const std::string &o : unfit) check(false, ("a page that doesn't fit: " + o).c_str());
+	check(unfit.empty(), "every page of rows fits whole: none scrolls");
 	if (fails) { fprintf(stderr, "menutest: %d failed\n", fails); return 1; }
 	printf("all passed\n");
 	return 0;
