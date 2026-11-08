@@ -339,10 +339,15 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	}
 	started_secret = secret;
 	sound_frames.clear();
-	{   // (the match's first frame's bytes start where the boot's ended)
+	{   // (the boot's frames' bytes as whole messages, one cut at a frame's end with the frame that ends it, as VF1's;
+		// the match's first frame's bytes start where they ended, so an unfinished one goes once, with them)
 		sound_frame &f0 = sound_frames[0];
-		std::vector<std::vector<uint8_t>> none;
-		for (const auto &b : boot_sound) midi_messages(b, f0.status, f0.part, none);
+		for (auto &b : boot_sound) {
+			std::vector<std::vector<uint8_t>> msgs;
+			midi_messages(b, f0.status, f0.part, msgs);
+			b.clear();
+			for (auto &m : msgs) b.insert(b.end(), m.begin(), m.end());
+		}
 	}
 	sound_starts = dropped = false;
 	checkpoints.clear();

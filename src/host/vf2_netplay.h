@@ -238,7 +238,7 @@ public:
 	// bytes under another message's running status): measured in vf2net at 20 ms, delay 0, 20,000 frames, 2-7 cut
 	// short and 1-2 lost a side; now none of either, only a wrong guess's own sounds extra (they can't be taken back)
 	void take_sound(std::vector<uint8_t> &out);
-	// The match's boot's bytes for the sound board, a frame's each (begin): a sound board made for the match runs a
+	// The match's boot's bytes for the sound board, a frame's each, whole messages (begin): a sound board made for the match runs a
 	// frame for each with them as it starts, as it would have booted alongside this board, before the match's own
 	std::vector<std::vector<uint8_t>> boot_sound;
 	int stage_offset = 0;   // (the host's place in the stages' list, from its blob)
