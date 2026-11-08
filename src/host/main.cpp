@@ -1457,7 +1457,7 @@ int main(int argc, char **argv)
 	romset::result sound_roms = roms;   // (online play's sound board, made from them at the first match)
 	// the match found chime: the game's coin sound, made by a sound board of its own on a thread of its own (about a
 	// second of work, done long before any match)
-	std::shared_future<std::vector<int16_t>> coin = std::async(std::launch::async, [&sound_roms] { return coin_sound::make(sound_roms, LEVEL); }).share();
+	std::shared_future<std::vector<int16_t>> coin = std::async(std::launch::async, [&sound_roms] { return chime::coin_or_bell(coin_sound::make(sound_roms, LEVEL), coin_sound::RATE); }).share();
 	if (const char *cw = getenv("VF2_TEST_CHIME_WAV")) {   // (tests: the match found chime's sound, the game's coin, to a .wav)
 		const std::vector<int16_t> &pcm = coin.get();
 		if (FILE *wf = fopen(cw, "wb")) {
