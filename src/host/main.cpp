@@ -464,6 +464,28 @@ const key_bind SYS_KEYS[] = {
 // said about it, and Start simply starts.
 bool g_pc_mode = true;
 bool g_match_board = false;   // (an online match's board: the host's settings and the match's program, none of this player's)
+// Arcade settings > Stage select (issue #33): a versus's first fight after Start (a challenger in at the select, or
+// both players in from Start) on the stage chosen, the game's own order on from it, as online's random stages: 1-9
+// the versus order's stages after its first (0, the game's own), 10 Dural's. Its stage comes from the game's count of
+// fights (vf2net::FIGHTS), which the select's first frame loads the stage's textures from (mode 7: online's -38 note),
+// so the count and the stage (vf2net::STAGE) are set the frame before (mode 6), the game's first fight still to come:
+// the count 0, no one has won (vf2net::STREAK), the 1P ladder's fight number (LADDER, from 1) 1. A 1P game's fights
+// don't come from the count (the CPU's order, its stages theirs): there it's put back to 0 as the fight starts, the
+// game as ever (a challenger later in it on the game's own stage). Offline only: never on an online match's board.
+static void stage_select(model2a &m, int stage)
+{
+	constexpr uint32_t LADDER = 0x54;
+	auto &ram = const_cast<std::vector<u8> &>(m.workram());
+	static bool set = false;   // (the count set, for this fight: the game's own again in a 1P game)
+	if (set && m.game_mode() == 9) {   // (the fight: a versus, or 1P)
+		if (ram[vf2net::VERSUS] == 0 && ram[vf2net::FIGHTS] == u8(stage)) ram[vf2net::FIGHTS] = 0;
+		set = false;
+	}
+	if (stage <= 0 || m.game_mode() != 6 || ram[vf2net::FIGHTS] != 0 || ram[vf2net::STREAK] != 0 || ram[LADDER] != 1) return;
+	ram[vf2net::FIGHTS] = ram[vf2net::STAGE] = u8(stage);
+	set = true;
+	fprintf(stderr, "Arcade settings > Stage select: a versus from this select on stage %d%s\n", stage + 1, stage == vf2net::STAGES ? " (Dural's)" : "");
+}
 
 struct pad_state
 {
@@ -846,6 +868,7 @@ struct settings
 	bool hud = true;     // Display > HUD: the 2D over a fight (energy bars, timer, names...) drawn; off: the 3D and the backdrop only
 	int frame_limit = -1;   // Display > Frame limit: the pictures a second at most, 30 60 120 144; 0 none, -1 the screen's refresh (as before with vsync)
 	int on_screen = 1;   // the on-screen controls (a touch screen): 0 off, 1 while the player has no pad, 2 always
+	int stage = -1;   // Arcade settings > Stage select: a versus's first stage after Start (1-9 the versus order's, 10 Dural's; 0, its first, the game's own), -1 the game's own
 	int secret = 0;   // Cheats > Secret character: the fighter in Akira's place (model2a::set_secret_character), 0 none
 	std::string random_player[2];   // Cheats: each player's fighter: "" the select as ever, "*" a random one each game, or a name's (model2a::set_random_player)
 	std::string random_named[2];    // (each player's last name typed: Left / Right come back to it)
@@ -1002,6 +1025,8 @@ struct settings
 		}
 		flag("random_opponents", random_cpu);
 		flag("debug_mode", debug_mode);
+		num("stage_select", stage, -1, vf2net::STAGES);
+		if (stage == 0) stage = -1;   // (the versus order's first: the game's own)
 		if (ring && (ring < 1300 || ring % 100)) ring = 0;   // 0: by difficulty
 		flag("fullscreen", fullscreen);
 		flag("fullscreen_window", fs_window);
@@ -1082,6 +1107,7 @@ struct settings
 		}
 		if (random_cpu) fprintf(f, "random_opponents = 1\n");
 		if (debug_mode) fprintf(f, "debug_mode = 1\n");
+		if (stage >= 0) fprintf(f, "stage_select = %d\n", stage);
 		fprintf(f, "crt_colours = %d\nbrightness = %d\ngamma = %d\n", crt_colours, brightness, gamma);
 		fprintf(f, "on_screen_controls = %d\n", on_screen);
 		if (graphics) fprintf(f, "graphics = %d\n", graphics);
@@ -3561,6 +3587,10 @@ int main(int argc, char **argv)
 		choice(tr::A_DEMO_SOUND, tr::A_DEMO_SOUND_HELP, ga::advertise_sound, [&](int v) { return on_off(v); });
 		choice(tr::A_AFTER_VS, tr::A_AFTER_VS_HELP, ga::vs_finish, [](int v) { return std::string(v ? tr::A_BOTH_STOP : tr::A_WINNER_ON); });
 		choice(tr::A_VERSION, tr::A_VERSION_HELP, ga::version, [](int v) { return v ? std::string("2.1") : std::string(tr::A_ORIGINAL); });
+		// (Stage select, issue #33: offline only, an online match's board never; no restart, from the next Start)
+		p.items.push_back({ tr::A_STAGE_SELECT, tr::A_STAGE_SELECT_HELP,
+			[&] { return cfg.stage < 0 ? std::string(tr::OFF) : cfg.stage == vf2net::STAGES ? std::string(tr::A_STAGE_DURAL) : tr::fill(tr::A_STAGE_N, { { "n", std::to_string(cfg.stage + 1) } }); },
+			[&](int d) { const int v = std::clamp(cfg.stage + d, -1, vf2net::STAGES); cfg.stage = v == 0 ? (d > 0 ? 1 : -1) : v; cfg_dirty = true; } });   // (Stage 1 is Off's)
 		// (Debug mode: Cheats' before, settings.ini's debug_mode key as it was; offline only, never on a match's board)
 		p.items.push_back({ tr::A_DEBUG, tr::A_DEBUG_HELP,
 			[&] { return on_off(cfg.debug_mode); },
@@ -4912,6 +4942,7 @@ int main(int argc, char **argv)
 			m.set_draw_3d(last || sync.enabled);
 			if (test_stage >= 0 && (m.game_mode() == 7 || m.game_mode() == 8))   // VF2_STAGE (tests: the fight's stage)
 				const_cast<std::vector<u8> &>(m.workram())[0x64] = u8(test_stage);
+			if (!g_match_board) stage_select(m, cfg.stage);   // Arcade settings > Stage select (offline only)
 			m.run_frame();
 			sysinfo::note_frame();   // (on the thread that ran it)
 			m.set_draw_3d(true);

@@ -61,6 +61,7 @@ screen's refresh rate.
 | Random fighters (Menu > Cheats): three of the cast made one, for a player or every computer opponent | Working (new), online too (Online > Settings > Your fighter) |
 | Secret characters (Menu > Cheats): Dural, MUE and KOJAC | Working |
 | The arcade's debug mode (Menu > Arcade settings > Debug mode): CPU load, polygon count, hits, and its debug menu | Working (new), offline only |
+| A stage select for a versus (Menu > Arcade settings > Stage select): the stage two players' first fight is on, the arcade's order on from it | Working (new), offline only |
 | Online play | Experimental: rollback netplay, a random opponent or a friend by room code, no setup (see [Online play](#online-play-experimental)) |
 
 ## Random fighters
