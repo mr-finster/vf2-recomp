@@ -158,6 +158,21 @@ $(BIN)/wsfuzz: src/net/http.cpp tools/wsfuzz.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) -std=c++20 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer $^ -o $@ -lpthread
 
+# snapfuzz: a watcher's snapshot loading against a hostile host's (spoilt real snapshots: vf2net --watch-snap --snap-out
+# DIR), with AddressSanitizer and UBSan, its own objects (make snapfuzz: build/asan/bin/snapfuzz)
+ASAN_FLAGS = -std=c++20 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+snapfuzz:
+	CXXFLAGS="$(ASAN_FLAGS)" $(MAKE) OBJ=build/asan/obj BIN=build/asan/bin build/asan/bin/snapfuzz
+.PHONY: snapfuzz
+# (the sound board's 68000, MAME's generated code, unchanged: without the sanitizers there, a gigabyte less and the same
+# checks everywhere else)
+ifeq ($(OBJ),build/asan/obj)
+$(OBJ)/third_party/mame/m68000/%.o: CXXFLAGS = -std=c++20 -O1 -g0 -Isrc/core/shim_include
+endif
+$(BIN)/snapfuzz: $(call objs,tools/snapfuzz.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) -lpthread
+
 # The rollback soak test (tools/vf2soak.cpp): two boards, one rolled back every frame, byte for byte the same
 $(BIN)/vf2soak: $(call objs,tools/vf2soak.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
 	@mkdir -p $(dir $@)
