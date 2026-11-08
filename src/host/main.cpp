@@ -163,6 +163,7 @@
 //                        the loop: b3@200 its button 3, h1@260 its hat (1 up, 2 right, 4 down, 8 left), +0@300 or
 //                        -1@300 an axis to one end (each 8 passes), q@900 quit (a run that saves), p@100 plugged
 //                        in then (not at the start); "1": no presses. Player 1's controls logged as they change
+//   VF2_TEST_RAM_LOG=f   the game's work RAM hashed every 30 game frames to f (a display setting changes no frame)
 #include "version.h"      // VF2_VERSION, VF2_DATE (made by the Makefile from git)
 #include "../machine/model2a.h"
 #include "../machine/parallel.h"
@@ -838,6 +839,7 @@ struct settings
 	// Display's own two rows for the gpu renderer: vsync, and how many frames it may keep in flight
 	// (see apply_display_settings, where the second one is explained)
 	int vsync = 1;
+	bool hud = true;     // Display > HUD: the 2D over a fight (energy bars, timer, names...) drawn; off: the 3D and the backdrop only
 	int on_screen = 1;   // the on-screen controls (a touch screen): 0 off, 1 while the player has no pad, 2 always
 	int secret = 0;   // Cheats > Secret character: the fighter in Akira's place (model2a::set_secret_character), 0 none
 	std::string random_player[2];   // Cheats: each player's fighter: "" the select as ever, "*" a random one each game, or a name's (model2a::set_random_player)
@@ -1017,6 +1019,7 @@ struct settings
 		flag("arcade_mode", arcade);
 		flag("background_filter", smooth_bg);
 		flag("show_fps", show_fps);
+		flag("hud", hud);
 		num("window_scale", window_scale, 0, 16);
 		num("window_w", window_w, 0, 65535);
 		num("window_h", window_h, 0, 65535);
@@ -1058,6 +1061,7 @@ struct settings
 		if (!log) fprintf(f, "log = 0\n");
 		fprintf(f, "language = %s\n", language.c_str());
 		fprintf(f, "window_scale = %d\n", window_scale);
+		fprintf(f, "hud = %d\n", int(hud));
 		if (fs_window) fprintf(f, "fullscreen_window = 1\n");
 		if (fs_exclusive) fprintf(f, "fullscreen_exclusive = 1\n");
 		if (window_w > 0) fprintf(f, "window_w = %d\nwindow_h = %d\nwindow_x = %d\nwindow_y = %d\nwindow_maximised = %d\n", window_w, window_h, window_x, window_y, int(window_max));
@@ -1430,6 +1434,7 @@ int main(int argc, char **argv)
 	m.set_volumes(cfg.music / 100.0f, cfg.effects / 100.0f);
 	m.set_level(LEVEL * cfg.volume / 100.0f);
 	m.set_backdrop_filter(cfg.smooth_bg);
+	m.set_hud_hidden(!cfg.hud);   // (Display > HUD: drawing only)
 	m.set_smooth(true);   // the lists kept: smooth motion's pictures (cfg.smooth), and any picture drawn again (redraw)
 
 	const std::string backup_path = data + "/backup1", eeprom_path = data + "/eeprom";
@@ -3378,6 +3383,9 @@ int main(int argc, char **argv)
 		p.items.push_back({ tr::D_SHOW_FPS, tr::D_SHOW_FPS_HELP,
 			[&] { return on_off(cfg.show_fps); },
 			[&](int) { cfg.show_fps = !cfg.show_fps; cfg_dirty = true; if (!cfg.show_fps) menu.set_fps(""); } });
+		p.items.push_back({ tr::D_HUD, tr::D_HUD_HELP,
+			[&] { return on_off(cfg.hud); },
+			[&](int) { cfg.hud = !cfg.hud; cfg_dirty = true; m.set_hud_hidden(!cfg.hud); } });
 		{
 			int now = 0;
 			if (SDL_GetRenderVSync(ren, &now))
@@ -4909,6 +4917,12 @@ int main(int argc, char **argv)
 			}
 			m.m_audio_out.clear();
 			game_frame++;
+			// (tests: the game's work RAM hashed every 30 frames, VF2_TEST_RAM_LOG=file: the game the same whatever the
+			// display's settings, Display > HUD's, V-Sync's, the frame limit's)
+			if (static FILE *rl = getenv("VF2_TEST_RAM_LOG") ? fopen(getenv("VF2_TEST_RAM_LOG"), "w") : nullptr; rl && game_frame % 30 == 0) {
+				fprintf(rl, "%llu %016llx\n", (unsigned long long)game_frame, (unsigned long long)fnv(m.workram().data(), m.workram().size()));
+				fflush(rl);
+			}
 			if (pace_log && game_frame % 60 == 0)
 				fprintf(stderr, "frame %llu at %.3f s, queued %d bytes, made %zu\n", (unsigned long long)game_frame, double(SDL_GetTicksNS() - start_ns) / 1e9, audio ? SDL_GetAudioStreamQueued(audio) : -1, m.m_audio_out.size());
 			if (quit_after >= 0 && int64_t(game_frame) >= quit_after) running = false;

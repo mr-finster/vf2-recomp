@@ -2272,6 +2272,7 @@ void model2a::draw_2d(bool polygons, bool parts)
 	// (2 and 3) carry on to the sides, from the stage's panorama where it's known
 	const segas24_tile::panorama *pan = wide ? find_panorama() : nullptr;
 	// the three bitmaps at once, each on a thread (the tiles' planes are only read)
+	const bool hud_off = m_hud_hidden && game_mode() == 9;   // (Display > HUD Off, in a fight: maps 0 and 1 not drawn over the 3D)
 	m_tiles.m_ox = e;
 	parallel_tasks(3, [&](int task) {
 		const rectangle all(0, w - 1, 0, HEIGHT - 1);
@@ -2287,7 +2288,7 @@ void model2a::draw_2d(bool polygons, bool parts)
 				m_tiles.draw(m_sys24_mid, clip, layer << 1, 0, 0);
 		} else {
 			m_sys24_top.fill(0, all);
-			for (int layer = 3; layer >= 0; layer--) {
+			for (int layer = 3; layer >= (hud_off ? 2 : 0); layer--) {
 				m_tiles.draw(m_sys24_top, clip, (layer << 1) | 1, 0, 0);
 				if (wide && layer >= 2) m_tiles.draw_sides(m_sys24_top, (layer << 1) | 1, 0, e, pan);
 			}
@@ -2298,7 +2299,7 @@ void model2a::draw_2d(bool polygons, bool parts)
 		std::lock_guard<std::mutex> lk(m_hud_mx);
 		const bool online = !m_hud_names[0].empty() || !m_hud_names[1].empty();
 		const std::string *names = online ? m_hud_names : m_random_hud;
-		if (!names[0].empty() || !names[1].empty()) {
+		if (!hud_off && (!names[0].empty() || !names[1].empty())) {
 			const m2hud::Flag *fl[2] = { &m_hud_flags[0], &m_hud_flags[1] };
 			if (!m2hud::draw(m_tiles, m_sys24_top, e, names, online ? fl : nullptr, m_hud_flag_at))
 				for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;

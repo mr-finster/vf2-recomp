@@ -316,6 +316,10 @@ public:
 	// The stage backdrop above 1x: softened and smoothly enlarged, or its pixels as blocks (the
 	// arcade's, enlarged). Only in a fight (wide_frame()); the rest of the 2D stays sharp.
 	void set_backdrop_filter(bool smooth) { m_backdrop_smooth = smooth; }
+	// Display > HUD Off: in a fight (game_mode() 9) the 2D over the 3D of tile maps 0 and 1, the HUD's (the energy bars,
+	// the timer, the names, the rounds won, the round calls' text), isn't drawn, nor the names put in it; the backdrop's
+	// maps (2, 3) are, their tiles over the 3D too. The picture only: what's drawn never reaches the board's state
+	void set_hud_hidden(bool hidden) { m_hud_hidden = hidden; }
 	bool backdrop_filter() const { return m_backdrop_smooth; }
 	// The attract's SEGA logo is up (it sets bit 16 of the flags at 0x500068 every frame it
 	// runs; clear again once the attract moves on): the first time, at about frame 728 from
@@ -637,6 +641,7 @@ private:
 	void bd_pixels(int mode, double dh, double dv, int &dx, int &dy) const;
 	void draw_2d(bool polygons, bool parts);
 	bool m_2d_wide = false, m_2d_filter = false;   // what the last draw_2d drew
+	bool m_hud_hidden = false;   // (set_hud_hidden: the host's, read when a picture's 2D is drawn)
 	uint64_t m_2d_version = 0;
 	uint64_t m_2d_key[5] = { ~0ull };              // smooth motion: the frame, scale, width, filter and parts it was drawn for
 	void compose(u32 *out, size_t stride, const bitmap_rgb32 *layer3d, int x0, int x1, bool smooth, u32 pen0, int bdx = 0, int bdy = 0);
