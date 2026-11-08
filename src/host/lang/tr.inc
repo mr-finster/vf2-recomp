@@ -476,7 +476,7 @@ T(OS_HIDE_IP_HELP, "Açık: her çevrimiçi maç (kodla ya da rastgele) aktarıc
 T(OS_MAX_PING, "Rastgele: en yüksek ping")
 T(OS_MAX_PING_HELP, "Rastgele yalnızca pingi bundan yüksek olan rakibi atlar: ping bağlanırken, maç başlamadan ölçülür; aşarsa oyun ayrılır ve başka birini arar (ikiniz bir süre yeniden eşleşmezsiniz). Herhangi: en yakın kim varsa. Oda kodları ve adresler ping ne olursa olsun oynar.")
 T(OS_CHIME, "Eşleşme sesi")
-T(OS_CHIME_HELP, "Çevrimiçi maç bulununca bir ses çalar (oyun penceresi önde değilse yanıp söner), böylece başka bir pencerede bekleyebilirsin.")
+T(OS_CHIME_HELP, "Çevrimiçi maç bulununca oyunun kendi jeton sesi çalar (oyun penceresi önde değilse yanıp söner), böylece başka bir pencerede bekleyebilirsin.")
 T(QUICK_LISTED, "Hızlı Maçlarımı Odalar'da göster")
 T(QUICK_LISTED_HELP, "Açık: herkes Hızlı Maç oyunlarını Odalar'da bulup izleyebilir. Kapalı: listelenmezler (yalnızca iki oyuncuda da Açık ise listelenir).")
 T(F_YOUR_FIGHTER, "Dövüşçün")

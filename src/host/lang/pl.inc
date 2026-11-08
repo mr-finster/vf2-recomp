@@ -475,7 +475,7 @@ T(OS_HIDE_IP_HELP, "Wł.: każdy mecz online (z kodem lub losowy) idzie przez pr
 T(OS_MAX_PING, "Losowy: maks. ping")
 T(OS_MAX_PING_HELP, "Losowy pomija tylko rywala z pingiem wyższym niż to: mierzony przy łączeniu, przed meczem, a gdy przekracza, gra odchodzi i szuka kogoś innego (przez jakiś czas was nie połączy). Dowolny: najbliższy. Kody pokojów i adresy grają przy każdym pingu.")
 T(OS_CHIME, "Dźwięk znalezienia meczu")
-T(OS_CHIME_HELP, "Dźwięk, gdy znajdzie się mecz online (a okno miga, jeśli nie jest z przodu), więc możesz czekać w innym oknie.")
+T(OS_CHIME_HELP, "Dźwięk monety z samej gry, gdy znajdzie się mecz online (a okno miga, jeśli nie jest z przodu), więc możesz czekać w innym oknie.")
 T(QUICK_LISTED, "Pokazuj moje szybkie mecze w Pokojach")
 T(QUICK_LISTED_HELP, "Wł.: każdy znajdzie twoje szybkie mecze w Pokojach i je obejrzy. Wył.: nie są widoczne (tylko gdy obaj gracze mają Wł.).")
 T(F_YOUR_FIGHTER, "Twoja postać")

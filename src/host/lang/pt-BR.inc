@@ -475,7 +475,7 @@ T(OS_HIDE_IP_HELP, "Sim: toda partida online (por código ou aleatória) passa p
 T(OS_MAX_PING, "Aleatória: ping máximo")
 T(OS_MAX_PING_HELP, "A aleatória só pula um oponente com ping acima disso: é medido ao conectar, antes de começar, e se passar, o jogo sai e procura outro (vocês não são juntados de novo por um tempo). Qualquer: quem estiver mais perto. Códigos de sala e endereços jogam com qualquer ping.")
 T(OS_CHIME, "Som de partida encontrada")
-T(OS_CHIME_HELP, "Um som quando uma partida online é encontrada (e a janela pisca se não estiver na frente), para você esperar em outra janela.")
+T(OS_CHIME_HELP, "O som de ficha do próprio jogo quando uma partida online é encontrada (e a janela pisca se não estiver na frente), para você esperar em outra janela.")
 T(QUICK_LISTED, "Mostrar minhas partidas rápidas em Salas")
 T(QUICK_LISTED_HELP, "Sim: qualquer um encontra suas partidas rápidas em Salas e assiste. Não: elas não aparecem (só aparecem se os dois deixarem Sim).")
 T(F_YOUR_FIGHTER, "Seu lutador")

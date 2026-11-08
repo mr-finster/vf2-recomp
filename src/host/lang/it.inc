@@ -475,7 +475,7 @@ T(OS_HIDE_IP_HELP, "Sì: ogni incontro online (con codice o casuale) passa dal r
 T(OS_MAX_PING, "Casuale: ping massimo")
 T(OS_MAX_PING_HELP, "La casuale salta solo un avversario con ping più alto di così: misurato alla connessione, prima dell'incontro; se è sopra, il gioco esce e cerca un altro (non verrete riabbinati per un po'). Qualsiasi: il più vicino. Codici stanza e indirizzi giocano con qualsiasi ping.")
 T(OS_CHIME, "Suono partita trovata")
-T(OS_CHIME_HELP, "Un suono quando si trova un incontro online (e la finestra lampeggia se non è in primo piano), così puoi aspettare in un'altra finestra.")
+T(OS_CHIME_HELP, "Il suono del gettone del gioco stesso quando si trova un incontro online (e la finestra lampeggia se non è in primo piano), così puoi aspettare in un'altra finestra.")
 T(QUICK_LISTED, "Mostra le mie partite rapide in Stanze")
 T(QUICK_LISTED_HELP, "Sì: chiunque trova le tue partite rapide in Stanze e le guarda. No: non sono elencate (solo se entrambi i giocatori hanno Sì).")
 T(F_YOUR_FIGHTER, "Il tuo lottatore")

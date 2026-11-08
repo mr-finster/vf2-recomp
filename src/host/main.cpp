@@ -164,6 +164,7 @@
 //                        -1@300 an axis to one end (each 8 passes), q@900 quit (a run that saves), p@100 plugged
 //                        in then (not at the start); "1": no presses. Player 1's controls logged as they change
 //   VF2_TEST_RAM_LOG=f   the game's work RAM hashed every 30 game frames to f (a display setting changes no frame)
+//   VF2_TEST_CHIME_WAV=f the match found chime's sound (the game's coin, made at the start) to f, a .wav
 #include "version.h"      // VF2_VERSION, VF2_DATE (made by the Makefile from git)
 #include "../machine/model2a.h"
 #include "../machine/parallel.h"
@@ -180,6 +181,8 @@
 #include "links.h"
 #include "text.h"
 #include "chime.h"
+#include "coin_sound.h"
+#include <future>
 #include "flags.h"
 #include "controls.h"
 #include "touch_controls.h"
@@ -1422,6 +1425,21 @@ int main(int argc, char **argv)
 		if (!roms.ok) return fail(roms.error);
 	}
 	romset::result sound_roms = roms;   // (online play's sound board, made from them at the first match)
+	// the match found chime: the game's coin sound, made by a sound board of its own on a thread of its own (about a
+	// second of work, done long before any match)
+	std::shared_future<std::vector<int16_t>> coin = std::async(std::launch::async, [&sound_roms] { return coin_sound::make(sound_roms, LEVEL); }).share();
+	if (const char *cw = getenv("VF2_TEST_CHIME_WAV")) {   // (tests: the match found chime's sound, the game's coin, to a .wav)
+		const std::vector<int16_t> &pcm = coin.get();
+		if (FILE *wf = fopen(cw, "wb")) {
+			const uint32_t rate = coin_sound::RATE, br = rate * 4, db = uint32_t(pcm.size() * 2), sz = 36 + db, sixteen = 16;
+			const uint16_t fmt = 1, ch = 2, al = 4, bits = 16;
+			fwrite("RIFF", 1, 4, wf); fwrite(&sz, 4, 1, wf); fwrite("WAVEfmt ", 1, 8, wf); fwrite(&sixteen, 4, 1, wf); fwrite(&fmt, 2, 1, wf);
+			fwrite(&ch, 2, 1, wf); fwrite(&rate, 4, 1, wf); fwrite(&br, 4, 1, wf); fwrite(&al, 2, 1, wf); fwrite(&bits, 2, 1, wf);
+			fwrite("data", 1, 4, wf); fwrite(&db, 4, 1, wf); fwrite(pcm.data(), 2, pcm.size(), wf);
+			fclose(wf);
+		}
+		fprintf(stderr, "(test) the match found chime: the game's coin sound, %.2f s\n", double(pcm.size() / 2) / coin_sound::RATE);
+	}
 	model2a m(std::move(roms));   // (recompiles the i960's program, unless VF2_INTERP)
 	if (arg_interp) m.use_interpreter();
 	if (m.recompiled()) {
@@ -4295,7 +4313,7 @@ int main(int argc, char **argv)
 		while (online.next_notice(n)) {
 			if (n.kind == Online::Notice::joined || n.kind == Online::Notice::watching) {
 				const bool watching = n.kind == Online::Notice::watching;
-				if (cfg.online.chime && !watching) chime::play(chime_stream, win, audio && !hidden ? float(cfg.volume) / 100.0f : 0.0f);
+				if (cfg.online.chime && !watching) chime::play(chime_stream, win, audio && !hidden ? float(cfg.volume) / 100.0f : 0.0f, coin.get(), coin_sound::RATE);
 				match_on = true;
 				if (!watching || !watch_sound_started) match_sound_start();   // (a watcher's going since its first frame)
 				watch_sound_started = false;

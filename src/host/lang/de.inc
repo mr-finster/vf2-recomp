@@ -475,7 +475,7 @@ T(OS_HIDE_IP_HELP, "An: jedes Online-Match (per Code oder zufällig) läuft übe
 T(OS_MAX_PING, "Zufällig: max. Ping")
 T(OS_MAX_PING_HELP, "Zufällig überspringt nur einen Gegner mit höherem Ping: er wird beim Verbinden vor dem Match gemessen, und liegt er darüber, verlässt das Spiel ihn und sucht jemand anderen (ihr werdet eine Weile nicht wieder zusammengebracht). Egal: wer am nächsten ist. Raumcodes und Adressen spielen bei jedem Ping.")
 T(OS_CHIME, "Ton bei gefundenem Match")
-T(OS_CHIME_HELP, "Ein Ton, wenn ein Online-Match gefunden ist (und das Fenster blinkt, wenn es nicht vorn ist), damit du in einem anderen Fenster warten kannst.")
+T(OS_CHIME_HELP, "Der Münzton des Spiels selbst, wenn ein Online-Match gefunden ist (und das Fenster blinkt, wenn es nicht vorn ist), damit du in einem anderen Fenster warten kannst.")
 T(QUICK_LISTED, "Meine Schnellen Matches in Räumen zeigen")
 T(QUICK_LISTED_HELP, "An: jeder findet deine Schnellen Matches in Räumen und kann zusehen. Aus: sie sind nicht gelistet (nur gelistet, wenn beide Spieler An haben).")
 T(F_YOUR_FIGHTER, "Dein Kämpfer")

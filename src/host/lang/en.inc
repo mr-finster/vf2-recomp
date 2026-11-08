@@ -482,7 +482,7 @@ T(OS_HIDE_IP_HELP, "On: every online match (a code's or a random one) goes throu
 T(OS_MAX_PING, "Random: max ping")
 T(OS_MAX_PING_HELP, "Random only passes over an opponent whose ping is higher than this: it's measured as you connect, before the match starts, and if it's over, the game leaves and looks for someone else (the two of you aren't matched again for a while). Any: whoever's nearest. Room codes and addresses play whatever the ping.")
 T(OS_CHIME, "Match found chime")
-T(OS_CHIME_HELP, "A chime when an online match is found (and the game's window flashes if it isn't the one in front), so you can wait in another window.")
+T(OS_CHIME_HELP, "The game's own coin sound when an online match is found (and the game's window flashes if it isn't the one in front), so you can wait in another window.")
 T(QUICK_LISTED, "Show my Quick Match games in Rooms")
 T(QUICK_LISTED_HELP, "On: anyone can find your Quick Match games in Rooms and watch them. Off: they're not listed (listed only if both players have it On).")
 T(F_YOUR_FIGHTER, "Your fighter")            // (Online > Settings: Cheats' random fighters, online)
