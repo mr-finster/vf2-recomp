@@ -844,6 +844,7 @@ struct settings
 	// (see apply_display_settings, where the second one is explained)
 	int vsync = 1;
 	bool hud = true;     // Display > HUD: the 2D over a fight (energy bars, timer, names...) drawn; off: the 3D and the backdrop only
+	int frame_limit = -1;   // Display > Frame limit: the pictures a second at most, 30 60 120 144; 0 none, -1 the screen's refresh (as before with vsync)
 	int on_screen = 1;   // the on-screen controls (a touch screen): 0 off, 1 while the player has no pad, 2 always
 	int secret = 0;   // Cheats > Secret character: the fighter in Akira's place (model2a::set_secret_character), 0 none
 	std::string random_player[2];   // Cheats: each player's fighter: "" the select as ever, "*" a random one each game, or a name's (model2a::set_random_player)
@@ -1024,6 +1025,8 @@ struct settings
 		flag("background_filter", smooth_bg);
 		flag("show_fps", show_fps);
 		flag("hud", hud);
+		num("frame_limit", frame_limit, -1, 1000);
+		if (frame_limit != -1 && frame_limit != 0 && frame_limit != 30 && frame_limit != 60 && frame_limit != 120 && frame_limit != 144) frame_limit = -1;
 		num("window_scale", window_scale, 0, 16);
 		num("window_w", window_w, 0, 65535);
 		num("window_h", window_h, 0, 65535);
@@ -1065,7 +1068,7 @@ struct settings
 		if (!log) fprintf(f, "log = 0\n");
 		fprintf(f, "language = %s\n", language.c_str());
 		fprintf(f, "window_scale = %d\n", window_scale);
-		fprintf(f, "hud = %d\n", int(hud));
+		fprintf(f, "hud = %d\nframe_limit = %d\n", int(hud), frame_limit);
 		if (fs_window) fprintf(f, "fullscreen_window = 1\n");
 		if (fs_exclusive) fprintf(f, "fullscreen_exclusive = 1\n");
 		if (window_w > 0) fprintf(f, "window_w = %d\nwindow_h = %d\nwindow_x = %d\nwindow_y = %d\nwindow_maximised = %d\n", window_w, window_h, window_x, window_y, int(window_max));
@@ -3412,6 +3415,23 @@ int main(int argc, char **argv)
 					[&] { int v = 0; SDL_GetRenderVSync(ren, &v); return on_off(v != 0); },
 					[&](int) { cfg.vsync = !cfg.vsync; cfg_dirty = true; apply_display_settings(); } });
 		}
+		p.items.push_back({ tr::D_FRAME_LIMIT, tr::D_FRAME_LIMIT_HELP,
+			[&] {
+				if (cfg.frame_limit == 0) return std::string(tr::OFF);
+				if (cfg.frame_limit < 0) {
+					const SDL_DisplayMode *dm = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(win));
+					return tr::fill(tr::D_FRAME_LIMIT_SCREEN, { { "n", std::to_string(int(std::lround(dm && dm->refresh_rate > 0 ? dm->refresh_rate : 60.0f))) } });
+				}
+				return std::to_string(cfg.frame_limit);
+			},
+			[&](int d) {
+				static const int ORDER[] = { 0, 30, 60, 120, 144, -1 };
+				int i = 0;
+				while (i < 5 && ORDER[i] != cfg.frame_limit) i++;
+				cfg.frame_limit = ORDER[wrap(i + d, 6)];
+				cfg_dirty = true;
+				fprintf(stderr, "Display > Frame limit: %d (0 none, -1 the screen's)\n", cfg.frame_limit);
+			} });
 		if (const char *renderer_now = SDL_GetRendererName(ren); renderer_now && !strcmp(renderer_now, "gpu"))
 			p.items.push_back({ tr::D_FRAMES_IN_FLIGHT, tr::D_FRAMES_IN_FLIGHT_HELP,
 				[&] { return std::to_string(cfg.frames_in_flight); },
@@ -4999,6 +5019,17 @@ int main(int argc, char **argv)
 			}
 			due = 0;
 		}
+		// Display > Frame limit: the pictures a second at most. With vsync, one at or over the screen's rate is a picture
+		// each refresh (the budget a little over the screen's: by the budget alone a refresh a hair early found it a hair
+		// short, and that refresh's picture was lost); the governor's 60 for now. Only the pictures: the frames go by
+		// the clock (and online, the session's) whatever it is. Under the game's own 57.5 (30), a frame's picture
+		// waits for the budget too (the frame run, its 3D drawn with the next shown, as when the machine's behind)
+		const double screen_rate = screen_hz_now > 0 ? double(screen_hz_now) : 60.0;
+		double picture_cap = cfg.frame_limit == 0 ? 1e6 : cfg.frame_limit < 0 ? screen_rate : double(cfg.frame_limit);
+		if (vsync_now != 0 && picture_cap >= screen_rate * 0.95) picture_cap = std::max(picture_cap, screen_rate + 1.0);
+		if (smooth_limit) picture_cap = std::min(picture_cap, 60.0);
+		const bool capped_low = picture_cap < FRAME_HZ * 0.95;
+		const bool frame_picture = !capped_low || smooth_budget >= 1 || stopped;
 		// the frame run during the last present: its picture drawn now, as if it had run here
 		const bool took_ahead = ahead.carried;   // (counted as a frame run in this pass, below)
 		if (took_ahead) { draw_into_texture = ahead.into; held = ahead.held; ahead.carried = false; }
@@ -5006,7 +5037,7 @@ int main(int argc, char **argv)
 			// Behind (several frames to run at once), only the last is drawn: the others wouldn't be
 			// seen. (The 3D of a frame not drawn is drawn with the next, as MAME draws it; with scene
 			// sync every frame's 3D is set up, as it may be shown two frames on, and drawn if it is.)
-			const bool last = i == due - 1 || script.shots.count(game_frame) ||
+			const bool last = (i == due - 1 && frame_picture) || script.shots.count(game_frame) ||
 				(quit_after >= 0 && int64_t(game_frame) + 1 >= quit_after);
 			if (audio && !ff && SDL_GetAudioStreamQueued(audio) == 0 && shown) load.starved++, pass_starved++;
 			const uint64_t te = SDL_GetTicksNS(), waited = m.render_waited_ns();
@@ -5070,11 +5101,10 @@ int main(int argc, char **argv)
 		float alpha = 1;
 		{
 			const uint64_t bt = SDL_GetTicksNS();
-			// (a picture each refresh: the screen's rate when it's faster than 120, as VF1's; only while vsync
-			// is on: off, forced so in a driver's settings, nothing paces the passes to the screen, 120 a
-			// second then, as VF1's and VF3's)
-			const double smooth_rate = smooth_limit ? 60.0 : vsync_now != 0 ? std::max(120.0, double(screen_hz_now) + 1.0) : 120.0;
-			smooth_budget = std::min(2.0, smooth_budget + double(bt - smooth_budget_t) * smooth_rate / 1e9);
+			// (the frame limit's budget, picture_cap above: with vsync and the screen's rate a picture each refresh,
+			// as before at any rate; with vsync off, forced so in a driver's settings, nothing paces the passes to
+			// the screen: the limit's number then)
+			smooth_budget = std::min(2.0, smooth_budget + double(bt - smooth_budget_t) * picture_cap / 1e9);
 			smooth_budget_t = bt;
 			const bool unseen = !hidden && (SDL_GetWindowFlags(win) & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_OCCLUDED));
 			if (smooth_on() && !stopped && !ff && last_shown && !held && !unseen && (draw_into_texture || (due == 0 && !took_ahead && smooth_budget >= 1))) {
@@ -5082,7 +5112,7 @@ int main(int argc, char **argv)
 				smooth_budget = std::max(0.0, smooth_budget - 1);
 				alpha = float(std::clamp(frame_clock - double(frames_run), 0.0, 1.0));
 				draw_into_texture = true;
-			}
+			} else if (draw_into_texture && capped_low) smooth_budget = std::max(0.0, smooth_budget - 1);   // (a frame's own picture, within the limit)
 		}
 		// the 3D on the GPU (see gpu3d_state), the 2D's parts put together around it (gpu_picture)
 		if (draw_into_texture && g3.on && !g3.failed && g3_targets(m.width() * scale, model2a::HEIGHT * scale) && gpu_pic.ready(m.width(), scale)) {
@@ -5372,7 +5402,7 @@ int main(int argc, char **argv)
 		// present waits (see emu_job): not for a frame whose picture the test run writes, nor its last
 		bool ran_ahead = false;
 		uint64_t ahead_ns = 0, ahead_waited = 0;
-		if (emu_threaded && running && shown && smooth_on() && !paused && !menu.is_open() && !ff && !sound_full && !online.playing() &&
+		if (emu_threaded && running && shown && smooth_on() && !paused && !menu.is_open() && !ff && !sound_full && !online.playing() && !capped_low &&
 			!script.shots.count(game_frame) && !(quit_after >= 0 && int64_t(game_frame) + 1 >= quit_after) &&
 			frame_clock + FRAME_HZ / (hidden || screen_hz_now <= 0 ? 120.0 : double(screen_hz_now)) >= double(frames_run + 1)) {
 			if (audio && SDL_GetAudioStreamQueued(audio) == 0) load.starved++, pass_starved++;
@@ -5507,10 +5537,11 @@ int main(int argc, char **argv)
 			{   // (the log says when it's on or off)
 				int vs = 0;
 				const int on = SDL_GetRenderVSync(ren, &vs) && vs != 0;
-				if (on != vsync_now) fprintf(stderr, "vsync: %s\n", on ? "on" : "off (smooth pictures 120 a second, not one each refresh)");
+				if (on != vsync_now) fprintf(stderr, "vsync: %s\n", on ? "on" : "off (pictures by Display > Frame limit, not one each refresh)");
 				vsync_now = on;
 			}
 			if (smooth_on()) enough = std::max(55.0, std::min<double>(screen_hz, smooth_limit ? 60 : 120) * 0.9);
+			enough = std::min(enough, picture_cap * 0.9);   // (Display > Frame limit: no more asked for than it lets through)
 			// Judged on the window's ordinary passes only (gov), and only when they're most of it: a
 			// window taken up by scene changes says nothing either way (its streaks stay as they were)
 			const double gsecs = double(gov.time) / 1e9;
