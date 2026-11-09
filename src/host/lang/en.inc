@@ -113,6 +113,11 @@ T(D_SHOW_FPS, "Show FPS")
 T(D_SHOW_FPS_HELP, "Shows the frame rate in the top right corner.")
 T(D_HUD, "HUD")                              // Display > HUD: the game's 2D over a fight (energy bars, timer, names) drawn or not
 T(D_HUD_HELP, "Off hides the game's display over a fight: the energy bars, the timer, the names, the rounds won and the round calls. The fighters and the stage are still drawn, and the game plays exactly the same.")
+T(D_FREECAM, "Free camera")   // Display > Free camera: a camera flown around the fight (On/Off, never saved)
+T(D_FREECAM_HELP, "WASD + mouse or the sticks, E/Q or RT/LT up and down, Shift faster, R or Y back to the game's camera. F4 or Back + R3 turns it on and off anywhere (P pauses the game).")
+T(FREECAM_ON_KEYS, "Free camera: WASD + mouse, or the sticks. F4 to leave")   // the toast as it comes on from the keyboard (or the menu)
+T(FREECAM_ON_PAD, "Free camera: sticks, LT/RT down/up. Back + R3 to leave")   // ...from a pad (Back + R3)
+T(FREECAM_NOT_ONLINE, "Free camera: not while playing online")   // F4 / Back + R3 while playing an online match (and the menu row's line under it then)
 T(D_FRAME_LIMIT, "Frame limit")              // Display > Frame limit: Off, 30, 60, 120, 144 or the screen's refresh rate
 T(D_FRAME_LIMIT_HELP, "The most pictures shown a second. Screen's: one for each refresh of your screen. Off: no limit. Only the pictures change: the game always runs at the arcade's own speed, online too.")
 T(D_FRAME_LIMIT_SCREEN, "Screen's ({n} Hz)") // (Frame limit's value: the screen's refresh rate, {n} in Hz)

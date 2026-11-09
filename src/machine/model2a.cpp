@@ -532,6 +532,7 @@ bool model2a::set_secret_character(int fighter)
 // goes against the horizontal scroll, its y with the vertical; found by matching the backdrop
 // drawn a frame on, moved back, to the frame before's)
 constexpr double BACKDROP_SX = -1, BACKDROP_SY = 1;
+constexpr double FC_SKY_SX = 1, FC_SKY_SY = -1;   // (the free camera's: the backdrop's way for a yaw to the right, a pitch up)
 
 // a / b for the scheduler's times: the same quotient, in 64 bits when they fit (a 128-bit
 // division is a library call)
@@ -2061,6 +2062,7 @@ void model2a::redraw_into(const picture_desc &pic, u32 *out, size_t stride)
 	const int s = m_scale, e = m_ext, w = WIDTH + 2 * e;
 	frame_2d &st = *pic.state;
 	if (!live) swap_2d(st);
+	freecam_sky_move();
 	draw_2d(pic.polygons, false);
 	m_2d_key[0] = ~0ull;
 	const u32 pen0 = m_pens[0];
@@ -2091,7 +2093,9 @@ void model2a::draw_picture(u32 *out, size_t stride, bool polygons, bool async, f
 	const int s = m_scale, e = m_ext, w = WIDTH + 2 * e;
 	// smooth motion: the 2D drawn once a game frame, its in-between pictures reusing it
 	const bool smoothly = alpha >= 0 && polygons && m_video->smooth() && !m_video->shows_framebuffer();
-	const uint64_t key[] = { m_frame_number, uint64_t(s), uint64_t(e), uint64_t(m_backdrop_smooth), uint64_t(parts != nullptr) };
+	freecam_sky_move();
+	const uint64_t key[] = { m_frame_number, uint64_t(s), uint64_t(e), uint64_t(m_backdrop_smooth), uint64_t(parts != nullptr),
+		uint64_t(uint32_t(m_fc_dx)) << 32 | uint32_t(m_fc_dy) | uint64_t(m_video->freecam_on()) << 31 };
 	if (!smoothly || memcmp(key, m_2d_key, sizeof key)) {
 		draw_2d(polygons, parts != nullptr);
 		memcpy(m_2d_key, key, sizeof key);
@@ -2106,6 +2110,8 @@ void model2a::draw_picture(u32 *out, size_t stride, bool polygons, bool async, f
 	const bitmap_rgb32 *smooth3d = nullptr;
 	int smooth_pic = -1, bdx = 0, bdy = 0;
 	if (smoothly) smooth_pic = m_video->smooth_layer(m_frame_number - 1, alpha, smooth3d);
+	else if (polygons && !framebuffer && m_video->freecam_on() && m_video->smooth())   // (the free camera's: every picture set up again from its list)
+		smooth_pic = m_video->smooth_layer(m_frame_number - 1, 1.0f, smooth3d);
 	// (with the lists kept, the host's: the backdrop at its unrounded place for the moment)
 	int bd_mode = 0;
 	double bd_h = 0, bd_v = 0;
@@ -2307,25 +2313,28 @@ void model2a::draw_2d(bool polygons, bool parts)
 	m_tiles.update(m_pens.data());
 	// the 2D at the arcade's resolution, its column 0 at e; in a wide frame the backdrop's maps
 	// (2 and 3) carry on to the sides, from the stage's panorama where it's known
-	const segas24_tile::panorama *pan = wide ? find_panorama() : nullptr;
+	const bool fc = polygons && m_video->freecam_on() && freecam_scene();   // (the free camera: no HUD, the backdrop moved)
+	const segas24_tile::panorama *pan = wide || fc ? find_panorama() : nullptr;
 	// the three bitmaps at once, each on a thread (the tiles' planes are only read)
-	const bool hud_off = m_hud_hidden && game_mode() == 9;   // (Display > HUD Off, in a fight: maps 0 and 1 not drawn over the 3D)
+	const bool hud_off = (m_hud_hidden && game_mode() == 9) || fc;   // (Display > HUD Off, in a fight: maps 0 and 1 not drawn over the 3D)
 	m_tiles.m_ox = e;
 	parallel_tasks(3, [&](int task) {
 		const rectangle all(0, w - 1, 0, HEIGHT - 1);
 		if (task == 0) {
 			m_sys24.fill(0, all);
 			for (int layer = 3; layer >= 2; layer--) {
+				if (fc && m_tiles.can_shift(layer << 1)) { m_tiles.draw_shifted(m_sys24, layer << 1, segas24_tile::DRAW_OPAQUE, wide ? e : 0, pan, m_fc_dx, m_fc_dy); continue; }
 				m_tiles.draw(m_sys24, clip, layer << 1, 0, segas24_tile::DRAW_OPAQUE);
 				if (wide) m_tiles.draw_sides(m_sys24, layer << 1, segas24_tile::DRAW_OPAQUE, e, pan);
 			}
 		} else if (task == 1) {
 			m_sys24_mid.fill(0, all);
-			for (int layer = 1; layer >= 0; layer--)
+			for (int layer = 1; layer >= 0 && !fc; layer--)
 				m_tiles.draw(m_sys24_mid, clip, layer << 1, 0, 0);
 		} else {
 			m_sys24_top.fill(0, all);
 			for (int layer = 3; layer >= (hud_off ? 2 : 0); layer--) {
+				if (fc && m_tiles.can_shift(layer << 1)) { m_tiles.draw_shifted(m_sys24_top, (layer << 1) | 1, 0, wide ? e : 0, pan, m_fc_dx, m_fc_dy); continue; }
 				m_tiles.draw(m_sys24_top, clip, (layer << 1) | 1, 0, 0);
 				if (wide && layer >= 2) m_tiles.draw_sides(m_sys24_top, (layer << 1) | 1, 0, e, pan);
 			}
@@ -2960,6 +2969,25 @@ void model2a::resize_screen()
 
 // A fight's screens (the attract's demos, the intros, knockouts and replays too) have a stage's
 // backdrop up: tile map 2's control register set. It's 0 on the title, select and versus screens.
+bool model2a::freecam_scene() const
+{
+	const u16 bd = m_tiles.tile_r(0x5006);
+	return bd != 0 && !(bd & 0x8000);
+}
+
+// The free camera's backdrop move: its yaw and pitch against the game's camera, at the backdrop's own rate (the
+// stage's panorama, 2048 pixels a turn; the game's pitch scroll the same), as the game scrolls it for its camera
+void model2a::freecam_sky_move()
+{
+	m_fc_dx = m_fc_dy = 0;
+	m_video->m_fc_scene = freecam_scene();
+	double yaw, pitch;
+	if (!m_video->freecam_on() || !freecam_scene() || !m_video->freecam_sky(yaw, pitch)) return;
+	constexpr double PX_PER_DEGREE = 2048.0 / 360;
+	m_fc_dx = int(std::lround(FC_SKY_SX * yaw * PX_PER_DEGREE));
+	m_fc_dy = int(std::lround(FC_SKY_SY * pitch * PX_PER_DEGREE));
+}
+
 bool model2a::wide_frame() const
 {
 	const u16 bd = m_tiles.tile_r(0x5006);

@@ -18,6 +18,190 @@
 
 namespace { constexpr size_t KEPT = 6; }   // the newest, the scene sync delay's two before, and a shift's one before those (and one more)
 
+// (the free camera's matrices: as the lists have them, the linear part by columns, 0-2, 3-5, 6-8, then the place)
+namespace {
+void mul(const double *x, const double *y, double *o)   // o = x * y
+{
+	double t[12];
+	for (int c = 0; c < 3; c++)
+		for (int r = 0; r < 3; r++) t[c * 3 + r] = x[r] * y[c * 3] + x[3 + r] * y[c * 3 + 1] + x[6 + r] * y[c * 3 + 2];
+	for (int r = 0; r < 3; r++) t[9 + r] = x[r] * y[9] + x[3 + r] * y[10] + x[6 + r] * y[11] + x[9 + r];
+	memcpy(o, t, sizeof t);
+}
+void identity(double *m) { for (int i = 0; i < 12; i++) m[i] = i % 4 == 0 && i < 9 ? 1 : 0; }
+void inverse(const double *m, double *o)
+{
+	const double det = m[0] * (m[4] * m[8] - m[7] * m[5]) - m[3] * (m[1] * m[8] - m[7] * m[2]) + m[6] * (m[1] * m[5] - m[4] * m[2]);
+	if (!(std::fabs(det) > 1e-12)) { identity(o); return; }
+	double t[12];
+	t[0] = (m[4] * m[8] - m[7] * m[5]) / det; t[3] = (m[6] * m[5] - m[3] * m[8]) / det; t[6] = (m[3] * m[7] - m[6] * m[4]) / det;
+	t[1] = (m[7] * m[2] - m[1] * m[8]) / det; t[4] = (m[0] * m[8] - m[6] * m[2]) / det; t[7] = (m[6] * m[1] - m[0] * m[7]) / det;
+	t[2] = (m[1] * m[5] - m[4] * m[2]) / det; t[5] = (m[3] * m[2] - m[0] * m[5]) / det; t[8] = (m[0] * m[4] - m[3] * m[1]) / det;
+	for (int r = 0; r < 3; r++) t[9 + r] = -(t[r] * m[9] + t[3 + r] * m[10] + t[6 + r] * m[11]);
+	memcpy(o, t, sizeof t);
+}
+double dot3(const double *a, const double *b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+void norm3(double *a) { const double n = std::sqrt(dot3(a, a)); if (n > 0) for (int i = 0; i < 3; i++) a[i] /= n; }
+constexpr double DEG = 3.14159265358979323846 / 180;
+}
+
+// The game's camera at r's frame from the anchor's view (the free camera's world): the frame before's, moved by the
+// camera's move between them (what sat still in the world: pair_still); none found, the frame before's (riding along
+// with the game's camera); no frame before kept, the newest earlier one worked out (or the anchor's own, none).
+const double *model2_video::freecam_cam(smooth_rec &r)
+{
+	if (r.fc_cam_set) return r.fc_cam;
+	// the nearest frame worked out, before this one (the last kept: m_fc_last), else after it
+	std::shared_ptr<smooth_rec> q;
+	auto nearer = [&](const std::shared_ptr<smooth_rec> &c) {
+		if (!c || !c->fc_cam_set || c.get() == &r) return;
+		if (!q || (c->frame < r.frame) > (q->frame < r.frame) ||
+			((c->frame < r.frame) == (q->frame < r.frame) && (c->frame < r.frame ? c->frame > q->frame : c->frame < q->frame))) q = c;
+	};
+	nearer(m_fc_last);
+	for (const auto &c : m_recs) nearer(c);
+	r.fc_cam_set = true;
+	if (!q) { identity(r.fc_cam); return r.fc_cam; }
+	const bool before = q->frame < r.frame;
+	const smooth_rec &pa = before ? *q : r, &pb = before ? r : *q;
+	if (m_pair_a != &pa || m_pair_b != &pb) smooth_pair(pa, pb);
+	if (m_still_n >= 8) {   // (the camera's move from pa to pb)
+		if (before) mul(m_still_D, q->fc_cam, r.fc_cam);
+		else { double Di[12]; inverse(m_still_D, Di); mul(Di, q->fc_cam, r.fc_cam); }
+	} else memcpy(r.fc_cam, q->fc_cam, sizeof r.fc_cam);   // (none found: riding along with the game's camera)
+	for (const auto &c : m_recs) if (c.get() == &r && (!m_fc_last || r.frame > m_fc_last->frame)) m_fc_last = c;
+	static const bool log = getenv("VF2_FREECAM_LOG") != nullptr;
+	if (log) fprintf(stderr, "freecam: frame %llu from %llu: %d still (of %zu), camera at %.3f %.3f %.3f\n", (unsigned long long)r.frame, (unsigned long long)q->frame,
+		m_still_n, r.objects.size(), r.fc_cam[9], r.fc_cam[10], r.fc_cam[11]);
+	return r.fc_cam;
+}
+
+void model2_video::freecam_start()
+{
+	for (const auto &q : m_recs) q->fc_cam_set = false;
+	m_fc_on = true;
+	m_fc_K_ok = false;
+	std::shared_ptr<const smooth_rec> shown = shown_list();
+	smooth_rec *b = shown ? const_cast<smooth_rec *>(shown.get()) : m_recs.empty() ? nullptr : m_recs.back().get();
+	m_fc_up[0] = 0; m_fc_up[1] = 1; m_fc_up[2] = 0;
+	m_fc_last.reset();
+	for (const auto &q : m_recs) if (q.get() == b) m_fc_last = q;
+	if (b) {
+		identity(b->fc_cam);
+		b->fc_cam_set = true;
+		// The world's up in the camera's view: the still pieces' own up (their matrices' second column), the way most
+		// of them agree on (a stage's bushes, palms and posts stand up), the camera's roll left out (no jump as it
+		// comes on); else the camera's own up
+		smooth_rec *p = nullptr;
+		for (const auto &q : m_recs) if (q->frame + 1 == b->frame) p = q.get();
+		std::vector<std::array<double, 3>> ups;
+		if (p) {
+			smooth_pair(*p, *b);
+			for (size_t k = 0; k < b->objects.size() && k < m_still.size(); k++)
+				if (m_still[k]) {
+					std::array<double, 3> v = { b->objects[k].m[3], b->objects[k].m[4], b->objects[k].m[5] };
+					norm3(v.data());
+					if (v[1] < 0) for (double &x : v) x = -x;
+					ups.push_back(v);
+				}
+		}
+		int best = -1, best_n = 0;
+		for (size_t i = 0; i < ups.size(); i++) {
+			int n = 0;
+			for (size_t j = 0; j < ups.size(); j++) n += dot3(ups[i].data(), ups[j].data()) > 0.9995;
+			if (n > best_n) best_n = n, best = int(i);
+		}
+		if (best >= 0 && best_n >= 4 && best_n * 4 >= int(ups.size())) {
+			double u[3] = {};
+			for (const auto &v : ups) if (dot3(ups[best].data(), v.data()) > 0.9995) for (int e = 0; e < 3; e++) u[e] += v[e];
+			u[0] = 0;   // (the roll left out)
+			norm3(u);
+			if (u[1] > 0.5) memcpy(m_fc_up, u, sizeof u);
+		}
+		static const bool log = getenv("VF2_FREECAM_LOG") != nullptr;
+		if (log) fprintf(stderr, "freecam: on at frame %llu: %zu still, %d agree on up %.4f %.4f %.4f\n", (unsigned long long)b->frame, ups.size(), best_n, m_fc_up[0], m_fc_up[1], m_fc_up[2]);
+		// a stage's scale: the objects' median depth (most are the fighters' parts), times two: a ring's width or so
+		std::vector<float> zs;
+		for (const auto &o : b->objects) zs.push_back(std::fabs(o.m[11]));
+		if (zs.size() >= 8) {
+			std::nth_element(zs.begin(), zs.begin() + zs.size() / 2, zs.end());
+			m_fc_unit = std::clamp(2 * zs[zs.size() / 2], 0.5f, 1000.0f);
+		}
+		if (log) fprintf(stderr, "freecam: unit %.3f\n", m_fc_unit);
+	}
+	// level ahead and to the right, about the world's up
+	const double ez[3] = { 0, 0, 1 }, ex[3] = { 1, 0, 0 };
+	for (int e = 0; e < 3; e++) m_fc_fwd0[e] = ez[e] - dot3(ez, m_fc_up) * m_fc_up[e];
+	norm3(m_fc_fwd0);
+	m_fc_right0[0] = m_fc_up[1] * m_fc_fwd0[2] - m_fc_up[2] * m_fc_fwd0[1];
+	m_fc_right0[1] = m_fc_up[2] * m_fc_fwd0[0] - m_fc_up[0] * m_fc_fwd0[2];
+	m_fc_right0[2] = m_fc_up[0] * m_fc_fwd0[1] - m_fc_up[1] * m_fc_fwd0[0];
+	if (dot3(m_fc_right0, ex) < 0) for (double &x : m_fc_right0) x = -x;
+	double K[12];
+	identity(K);
+	freecam_pose_from(K);
+}
+
+void model2_video::freecam_reset()
+{
+	if (!m_fc_on) return;
+	double K[12];
+	if (m_fc_K_ok) memcpy(K, m_fc_K, sizeof K); else identity(K);
+	freecam_pose_from(K);
+}
+
+// The pose that sees as the game's camera K does (its roll left out): its place, and its forward's yaw and pitch
+void model2_video::freecam_pose_from(const double *K)
+{
+	double Ki[12];
+	inverse(K, Ki);
+	for (int e = 0; e < 3; e++) m_fc_pos[e] = Ki[9 + e];
+	double f[3] = { Ki[6], Ki[7], Ki[8] };   // (the view's z in the anchor's view)
+	norm3(f);
+	m_fc_pitch = std::asin(std::clamp(dot3(f, m_fc_up), -1.0, 1.0)) / DEG;
+	m_fc_yaw = std::atan2(dot3(f, m_fc_right0), dot3(f, m_fc_fwd0)) / DEG;
+	m_fc_pitch = std::clamp(m_fc_pitch, -89.0, 89.0);
+}
+
+// The free camera's pose: its axes (right, up, forward) and place in the anchor's view
+void model2_video::freecam_pose(double *P) const
+{
+	const double cy = std::cos(m_fc_yaw * DEG), sy = std::sin(m_fc_yaw * DEG), cp = std::cos(m_fc_pitch * DEG), sp = std::sin(m_fc_pitch * DEG);
+	for (int e = 0; e < 3; e++) {
+		const double h = cy * m_fc_fwd0[e] + sy * m_fc_right0[e];
+		P[e] = cy * m_fc_right0[e] - sy * m_fc_fwd0[e];   // x: right
+		P[3 + e] = cp * m_fc_up[e] - sp * h;                // y: up
+		P[6 + e] = cp * h + sp * m_fc_up[e];                // z: forward
+		P[9 + e] = m_fc_pos[e];
+	}
+}
+
+void model2_video::freecam_fly(float fwd, float right, float up, float yaw, float pitch)
+{
+	if (!m_fc_on) return;
+	double P[12];
+	freecam_pose(P);
+	for (int e = 0; e < 3; e++) m_fc_pos[e] += fwd * P[6 + e] + right * P[e] + up * m_fc_up[e];
+	m_fc_yaw = std::remainder(m_fc_yaw + yaw, 360.0);
+	m_fc_pitch = std::clamp(m_fc_pitch + pitch, -89.0, 89.0);
+	static const bool log = getenv("VF2_FREECAM_LOG") != nullptr;
+	if (log) fprintf(stderr, "freecam: at %.3f %.3f %.3f yaw %.1f pitch %.1f (unit %.3f)\n", m_fc_pos[0], m_fc_pos[1], m_fc_pos[2], m_fc_yaw, m_fc_pitch, m_fc_unit);
+}
+
+bool model2_video::freecam_sky(double &yaw, double &pitch) const
+{
+	yaw = pitch = 0;
+	if (!m_fc_on || !m_fc_K_ok) return false;
+	double Ki[12];
+	inverse(m_fc_K, Ki);
+	double f[3] = { Ki[6], Ki[7], Ki[8] };
+	norm3(f);
+	const double gp = std::asin(std::clamp(dot3(f, m_fc_up), -1.0, 1.0)) / DEG, gy = std::atan2(dot3(f, m_fc_right0), dot3(f, m_fc_fwd0)) / DEG;
+	yaw = std::remainder(m_fc_yaw - gy, 360.0);
+	pitch = m_fc_pitch - gp;
+	return true;
+}
+
 void model2_video::set_smooth(bool on)
 {
 	if (on == m_smooth) return;
@@ -37,6 +221,8 @@ void model2_video::smooth_reset()
 	m_recs.clear();
 	m_pair_a = m_pair_b = nullptr;
 	m_smooth_floor = m_ram_changed = 0;
+	m_fc_last.reset();
+	m_fc_K_ok = false;
 	m_last_moment = moment{};
 	std::fill(std::begin(m_pic_frame), std::end(m_pic_frame), 0);
 }
@@ -74,6 +260,7 @@ void model2_video::smooth_record_start()
 	r->objects.clear();
 	r->lights.clear();
 	r->focals.clear();
+	r->fc_cam_set = false;
 	m_rec = r.get();
 	m_recs.push_back(std::move(r));
 }
@@ -248,6 +435,7 @@ void model2_video::smooth_pair(const smooth_rec &a, const smooth_rec &b)
 	repair_by_camera(a, b);
 	std::vector<char> still;
 	pair_still(a, b, still);
+	m_still = still;
 	// Then the jumps: an object that moved far (over 30% of its depth) or turned sharply in a frame.
 	// What sat still in the world moved only as the camera did, and is blended as the camera's move
 	// is, all of it alike, however near the camera (a palm beside it swinging past as the camera
@@ -396,6 +584,7 @@ void model2_video::pair_still(const smooth_rec &a, const smooth_rec &b, std::vec
 {
 	const size_t na = a.objects.size(), nb = b.objects.size();
 	still.assign(nb, 0);
+	m_still_n = 0;
 	if (na < 8 || nb < 8) return;
 	auto to = [](const float *m, double *o) { for (int i = 0; i < 12; i++) o[i] = m[i]; };
 	// o = x * y (the linear parts by columns, as the list has them: 0-2, 3-5, 6-8; then the place)
@@ -445,6 +634,8 @@ void model2_video::pair_still(const smooth_rec &a, const smooth_rec &b, std::vec
 		if (n > best_n) { best_n = n; memcpy(best, D, sizeof D); }
 	}
 	if (best_n < 8) return;
+	m_still_n = best_n;
+	memcpy(m_still_D, best, sizeof best);
 	// the older objects' places after the move (a quick look before the whole matrix)
 	std::vector<std::array<double, 3>> moved(na);
 	for (size_t q = 0; q < na; q++) {
@@ -514,7 +705,7 @@ int model2_video::smooth_layer(u64 frame, float alpha, const bitmap_rgb32 *&map)
 		if (r->frame + 1 == fb && r->frame >= m_smooth_floor) a = r;
 	}
 	// none if the RAM the polygons are coloured from changed in a way not kept
-	if (!b || m_ram_changed > fb) {
+	if (!b || (m_ram_changed > fb && !m_fc_on)) {   // (the free camera's picture comes from the lists whatever the colours)
 		m_smooth_stats[0] = !b ? -4 : -3;   // (-3: the colours changed; -4: no list kept)
 		return -1;
 	}
@@ -574,6 +765,13 @@ void model2_video::replay_into(const moment &mo, std::vector<drawn_poly> &drawn)
 {
 	const smooth_rec *a = mo.a.get(), *b = mo.b.get();
 	const float alpha = mo.alpha;
+	// the free camera: the game's camera at both frames (first: working it out pairs other frames)
+	double ka[12], kb[12];
+	const bool fc = m_fc_on && m_fc_scene;
+	if (fc) {
+		memcpy(kb, freecam_cam(const_cast<smooth_rec &>(*b)), sizeof kb);
+		if (a) memcpy(ka, freecam_cam(const_cast<smooth_rec &>(*a)), sizeof ka);
+	}
 	// the blend for this moment
 	const size_t nb = b->objects.size();
 	m_blend.resize(nb);
@@ -632,10 +830,28 @@ void model2_video::replay_into(const moment &mo, std::vector<drawn_poly> &drawn)
 	for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) ra.clip_plane[i][j] = b->clip_plane[i][j];
 	std::copy(b->texture_ram.begin(), b->texture_ram.end(), ra.texture_ram);
 	std::copy(b->log_ram.begin(), b->log_ram.end(), ra.log_ram);
+	// the free camera's F for this moment: its view of the game's camera then (blended as the objects are)
+	m_fc_apply = false;
+	if (fc) {
+		double K[12];
+		memcpy(K, kb, sizeof K);
+		if (a && alpha < 1 && !m_pair_cut)
+			for (int e = 0; e < 12; e++) K[e] = ka[e] + (kb[e] - ka[e]) * alpha;
+		memcpy(m_fc_K, K, sizeof K);
+		m_fc_K_ok = true;
+		// F = the free camera's view (its pose inverted) after the game's camera inverted
+		double Ki[12], P[12], Pi[12];
+		inverse(K, Ki);
+		freecam_pose(P);
+		inverse(P, Pi);
+		mul(Pi, Ki, m_fc_F);
+		m_fc_apply = true;
+	}
 	m_replay = true;
 	m_replay_obj = m_replay_light = m_replay_focal = 0;
 	m_build_frame = b->frame;   // (the random fighters' build: as at that frame)
 	geo_run(const_cast<u32 *>(b->list.data()), b->start, m_geo_r.get(), m_raster_r.get());
 	m_replay = false;
+	m_fc_apply = false;
 	build_drawn(m_raster_r.get(), drawn);
 }

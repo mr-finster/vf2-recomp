@@ -155,6 +155,7 @@ public:
 	void draw_deferred();
 	void model2_3d_zclip_w(u32 data);
 	u32 polygon_count_r();
+	uint64_t m_polygon_count_sum = 0xcbf29ce484222325ull;   // (a running hash of every count the game read: VF2_TEST_RAM_LOG)
 	uint64_t m_polygon_count_reads = 0;   // (polygon_count_r's: a save state leaves the count out, being the picture's)
 	// Save states (the board's): the registers the game writes and the 3D keeps (xhout, xvout, the z clip; the
 	// read start is m_geo_read_start_address). The rest (the geometrizer's matrices and polygons, the lists) is
@@ -236,6 +237,28 @@ public:
 	// before finds most objects jumped, or most can't be paired). Needs the lists kept.
 	bool newest_cut();
 	void picture_drawn(int picture);
+
+	// Free camera (the host's, model2_smooth.cpp): a camera flown around the 3D, for the picture alone. Only the
+	// lists set up again for a picture (replay_into) see it, never the geometrizer the game's frames go through
+	// (polygon_count_r, the game's own reading of it, unchanged): each object of the full-screen window has its matrix
+	// put through F, the free camera's view of the game's camera (and the light turned with it), and a near plane
+	// clips what comes too close. VF2 has no camera of its own to read, so the game's camera's move from frame to
+	// frame is worked out from what sat still in the world (pair_still: the stage's pieces, all moved by the one
+	// matrix): the free camera stays where it is in the world while the game's moves; where no such move is found
+	// (too few still pieces: a new scene) it rides along with the game's camera for that frame. Its place and turn
+	// (yaw about the world's up, from the still pieces' own up; pitch) are kept here.
+	void freecam_start();                  // on, at the game's camera of the 3D shown now
+	void freecam_stop() { m_fc_on = false; m_fc_last.reset(); }
+	bool freecam_on() const { return m_fc_on; }
+	void freecam_reset();                  // back to the game's camera (the 3D shown now)
+	// a move along the free camera's own directions (forward with its pitch, to the right) and the world's up, in
+	// world units, and a turn (degrees: yaw to the right, pitch up; the pitch kept within 89 degrees)
+	void freecam_fly(float fwd, float right, float up, float yaw, float pitch);
+	float freecam_unit() const { return m_fc_unit; }   // a stage's scale: about a ring's width, in world units
+	// the free camera's yaw and pitch (degrees) against the game's camera in the last picture set up (the sky's
+	// move); false if there was none
+	bool freecam_sky(double &yaw, double &pitch) const;
+	bool m_fc_scene = true;   // (the board's: a scene it's for, a stage's; else the game's own view)
 
 	u32 m_geo_read_start_address = 0;
 	u16 *m_fbvramA = nullptr, *m_fbvramB = nullptr;
@@ -319,6 +342,22 @@ private:
 	// the camera's move from a to b fitted to the paired objects' places (rigid, least squares): false if too few
 	bool fit_camera(const smooth_rec &a, const smooth_rec &b, double R[3][3], double T[3]) const;
 	void replay_into(const moment &mo, std::vector<drawn_poly> &drawn);
+	// the free camera's
+	bool m_fc_on = false, m_fc_apply = false;          // on; applied to the list being set up again
+	double m_fc_F[12] = {};                            // F for the list being set up again
+	double m_fc_pos[3] = {}, m_fc_yaw = 0, m_fc_pitch = 0;   // its place and turn, in the anchor frame's view
+	double m_fc_up[3] = { 0, 1, 0 }, m_fc_fwd0[3] = { 0, 0, 1 }, m_fc_right0[3] = { 1, 0, 0 };   // the world's up, level ahead and right there
+	double m_fc_K[12] = {};                            // the game's camera in the last list set up again (from the anchor's view)
+	bool m_fc_K_ok = false;
+	std::shared_ptr<smooth_rec> m_fc_last;             // the newest frame whose camera is worked out (kept: the next is worked out from it)
+	float m_fc_unit = 10;
+	float m_fc_near = 0.05f;                           // its near plane (world units)
+	double m_still_D[12] = {};                         // pair_still's camera move (the last pairing), m_still_n objects following it
+	int m_still_n = 0;
+	std::vector<char> m_still;                         // (and which objects sat still)
+	const double *freecam_cam(smooth_rec &r);          // the game's camera at r's frame, from the anchor's (filled in as needed)
+	void freecam_pose_from(const double *K);           // the free camera put at the game's camera K
+	void freecam_pose(double *P) const;                // its pose: its axes and place in the anchor's view
 	void smooth_note_object(u32 oba, const float *matrix);
 	void smooth_note_focal(float x, float y);
 	void smooth_note_light(float x, float y, float z);
@@ -570,6 +609,7 @@ struct model2_video::raster_state
 	plane           clip_plane[4][4];               // Polygon clipping planes
 	u8              build_tint = 0;                 // (the random fighters' build: the next polygon's, as build_tint)
 	int16_t         hue = -1;                       // (the object's polygons' hair hue: model2_video::m_hair_hue)
+	float           fc_near = 0;                    // (the free camera's near plane for the object being set up: 0 none)
 };
 
 /*******************************************
@@ -625,4 +665,6 @@ struct model2_video::smooth_rec
 	std::vector<object> objects;
 	std::vector<std::array<float, 3>> lights;
 	std::vector<std::array<float, 2>> focals;
+	double fc_cam[12];                                 // the free camera's: the game's camera from the anchor's view
+	bool fc_cam_set = false;
 };

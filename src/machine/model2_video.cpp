@@ -304,7 +304,7 @@ inline bool model2_video::check_culling(raster_state *raster, u32 attr, float mi
 		return true;
 
 	/* if the minimum z value is bigger than the master z clip value, don't render */
-	if (raster->master_z_clip != 0xff && (int32_t)(1.0 / min_z) > raster->master_z_clip)
+	if (raster->master_z_clip != 0xff && (int32_t)(1.0 / min_z) > raster->master_z_clip && raster->fc_near <= 0)   // (the free camera: its near plane)
 		return true;
 
 	/* if the maximum z value is < 0 then we can safely clip the entire polygon */
@@ -362,6 +362,7 @@ void model2_video::model2_3d_zclip_w(u32 data)
 u32 model2_video::polygon_count_r()
 {
 	m_polygon_count_reads++;
+	m_polygon_count_sum = (m_polygon_count_sum ^ m_raster->poly_list_index) * 0x100000001b3ull;   // (tests: what the game read)
 	return m_raster->poly_list_index;
 }
 
@@ -707,6 +708,22 @@ void model2_video::model2_3d_process_polygon(raster_state *raster, u32 attr)
 			verts_in[i] = object.v[i];
 
 		clipped_verts = NumVerts;
+
+		// the free camera's near plane: what comes too close (behind the eye, or nearly at it, where the projection
+		// blows up) clipped off, and the polygon sorted by what's left of it
+		if (raster->fc_near > 0 && min_z < raster->fc_near) {
+			plane near_plane;
+			near_plane.normal.pz = 1.0f;
+			near_plane.distance = raster->fc_near;
+			clipped_verts = clip_polygon(verts_in, clipped_verts, verts_out, near_plane);
+			for (int j = 0; j < clipped_verts; j++)
+				verts_in[j] = verts_out[j];
+			if (clipped_verts > 2 && ((attr >> 10) & 3) != 0 && ((attr >> 10) & 3) != 3) {
+				float lo = verts_in[0].pz, hi = verts_in[0].pz;
+				for (int j = 1; j < clipped_verts; j++) { lo = std::min(lo, verts_in[j].pz); hi = std::max(hi, verts_in[j].pz); }
+				zvalue = raster->polygon_z = ((attr >> 10) & 3) == 1 ? lo : hi;
+			}
+		}
 
 		/* do clipping */
 		for (int i = 0; i < 4; i++)
@@ -2338,6 +2355,27 @@ u32 *model2_video::geo_object_data(geo_state *geo, u32 opcode, u32 *input)
 			swapped = true;
 		}
 	}
+	// the free camera (only in a list set up again for a picture, and only the full-screen window's objects): the
+	// object's matrix (blended) put through F, the light turned with it, and the near plane
+	poly_vertex light_kept = geo->light;
+	const bool fc = m_fc_apply && m_replay && raster->viewport[2] - raster->viewport[0] >= 495 && std::abs(raster->viewport[3] - raster->viewport[1]) >= 383;
+	if (fc) {
+		if (!swapped) memcpy(kept, geo->matrix, sizeof kept);
+		swapped = true;
+		const double *F = m_fc_F;
+		const float *m = kept;
+		float o[12];
+		if (m_replay_obj - 1 < m_blend_ok.size() && m_blend_ok[m_replay_obj - 1]) m = m_blend[m_replay_obj - 1].data();
+		for (int c = 0; c < 3; c++)
+			for (int r = 0; r < 3; r++) o[c * 3 + r] = float(F[r] * m[c * 3] + F[3 + r] * m[c * 3 + 1] + F[6 + r] * m[c * 3 + 2]);
+		for (int r = 0; r < 3; r++) o[9 + r] = float(F[r] * m[9] + F[3 + r] * m[10] + F[6 + r] * m[11] + F[9 + r]);
+		memcpy(geo->matrix, o, sizeof o);
+		const float lx = light_kept.x, ly = light_kept.y, lz = light_kept.pz;
+		geo->light.x = float(F[0] * lx + F[3] * ly + F[6] * lz);
+		geo->light.y = float(F[1] * lx + F[4] * ly + F[7] * lz);
+		geo->light.pz = float(F[2] * lx + F[5] * ly + F[8] * lz);
+		raster->fc_near = m_fc_near;
+	}
 
 	// (the object's words read up to the end of the memory it's in, never past it)
 	u32 *const end_was = m_geo_end;
@@ -2358,6 +2396,7 @@ u32 *model2_video::geo_object_data(geo_state *geo, u32 opcode, u32 *input)
 	}
 	m_geo_end = end_was;
 	if (swapped) memcpy(geo->matrix, kept, sizeof kept);
+	if (fc) { geo->light = light_kept; raster->fc_near = 0; }
 	m_build_obj.side = -1;
 	raster->build_tint = 0;
 	raster->hue = -1;

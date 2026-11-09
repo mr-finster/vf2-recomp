@@ -87,7 +87,7 @@
 //
 // Keys:  player 1: arrows, Z guard, X punch, C kick, 1 start
 //        player 2: I J K L, B guard, N punch, M kick, 2 start (both remapped in Controls)
-//        5 / 6 coins, F2 test, 9 service, Esc the menu, P pause, F3 reset, F5 render scale,
+//        5 / 6 coins, F2 test, 9 service, Esc the menu, P pause, F3 reset, F4 free camera, F5 render scale,
 //        F6 picture shape, F9 frame timings, F11 (or F, Alt+Enter) fullscreen, F12 a screenshot (Screenshots in
 //        the NVRAM folder), Tab held: as fast as it goes
 // Pads:  d-pad or left stick, X guard, A punch, B kick, Y guard+punch, RB punch+kick,
@@ -95,8 +95,16 @@
 //        cabinet's start button); Menu (View tapped by default), L3 + R3 or the touchpad click: the
 //        menu (View held + Start too); a Coin key or button for each player (none by default; View
 //        tapped is a coin only when it's set as Coin); View + LB: render scale;
-//        View + RB: picture shape. Pads come and go as they're plugged in; each player's pad and
+//        View + RB: picture shape; View + R3: free camera. Pads come and go as they're plugged in; each player's pad and
 //        buttons are chosen in Controls.
+// Free camera (F4, View + R3, or Display > Free camera; never saved): the picture seen from a camera flown around the
+//        fight, the game going on beneath it (P pauses it, the camera still flying), the players' own inputs kept
+//        from the game meanwhile; the picture only (model2_video's freecam_*: never what the game reads). WASD and
+//        the mouse (captured), E or Space up, Q or Ctrl down, Shift x4, Alt x0.25, the wheel the speed, the arrows
+//        look too, R back to the game's camera; on a pad the left stick moves, the right looks, LT and RT down and
+//        up, L3 held x4, LB and RB the speed, Y back to the game's camera. Offline and while watching a match, not
+//        while playing one (it goes off as one starts). VF2 has no camera of its own to read: the game's camera's
+//        move is worked out from the stage's pieces that sat still, and the free camera stays put in the world.
 // Sticks: a joystick SDL doesn't know as a pad (a DirectInput arcade stick) is given a fighting stick's layout
 //        (give_stick_layout); Controls > Player > Set up buttons makes one from its own presses (settings.ini's
 //        pad_mapping); a gamecontrollerdb.txt in the data folder or beside the program is read too.
@@ -138,6 +146,13 @@
 //   VF2_JOIN_CODE=XXXXXX joins that room at pass 60 (VF_LOBBY: another lobby); VF2_RANDOM=1 Quick match
 //   VF2_WATCH_CODE=XXXXXX watches that match at pass 60, as Online > a room > Watch
 //   VF2_HOST_PUBLIC=1    VF2_HOST_ROOM's room listed in Rooms (its matches may be watched by its code either way)
+//   VF2_TEST_FREECAM=... the free camera at game frames, e.g. on@600,yaw@620=180,pitch@640=-30,move@660=0,2,-5,
+//                        pause@700,yaw@720=90,shot@730=name,off@800: on, off, reset; a turn (degrees: yaw to the right,
+//                        pitch up) or a move (forward, right, up; in rings' widths) at once; pause, resume (P);
+//                        shot: the picture on show then to build/host_fc_<name>.png. The steps' clock is the game's
+//                        frames, and a pass of the loop for each pass while the game's stopped (paused)
+//   VF2_FREECAM_LOG=1    the free camera's working out: the world's up as it comes on, each frame's camera move (the
+//                        still pieces it's from), its place as it's flown
 //   VF2_SHOT_AT=n,...    the window as drawn at these passes, to build/host_window_at_N.png
 //   VF2_TEST_SAVES=1     a test run (VF2_QUIT_AFTER) saves the NVRAM and settings.ini all the same
 //   VF2_KO=P@a[-b]       knocks player P out in every round from game frame a (to b), as vf2run's
@@ -594,6 +609,7 @@ hotkey read_inputs(model2a &m, SDL_Gamepad *pads[2], pad_state ps[2], const play
 				if (pstart && !st.start_was) { hk = hotkey::menu; st.back_combo = true; }
 				static bool lb_was[2], rb_was[2];
 				if (lb && !lb_was[p]) { hk = hotkey::scale; st.back_combo = true; }
+				if (btn(SDL_GAMEPAD_BUTTON_RIGHT_STICK)) st.back_combo = true;   // (View + R3: the free camera's, read each pass)
 				if (rb && !rb_was[p]) { hk = hotkey::aspect; st.back_combo = true; }
 				lb_was[p] = lb; rb_was[p] = rb;
 			} else {
@@ -3327,6 +3343,12 @@ int main(int argc, char **argv)
 		if (menus_relabelled) menus_relabelled();
 	};
 	auto x_n = [](int n) { return tr::fill(tr::N_X, { { "n", std::to_string(n) } }); };
+	// The free camera (see the top): on; the menu's choice (taken as the menu closes); the speed (the wheel's, LB and
+	// RB's); kept off while an online match is being played (fc_blocked: set once online's made, below)
+	bool freecam = false, fc_menu = false;
+	double fc_speed = 1;
+	std::function<bool()> fc_blocked = [] { return false; };
+	std::function<void(bool, bool)> set_freecam = [](bool, bool) {};
 	auto display_page = [&] {
 		menu_page p{ tr::P_DISPLAY, "", {} };
 		p.items.push_back({ tr::D_SCALE, tr::D_SCALE_HELP,
@@ -3434,6 +3456,11 @@ int main(int argc, char **argv)
 		p.items.push_back({ tr::D_HUD, tr::D_HUD_HELP,
 			[&] { return on_off(cfg.hud); },
 			[&](int) { cfg.hud = !cfg.hud; cfg_dirty = true; m.set_hud_hidden(!cfg.hud); redraw_shown(); } });
+		p.items.push_back({ tr::D_FREECAM, tr::D_FREECAM_HELP,
+			[&] { return on_off(fc_menu && !fc_blocked()); },
+			[&](int) { if (fc_blocked()) menu.toast(tr::FREECAM_NOT_ONLINE); else fc_menu = !fc_menu; },   // (on or off as the menu closes)
+			{}, false, {}, false, false,
+			[&] { return fc_blocked() ? std::string(tr::FREECAM_NOT_ONLINE) : std::string(); } });
 		{
 			int now = 0;
 			if (SDL_GetRenderVSync(ren, &now))
@@ -3766,7 +3793,7 @@ int main(int argc, char **argv)
 							const SDL_Scancode k = e.key.scancode == SDL_SCANCODE_BACKSPACE || e.key.scancode == SDL_SCANCODE_DELETE ? SDL_SCANCODE_UNKNOWN : e.key.scancode;
 							// the game's own keys (pause, reset, the menu's shortcuts, the cabinet's coin and
 							// test buttons) stay theirs: wait for another key
-							static const SDL_Scancode RESERVED[] = { SDL_SCANCODE_P, SDL_SCANCODE_TAB, SDL_SCANCODE_F3,
+							static const SDL_Scancode RESERVED[] = { SDL_SCANCODE_P, SDL_SCANCODE_TAB, SDL_SCANCODE_F3, SDL_SCANCODE_F4,
 								SDL_SCANCODE_F5, SDL_SCANCODE_F6, SDL_SCANCODE_F9, SDL_SCANCODE_F11, SDL_SCANCODE_F12 };
 							for (SDL_Scancode r : RESERVED) if (k == r) return false;
 							for (const auto &sk : SYS_KEYS) if (k == sk.key) return false;
@@ -4299,7 +4326,20 @@ int main(int argc, char **argv)
 		menu.push(game_page());
 		menu.select_row(row);
 	};
+	fc_blocked = [&] { return online.playing() && !online.watching(); };
+	set_freecam = [&](bool on, bool pad) {
+		if (on && fc_blocked()) { menu.toast(tr::FREECAM_NOT_ONLINE); fc_menu = false; return; }
+		fc_menu = on;
+		if (on == freecam) return;
+		freecam = on;
+		m.set_freecam(on);
+		fc_speed = 1;
+		if (on) menu.toast(pad ? tr::FREECAM_ON_PAD : tr::FREECAM_ON_KEYS);
+		if (paused && !on && shown_pic) redraw_shown();   // (paused: the picture on show from the game's camera again)
+		fprintf(stderr, "free camera: %s\n", on ? "on" : "off");
+	};
 	auto open_menu = [&] {
+		fc_menu = freecam;
 		touch.release();
 		finish_async(false);
 		menu.set_title(menu_title());
@@ -4663,6 +4703,111 @@ int main(int argc, char **argv)
 			for (int a = 0; a < C_COUNT; a++) if (c.key[a] == SDL_SCANCODE_F || c.key2[a] == SDL_SCANCODE_F) return false;   // (first or second)
 		return true;
 	};
+	// The free camera each pass: flown by the time passed (the keys held, the mouse's moves the events gathered, the
+	// pads), View + R3 on any pad turning it on and off, off as an online match is played; the mouse captured while
+	// it's flown (not with the menu open, nor the window out of focus). And VF2_TEST_FREECAM's steps.
+	float fc_mouse[2] = { 0, 0 };
+	uint64_t fc_t = SDL_GetTicksNS(), fc_clock_stopped = 0;
+	struct fc_step { uint64_t at; std::string what, arg; };
+	std::vector<fc_step> fc_steps;
+	if (const char *t = getenv("VF2_TEST_FREECAM")) {
+		std::string all = t;
+		for (size_t i = 0; i < all.size();) {
+			size_t j = all.find(',', i);
+			// (a move's own commas: its three numbers)
+			std::string item = all.substr(i, j == std::string::npos ? std::string::npos : j - i);
+			if (item.rfind("move@", 0) == 0) for (int k = 0; k < 2 && j != std::string::npos; k++) j = all.find(',', j + 1);
+			item = all.substr(i, j == std::string::npos ? std::string::npos : j - i);
+			const size_t at = item.find('@'), eq = item.find('=');
+			if (at != std::string::npos)
+				fc_steps.push_back({ uint64_t(atoll(item.c_str() + at + 1)), item.substr(0, at), eq == std::string::npos ? "" : item.substr(eq + 1) });
+			if (j == std::string::npos) break;
+			i = j + 1;
+		}
+	}
+	auto freecam_pass = [&] {
+		const uint64_t now = SDL_GetTicksNS();
+		const double dt = std::clamp(double(now - fc_t) / 1e9, 0.0, 0.1);
+		fc_t = now;
+		static bool combo_was[2], y_was[2], lb_was[2], rb_was[2];
+		for (int p = 0; p < 2; p++) {
+			SDL_Gamepad *g = pads[p];
+			const bool combo = g && SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_BACK) && SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_RIGHT_STICK);
+			if (combo && !combo_was[p] && !menu.is_open()) set_freecam(!freecam, true);
+			combo_was[p] = combo;
+		}
+		if (freecam && fc_blocked()) set_freecam(false, false);   // (an online match being played: off)
+		const bool fly = freecam && !menu.is_open() && !suspended;
+		const bool focus = !hidden && SDL_GetKeyboardFocus() == win;
+		if (SDL_GetWindowRelativeMouseMode(win) != (fly && focus)) SDL_SetWindowRelativeMouseMode(win, fly && focus);
+		if (fly) {
+			constexpr double MOUSE = 0.12, ARROWS = 90, STICK = 120;   // (degrees a pixel; a second)
+			double fwd = 0, right = 0, up = 0, mul = 1;
+			double yaw = fc_mouse[0] * MOUSE, pitch = -fc_mouse[1] * MOUSE;
+			if (focus) {
+				const bool *ks = SDL_GetKeyboardState(nullptr);
+				fwd += ks[SDL_SCANCODE_W] - ks[SDL_SCANCODE_S];
+				right += ks[SDL_SCANCODE_D] - ks[SDL_SCANCODE_A];
+				up += (ks[SDL_SCANCODE_E] || ks[SDL_SCANCODE_SPACE]) - (ks[SDL_SCANCODE_Q] || ks[SDL_SCANCODE_LCTRL] || ks[SDL_SCANCODE_RCTRL]);
+				if (ks[SDL_SCANCODE_LSHIFT] || ks[SDL_SCANCODE_RSHIFT]) mul *= 4;
+				if (ks[SDL_SCANCODE_LALT] || ks[SDL_SCANCODE_RALT]) mul *= 0.25;
+				yaw += ARROWS * dt * (ks[SDL_SCANCODE_RIGHT] - ks[SDL_SCANCODE_LEFT]);
+				pitch += ARROWS * dt * (ks[SDL_SCANCODE_UP] - ks[SDL_SCANCODE_DOWN]);
+			}
+			for (int p = 0; p < 2; p++) {
+				SDL_Gamepad *g = pads[p];
+				if (!g || (p == 1 && pads[1] == pads[0])) continue;
+				auto axis = [&](SDL_GamepadAxis a) {   // (a dead zone of 0.15, then squared)
+					const double v = std::clamp(SDL_GetGamepadAxis(g, a) / 32767.0, -1.0, 1.0), m = (std::fabs(v) - 0.15) / 0.85;
+					return m <= 0 ? 0.0 : std::copysign(m * m, v);
+				};
+				auto btn = [&](SDL_GamepadButton b) { return SDL_GetGamepadButton(g, b); };
+				fwd -= axis(SDL_GAMEPAD_AXIS_LEFTY);
+				right += axis(SDL_GAMEPAD_AXIS_LEFTX);
+				up += axis(SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) - axis(SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
+				yaw += STICK * dt * axis(SDL_GAMEPAD_AXIS_RIGHTX);
+				pitch -= STICK * dt * axis(SDL_GAMEPAD_AXIS_RIGHTY);
+				if (btn(SDL_GAMEPAD_BUTTON_LEFT_STICK)) mul *= 4;
+				const bool lb = btn(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER), rb = btn(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER), y = btn(SDL_GAMEPAD_BUTTON_NORTH);
+				if (lb && !lb_was[p]) fc_speed = std::max(fc_speed / 1.25, 1.0 / 16);
+				if (rb && !rb_was[p]) fc_speed = std::min(fc_speed * 1.25, 16.0);
+				if (y && !y_was[p]) m.freecam_reset();
+				lb_was[p] = lb; rb_was[p] = rb; y_was[p] = y;
+			}
+			fwd = std::clamp(fwd, -1.0, 1.0); right = std::clamp(right, -1.0, 1.0); up = std::clamp(up, -1.0, 1.0);
+			// (a ring's width in about 3 s at the speed's start)
+			const double step = m.freecam_unit() / 3 * fc_speed * mul * dt;
+			if (fwd || right || up || yaw || pitch) m.freecam_fly(float(fwd * step), float(right * step), float(up * step), float(yaw), float(pitch));
+		}
+		fc_mouse[0] = fc_mouse[1] = 0;
+		// (tests)
+		const bool stopped_now = suspended || (!online.playing() && (paused || menu.is_open() || online.starting()));
+		if (stopped_now) fc_clock_stopped++;
+		const uint64_t clock = game_frame + fc_clock_stopped;
+		while (!fc_steps.empty() && clock >= fc_steps.front().at) {
+			const fc_step st = fc_steps.front();
+			fc_steps.erase(fc_steps.begin());
+			const double v = atof(st.arg.c_str()), u = m.freecam_unit();
+			fprintf(stderr, "test: free camera: %s %s at frame %llu (clock %llu)\n", st.what.c_str(), st.arg.c_str(), (unsigned long long)game_frame, (unsigned long long)clock);
+			if (st.what == "on") set_freecam(true, false);
+			else if (st.what == "off") set_freecam(false, false);
+			else if (st.what == "reset") m.freecam_reset();
+			else if (st.what == "yaw") m.freecam_fly(0, 0, 0, float(v), 0);
+			else if (st.what == "pitch") m.freecam_fly(0, 0, 0, 0, float(v));
+			else if (st.what == "move") {
+				double f = 0, r = 0, up = 0;
+				sscanf(st.arg.c_str(), "%lf,%lf,%lf", &f, &r, &up);
+				m.freecam_fly(float(f * u), float(r * u), float(up * u), 0, 0);
+			} else if (st.what == "pause") paused = true;
+			else if (st.what == "resume") paused = false;
+			else if (st.what == "shot") {
+				std::vector<uint32_t> px;
+				int w = 0, h = 0;
+				shown_pixels(px, w, h);
+				write_png(("build/host_fc_" + st.arg + ".png").c_str(), px.data(), w, h);
+			}
+		}
+	};
 	while (running) {
 		const int64_t pass = passes++;
 		marker_done(false);
@@ -4847,8 +4992,12 @@ int main(int argc, char **argv)
 				menu.refresh();
 				if (SDL_GetKeyboardFocus() != win) SDL_RaiseWindow(win);   // (the move to a new Space can lose it)
 			}
+			else if (e.type == SDL_EVENT_MOUSE_MOTION && freecam && SDL_GetWindowRelativeMouseMode(win)) { fc_mouse[0] += e.motion.xrel; fc_mouse[1] += e.motion.yrel; }
+			else if (e.type == SDL_EVENT_MOUSE_WHEEL && freecam) fc_speed = std::clamp(fc_speed * std::pow(1.25, double(e.wheel.y)), 1.0 / 16, 16.0);
 			else if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat) {
 				if (e.key.scancode == SDL_SCANCODE_ESCAPE) open_menu();
+				else if (e.key.scancode == SDL_SCANCODE_F4) set_freecam(!freecam, false);
+				else if (e.key.scancode == SDL_SCANCODE_R && freecam) m.freecam_reset();
 				else if (e.key.scancode == SDL_SCANCODE_P && !online.playing()) paused = !paused;   // (a match never pauses)
 				else if (e.key.scancode == SDL_SCANCODE_F9) {
 					timings = !timings; cfg_dirty = true;
@@ -4874,7 +5023,9 @@ int main(int argc, char **argv)
 		}
 		setup_poll();
 		sync_menu_sound();
+		freecam_pass();
 		if ((menu.is_open() != menu_was_open && !menu.is_open()) || std::exchange(menu_closed_elsewhere, false)) {
+			if (fc_menu != freecam) set_freecam(fc_menu, false);   // (Display > Free camera's choice)
 			// (not a match just left from the menu: Leave closes it before end_match has shown MATCH OVER, which it then didn't)
 			if (online.phase() == Online::Phase::off && !match_on) { online.set_last_match({}); online.forget_failure(); }   // (MATCH OVER, COULDN'T CONNECT: just after, not for ever)
 			log_state("the menu closed");
@@ -4995,6 +5146,7 @@ int main(int argc, char **argv)
 			script.apply(game_frame, ports);
 			uint8_t live[3];
 			const hotkey hk = read_inputs(m, pads, pstate, cfg.ctl, live, touch_shown() ? &touch : nullptr);
+			if (freecam) live[0] = live[1] = live[2] = 0;   // (the free camera's: the players' own inputs kept from the game)
 			m.m_in0 = ports[input_script::IN0] & ~live[0];
 			m.m_in1 = ports[input_script::IN1] & ~live[1];
 			m.m_in2 = ports[input_script::IN2] & ~live[2];
@@ -5007,10 +5159,11 @@ int main(int argc, char **argv)
 			}
 			m.m_audio_out.clear();
 			game_frame++;
-			// (tests: the game's work RAM hashed every 30 frames, VF2_TEST_RAM_LOG=file: the game the same whatever the
+			// (tests: the game's work RAM hashed every 30 frames, with the polygon counts it read, VF2_TEST_RAM_LOG=file: the game the same whatever the
 			// display's settings, Display > HUD's, V-Sync's, the frame limit's)
 			if (static FILE *rl = getenv("VF2_TEST_RAM_LOG") ? fopen(getenv("VF2_TEST_RAM_LOG"), "w") : nullptr; rl && game_frame % 30 == 0) {
-				fprintf(rl, "%llu %016llx\n", (unsigned long long)game_frame, (unsigned long long)fnv(m.workram().data(), m.workram().size()));
+				fprintf(rl, "%llu %016llx %016llx\n", (unsigned long long)game_frame, (unsigned long long)fnv(m.workram().data(), m.workram().size()),
+					(unsigned long long)m.video().m_polygon_count_sum);   // (and every polygon count the game read from the 3D so far)
 				fflush(rl);
 			}
 			if (pace_log && game_frame % 60 == 0)
@@ -5042,7 +5195,7 @@ int main(int argc, char **argv)
 				uint8_t live[3];
 				const hotkey hk = read_inputs(m, pads, pstate, cfg.ctl, live, touch_shown() ? &touch : nullptr);
 				const uint8_t in0 = uint8_t(ports[input_script::IN0] & ~live[0]), in1 = uint8_t(ports[input_script::IN1] & ~live[1]), in2 = uint8_t(ports[input_script::IN2] & ~live[2]);
-				const uint16_t bits = menu.is_open() ? 0 : uint16_t(vf2net::pack(in0, in1, 0) | vf2net::pack(in0, in2, 1) | step_carry);
+				const uint16_t bits = menu.is_open() || freecam ? 0 : uint16_t(vf2net::pack(in0, in1, 0) | vf2net::pack(in0, in2, 1) | step_carry);
 				online.poll(double(SDL_GetTicksNS()) / 1e6);
 				if (hk == hotkey::menu) open_menu();
 				const uint64_t te = SDL_GetTicksNS();
@@ -5321,6 +5474,7 @@ int main(int argc, char **argv)
 			if (scene_sync::is_blank(b)) show_drawn(b);
 			else pace.pictures++, pace.held++;   // (a picture held on purpose isn't one missed)
 		}
+		if (freecam && stopped && !menu.is_open() && !suspended && shown_pic) redraw_shown();   // (paused: the free camera still flies, a picture each pass)
 		if (new_picture) {
 			const uint64_t tu = SDL_GetTicksNS();
 			upload_picture(*picture);

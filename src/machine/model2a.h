@@ -321,6 +321,16 @@ public:
 	// the timer, the names, the rounds won, the round calls' text), isn't drawn, nor the names put in it; the backdrop's
 	// maps (2, 3) are, their tiles over the 3D too. The picture only: what's drawn never reaches the board's state
 	void set_hud_hidden(bool hidden) { m_hud_hidden = hidden; }
+	// The free camera (model2_video's freecam_*: the picture only, never the board's state): on, the 3D of a stage's
+	// scene (its backdrop up: a fight, the attract's) seen from it, the 2D of maps 0 and 1 (the HUD) not drawn and
+	// the backdrop (maps 2 and 3) moved by its yaw and pitch against the game's camera (from the stage's panorama where
+	// it's known), fading to the backdrop's edge colour past what it holds. Elsewhere the game's own picture.
+	void set_freecam(bool on) { render_wait(); if (on) m_video->freecam_start(); else m_video->freecam_stop(); }
+	bool freecam() const { return m_video->freecam_on(); }
+	void freecam_reset() { render_wait(); m_video->freecam_reset(); }
+	void freecam_fly(float fwd, float right, float up, float yaw, float pitch) { render_wait(); m_video->freecam_fly(fwd, right, up, yaw, pitch); }
+	float freecam_unit() const { return m_video->freecam_unit(); }
+	bool freecam_scene() const;   // a stage's scene is up (its backdrop): the free camera's
 	bool backdrop_filter() const { return m_backdrop_smooth; }
 	// The attract's SEGA logo is up (it sets bit 16 of the flags at 0x500068 every frame it
 	// runs; clear again once the attract moves on): the first time, at about frame 728 from
@@ -643,6 +653,8 @@ private:
 	void draw_2d(bool polygons, bool parts);
 	bool m_2d_wide = false, m_2d_filter = false;   // what the last draw_2d drew
 	bool m_hud_hidden = false;   // (set_hud_hidden: the host's, read when a picture's 2D is drawn)
+	int m_fc_dx = 0, m_fc_dy = 0;   // (the free camera's move of the backdrop for the picture being drawn: arcade pixels)
+	void freecam_sky_move();
 	uint64_t m_2d_version = 0;
 	uint64_t m_2d_key[5] = { ~0ull };              // smooth motion: the frame, scale, width, filter and parts it was drawn for
 	void compose(u32 *out, size_t stride, const bitmap_rgb32 *layer3d, int x0, int x1, bool smooth, u32 pen0, int bdx = 0, int bdy = 0);

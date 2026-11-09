@@ -250,6 +250,7 @@ Change them in the menu (<kbd>Esc</kbd>, or View / Select on a pad).
 | <kbd>Esc</kbd> | Menu: display (render scale, picture shape, antialiasing, 3D renderer...), sound, game, arcade settings, controls, cheats, quit |
 | <kbd>P</kbd> | Pause |
 | <kbd>F3</kbd> | Reset |
+| <kbd>F4</kbd> | Free camera (see below) |
 | <kbd>F5</kbd> / <kbd>F6</kbd> | Render scale / picture shape |
 | <kbd>F9</kbd> | Frame timings |
 | <kbd>F11</kbd> | Fullscreen |
@@ -257,12 +258,32 @@ Change them in the menu (<kbd>Esc</kbd>, or View / Select on a pad).
 
 Gamepad (Xbox layout): d-pad or stick to move, X guard, A punch, B kick, Y guard + punch (throws), RB punch + kick,
 LB guard + kick, RT all three, Start to start. View (tap), L3 + R3 or the touchpad click opens the menu (Menu can be
-moved in Controls); View + LB / RB change the render scale / picture shape. In Arcade mode, set Coin in Controls (View
-works) for a coin button.
+moved in Controls); View + LB / RB change the render scale / picture shape, View + R3 is the free camera. In Arcade
+mode, set Coin in Controls (View works) for a coin button.
 
 Arcade sticks the game doesn't know (DirectInput sticks such as HORI's Virtua Stick High Grade or the Astro City
 Mini) get a fighting stick's layout; Controls > Player 1 (or 2) > Set up buttons sets theirs by pressing each in turn. A
 `gamecontrollerdb.txt` (SDL's mappings) in the data folder or beside the program is read too.
+
+### Free camera
+
+<kbd>F4</kbd> (View + R3 on a pad, or Display > **Free camera**) flies a camera around the fight: offline, in the
+attract's fights, and while watching an online match (not while playing one). The game goes on beneath it and your own
+inputs don't reach it meanwhile; <kbd>P</kbd> pauses the game and the camera still flies. It's the picture only: the
+game plays exactly the same, and the HUD is hidden while it's on.
+
+| | Keyboard and mouse | Pad |
+| --- | --- | --- |
+| Look | Mouse (or the arrow keys) | Right stick |
+| Move | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Left stick |
+| Up / down | <kbd>E</kbd> or <kbd>Space</kbd> / <kbd>Q</kbd> or <kbd>Ctrl</kbd> | RT / LT |
+| Faster / slower | <kbd>Shift</kbd> x4, <kbd>Alt</kbd> x0.25, mouse wheel | L3 held x4, RB / LB |
+| Back to the game's camera | <kbd>R</kbd> | Y |
+| Leave | <kbd>F4</kbd> | View + R3 |
+
+The game only draws what its own camera would see: with the 4:3 picture shape, scenery around a stage comes and goes
+with the game's camera's heading (a wider shape draws all of it), and the floor ends where the arcade's did. The sky
+follows the free camera's turn; past the top of the stage's backdrop it fades to its colour.
 
 ### Window size
 

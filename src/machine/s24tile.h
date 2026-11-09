@@ -299,6 +299,108 @@ public:
 		}
 	}
 
+	// The free camera: a backdrop layer (map 2 or 3) drawn as the game's camera turned by the free camera's yaw and
+	// pitch would see it, `dx` and `dy` pixels along (all of the picture's columns, -ext to 496 + ext): each line as
+	// draw() takes it (line_source; a line past the screen's as the screen's edge line, its map's rows carrying on),
+	// map 2's from the panorama where it has the row (`pan`, as draw_sides: all the way round), else from the map
+	// (wrapping: only what's in the game's view is right there). Map 2 holds the backdrop from its row 0 down; past
+	// its rows, its edge row faded over FADE lines to that row's average colour, not the map's other end. Not for
+	// the side-by-side split (can_shift false: drawn as it is).
+	bool can_shift(int layer) const
+	{
+		const uint16_t ctrl = tile_ram[0x5004 + ((layer >> 1) & 2)];
+		return !(ctrl & 0x6000) || (ctrl & 0x6000) >> 13 == 1;
+	}
+	void draw_shifted(bitmap_rgb32 &bitmap, int layer, int flags_in, int ext, const panorama *pan, int dx, int dy)
+	{
+		constexpr int FADE = 48;
+		const int l = layer >> 1;
+		const uint16_t ctrl = tile_ram[0x5004 + (l & 2)];
+		const bool split = ctrl & 0x6000;
+		const uint16_t *mask = &tile_ram[layer & 4 ? 0x6800 : 0x6000];
+		const uint8_t want = uint8_t((layer & 1) | 0x10);
+		const bool opaque = flags_in & DRAW_OPAQUE;
+		struct line { int m, my, x0, yc; };
+		line top, bottom;
+		if (!line_source(layer, 0, top.m, top.my, top.x0) || !line_source(layer, 383, bottom.m, bottom.my, bottom.x0)) return;
+		auto line_at = [&](int y) {   // (y any line, as if the screen went on)
+			line L;
+			L.yc = std::clamp(y, 0, 383);
+			line_source(layer, L.yc, L.m, L.my, L.x0);
+			L.my = (L.my + (y - L.yc)) & 511;
+			return L;
+		};
+		// (a panorama row not on the screen: placed as the nearest one that is; the rows scroll together)
+		int pan_row[64];
+		for (int r = 0; r < 64; r++) {
+			pan_row[r] = -1;
+			if (!pan || r >= pan->rows) continue;
+			for (int d = 0; d < 64 && pan_row[r] < 0; d++) {
+				if (r - d >= 0 && pan->at[r - d] >= 0) pan_row[r] = r - d;
+				else if (r + d < pan->rows && pan->at[r + d] >= 0) pan_row[r] = r + d;
+			}
+		}
+		auto sample = [&](const line &L, int x, uint16_t &pen, uint8_t &flag) {
+			const int my = L.my, x0 = L.x0, m = L.m;
+			const int r = my >> 3, pr = m == 2 ? pan_row[r] : -1;
+			if (pr >= 0) {
+				const int w = pan->cols * 8;
+				const int at = pan->at[pr] + ((x0 - pan->x0[pr] + 256) & 511) - 256;
+				const int px = (((at + x) % w) + w) % w;
+				const uint16_t e = pan->entries[size_t(r) * pan->cols + (px >> 3)];
+				const uint16_t *c = &char_ram[(size_t(e & tile_mask) * 16 + (my & 7) * 2) & 0x3ffff];
+				const uint32_t bits = (uint32_t(c[0]) << 16) | c[1];
+				const uint8_t p = (bits >> (28 - 4 * (px & 7))) & 0xf;
+				pen = uint16_t(((e >> 7) & 0xff) * 16 + p);
+				flag = p ? uint8_t(0x10 | ((e & 0x8000) ? 1 : 0)) : 0;
+			} else {
+				const int mx = (x0 + x) & 511;
+				pen = pix[m][size_t(my) * 512 + mx];
+				flag = flags[m][size_t(my) * 512 + mx];
+			}
+		};
+		// the lines map 2's rows reach, from the screen's edges out (another map at an edge, the sky's filler: any)
+		const int top_known = top.m == 2 ? -top.my : -(1 << 20), bottom_known = bottom.m == 2 ? 384 + (511 - bottom.my) : 1 << 20;
+		auto edge_colour = [&](int y) {   // the average of a line (its opaque pixels)
+			uint64_t r = 0, g = 0, b = 0, n = 0;
+			const line L = line_at(y);
+			for (int x = -ext; x < 496 + ext; x += 2) {
+				uint16_t pen; uint8_t flag;
+				sample(L, x, pen, flag);
+				if (!opaque && flag != want) continue;
+				const uint32_t c = m_pens[pen & 0x1fff];
+				r += c >> 16 & 0xff; g += c >> 8 & 0xff; b += c & 0xff; n++;
+			}
+			return n ? uint32_t(0xff000000 | (r / n) << 16 | (g / n) << 8 | (b / n)) : 0u;
+		};
+		uint32_t top_c = 0, bottom_c = 0;
+		if (dy < top_known) top_c = edge_colour(top_known);
+		if (383 + dy >= bottom_known) bottom_c = edge_colour(bottom_known - 1);
+		for (int y = 0; y < 384 && y < bitmap.height(); y++) {
+			uint32_t *row = &bitmap.pix(y);
+			int ys = y + dy, fade = 0;
+			uint32_t to = 0;
+			if (ys < top_known) { fade = top_known - ys; ys = top_known; to = top_c; }
+			else if (ys >= bottom_known) { fade = ys - bottom_known + 1; ys = bottom_known - 1; to = bottom_c; }
+			const uint32_t t = uint32_t(std::min(fade, FADE) * 256 / FADE);
+			const line L = line_at(ys);
+			for (int x = -ext; x < 496 + ext; x++) {
+				if (!split) {   // (the window mask, as draw_sides: by the screen's line and column)
+					const int mx = std::clamp(x, 0, 495);
+					uint16_t mk = mask[L.yc * 4 + (mx >> 7)];
+					if (l & 1) mk = ~mk;
+					if (mk & (0x8000 >> ((mx & 127) >> 3))) continue;
+				}
+				uint16_t pen; uint8_t flag;
+				sample(L, x + dx, pen, flag);
+				if (!opaque && flag != want) continue;
+				uint32_t c = m_pens[pen & 0x1fff];
+				if (t && to) c = 0xff000000 | ((((c & 0xff00ff) * (256 - t) + (to & 0xff00ff) * t) >> 8) & 0xff00ff) | ((((c & 0xff00) * (256 - t) + (to & 0xff00) * t) >> 8) & 0xff00);
+				row[m_ox + x] = c;
+			}
+		}
+	}
+
 private:
 	static constexpr uint32_t tile_mask = 0x3fff;
 	std::vector<uint16_t> pix[4];
