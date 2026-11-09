@@ -313,3 +313,8 @@ $(BIN)/audiocheck: $(call objs,tools/audiocheck.cpp)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) $(SDL_LIBS)
 .PHONY: audiocheck
 audiocheck: $(BIN)/audiocheck
+
+# vf2watchsound: a late watcher's match sound after its catch-up against a from-the-start watcher's (join points swept)
+$(BIN)/vf2watchsound: $(call objs,tools/vf2watchsound.cpp src/host/vf2_netplay.cpp src/host/stb_image_impl.cpp $(MACHINE) $(HOST) $(CORE) $(GEN_NONE) $(M68000) $(NET)) $(SLJIT_OBJ)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
