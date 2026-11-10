@@ -113,11 +113,22 @@ T(D_SHOW_FPS, "Show FPS")
 T(D_SHOW_FPS_HELP, "Shows the frame rate in the top right corner.")
 T(D_HUD, "HUD")                              // Display > HUD: the game's 2D over a fight (energy bars, timer, names) drawn or not
 T(D_HUD_HELP, "Off hides the game's display over a fight: the energy bars, the timer, the names, the rounds won and the round calls. The fighters and the stage are still drawn, and the game plays exactly the same.")
-T(D_FREECAM, "Free camera")   // Display > Free camera: a camera flown around the fight (On/Off, never saved)
-T(D_FREECAM_HELP, "WASD + mouse or the sticks, E/Q or RT/LT up and down, Shift faster, R or Y back to the game's camera. F4 or Back + R3 turns it on and off anywhere (P pauses the game).")
-T(FREECAM_ON_KEYS, "Free camera: WASD + mouse, or the sticks. F4 to leave")   // the toast as it comes on from the keyboard (or the menu)
-T(FREECAM_ON_PAD, "Free camera: sticks, LT/RT down/up. Back + R3 to leave")   // ...from a pad (Back + R3)
-T(FREECAM_NOT_ONLINE, "Free camera: not while playing online")   // F4 / Back + R3 while playing an online match (and the menu row's line under it then)
+T(D_FREECAM, "Free camera")   // Display > Free camera: On / Off (not saved)
+T(D_FREECAM_HELP, "Fly a camera around the fight: WASD + mouse (E/Space up, Q/Ctrl down, Shift faster, R back to the game's camera), or the sticks (LT/RT down/up, Y back). F4, or Back + R3 on a pad. Only the picture changes: the game plays exactly the same. Off at each start.")
+T(D_FREECAM_NOT_NOW, "Not while playing online")   // (Free camera's value in a match of the player's own)
+T(FREECAM_ON_KEYS, "Free camera: WASD + mouse, or the sticks. F4 to leave")   // a toast as it turns on from the keyboard (key names as printed)
+T(FREECAM_ON_PAD, "Free camera: sticks, LT/RT down/up. Back + R3 to leave")   // ...from a pad
+T(FREECAM_NOT_ONLINE, "Free camera: not while playing online")   // a toast: F4 or View + R3 in a match of the player's own
+T(D_PICTURE, "Picture")   // Display > Picture: a page of its own (picture shape, window size, fullscreen, HUD, Show FPS); its value a summary: "16:9, Fullscreen"
+T(D_QUALITY, "Quality")   // Display > Quality: render scale, antialiasing, the 3D renderer...; its value "3x, AA 2x, GPU"
+T(D_SCREEN, "Screen filter and colours")   // Display > Screen filter and colours: screen filter, CRT colours, brightness, gamma; its value the filter's name
+T(LIST_PAIR, "{a}, {b}")   // two items of a list made by the code, {a} what came before (a summary's parts, a page's rows named in its help)
+T(D_SUM_FIT, "Fit")   // (Picture's summary: Picture shape's Fit the window, in a word)
+T(D_SUM_WINDOW_N, "Window {n}x")   // (Picture's summary: a window at Window size's {n} times)
+T(D_SUM_WINDOW, "Window")   // (...a window of any size)
+T(D_SUM_AA, "AA {n}")   // (Quality's summary: antialiasing, {n} its value: "AA 2x")
+T(CTL_COMBOS, "Button combinations")   // a player's keys > Button combinations: a page of its own (Guard + Punch, Punch + Kick, Guard + Kick, All three)
+T(CTL_COMBOS_HELP, "A key for two or three buttons at once: {list}.")   // ({list}: those four controls' names)
 T(D_FRAME_LIMIT, "Frame limit")              // Display > Frame limit: Off, 30, 60, 120, 144 or the screen's refresh rate
 T(D_FRAME_LIMIT_HELP, "The most pictures shown a second. Screen's: one for each refresh of your screen. Off: no limit. Only the pictures change: the game always runs at the arcade's own speed, online too.")
 T(D_FRAME_LIMIT_SCREEN, "Screen's ({n} Hz)") // (Frame limit's value: the screen's refresh rate, {n} in Hz)

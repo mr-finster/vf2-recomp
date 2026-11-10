@@ -55,7 +55,7 @@ screen's refresh rate.
 | Menu, keyboard and gamepads, two players, the arcade's settings | Working |
 | macOS, Windows, Linux / Steam Deck | Working |
 | Android (arm64) | Experimental: see [android/README.md](android/README.md) |
-| The 3D drawn on the GPU (Display > 3D renderer: Auto, GPU or CPU) | Working on macOS (Metal), Windows (Direct3D 12 or Vulkan) and Linux / Steam Deck (Vulkan): the same picture as the CPU's, checked when the game starts; Auto uses the GPU unless it's clearly slower, and any difference or error falls back to the CPU |
+| The 3D drawn on the GPU (Display > Quality > 3D renderer: Auto, GPU or CPU) | Working on macOS (Metal), Windows (Direct3D 12 or Vulkan) and Linux / Steam Deck (Vulkan): the same picture as the CPU's, checked when the game starts; Auto uses the GPU unless it's clearly slower, and any difference or error falls back to the CPU |
 | Stereo reverb (the sound board's DSP) | Working: wide stereo, as on the cabinet (fixed in v0.1.2) |
 | Portable mode, your own ROM folder | Working |
 | Random fighters (Menu > Cheats): three of the cast made one, for a player or every computer opponent | Working (new), online too (Online > Settings > Your fighter) |
@@ -247,7 +247,7 @@ Change them in the menu (<kbd>Esc</kbd>, or View / Select on a pad).
 | <kbd>I</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> | Player 2: move |
 | <kbd>B</kbd> <kbd>N</kbd> <kbd>M</kbd> | Player 2: guard, punch, kick |
 | <kbd>2</kbd> | Player 2: start |
-| <kbd>Esc</kbd> | Menu: display (render scale, picture shape, antialiasing, 3D renderer...), sound, game, arcade settings, controls, cheats, quit |
+| <kbd>Esc</kbd> | Menu (see below): display, sound, game, arcade settings, online, controls, cheats, quit |
 | <kbd>P</kbd> | Pause |
 | <kbd>F3</kbd> | Reset |
 | <kbd>F4</kbd> | Free camera (see below) |
@@ -264,6 +264,22 @@ mode, set Coin in Controls (View works) for a coin button.
 Arcade sticks the game doesn't know (DirectInput sticks such as HORI's Virtua Stick High Grade or the Astro City
 Mini) get a fighting stick's layout; Controls > Player 1 (or 2) > Set up buttons sets theirs by pressing each in turn. A
 `gamecontrollerdb.txt` (SDL's mappings) in the data folder or beside the program is read too.
+
+### Menu
+
+- **Resume** and **Quit**.
+- **Display:** three pages, each shown on its row with what it's set to, and the free camera's On / Off:
+  - **Picture:** picture shape (fit the window, 4:3, 16:10, 16:9, 21:9), window size, fullscreen and (on Windows)
+    fullscreen mode, the HUD, Show FPS, the on-screen controls.
+  - **Quality:** render scale (up to 6x), antialiasing (Low, 2x, 3x), the 3D renderer and (on Windows) the graphics
+    driver or (on a Mac) the GPU quality, background filter, smooth motion, V-Sync, frame limit.
+  - **Screen filter and colours:** screen filter (scanlines, CRT), CRT colours (an arcade monitor's), brightness,
+    gamma.
+  - **Free camera** (see [Free camera](#free-camera)).
+- **Sound**, **Game** (language, play style, reset), **Arcade settings** (the game's own, and the service menu),
+  **Online**, **Cheats**.
+- **Controls:** each player's pad, keys and buttons (a key for two or three buttons at once: Button combinations, on
+  the keys' page).
 
 ### Free camera
 
@@ -287,7 +303,7 @@ follows the free camera's turn; past the top of the stage's backdrop it fades to
 
 ### Window size
 
-Display > **Window size** makes the window a whole multiple of the arcade's 384 lines (1x 512 x 384 for the 4:3
+Display > Picture > **Window size** makes the window a whole multiple of the arcade's 384 lines (1x 512 x 384 for the 4:3
 picture, the board's 496 x 384 on its 4:3 tube; 2x 1024 x 768; up to 4x, as many as your screen holds; a wider picture
 shape makes it as wide as the shape), each arcade line that many of your screen's: Render scale 1x with Window size 1x
 shows the arcade's 384 lines one to one, Window size 2x with Render scale 1x doubles each of them. It's for playing in
@@ -298,7 +314,7 @@ that's gone now opens it in the middle of one that's there. (Not on Android, whe
 
 On Windows, fullscreen is a borderless window over the screen (a line taller than it, so no graphics driver takes it
 for a game's own fullscreen): switching to fullscreen froze on AMD cards in the driver's exclusive fullscreen
-(vf3-recomp #7). Display > **Fullscreen mode** (Windows only) switches to **Standard**, the old way, as does
+(vf3-recomp #7). Display > Picture > **Fullscreen mode** (Windows only) switches to **Standard**, the old way, as does
 `fullscreen_exclusive = 1` in settings.ini. A Mac (its green button too), Linux and the Steam Deck keep the system's own
 fullscreen (`fullscreen_window = 1` gives them the borderless window).
 
@@ -407,8 +423,8 @@ Online > Settings > **Connection display** sets it to On, Detailed or Off. **Det
 - **Mac:** System Settings > Network > Firewall > Options: allow it. Also System Settings > Privacy & Security > Local Network: on.
 
 **Stutter, slowdown, or lots of rollback**
-- **Use the GPU renderer:** Menu > Display > 3D renderer: **GPU**. On Windows and Linux, Vulkan or Direct3D 12 work best.
-- **Check your speed offline:** Display > Show FPS should read 57 or 58 steadily. If it doesn't offline, it won't online. Lower the render scale (F5).
+- **Use the GPU renderer:** Menu > Display > Quality > 3D renderer: **GPU**. On Windows and Linux, Vulkan or Direct3D 12 work best.
+- **Check your speed offline:** Display > Picture > Show FPS should read 57 or 58 steadily. If it doesn't offline, it won't online. Lower the render scale (F5).
 - **Use a cable** if you can: Wi-Fi adds jitter.
 - **Steam Deck:** turn off Wi-Fi power management (Settings > System > Developer Mode on, then Settings > Developer > Enable Wi-Fi power management: off).
 - Set the Connection display to **Detailed**: a high JITTER means the network; a high FRAME means the machine.

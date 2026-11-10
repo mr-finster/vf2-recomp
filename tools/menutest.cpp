@@ -231,6 +231,8 @@ void page_shots(game_menu &gm, int w, int h, const char *file, tr::text title, c
 		gm.select_row(int(i));
 		shot("", w, h);
 		for (const std::string &o : gm.overflow()) overflows.push_back(std::string(file) + " row " + std::to_string(i) + ": " + o);
+		// (every row's help within the panel, not only the pictured one's)
+		if (const std::string f = gm.page_fit(); !f.empty()) unfit.push_back(std::string(file) + " row " + std::to_string(i) + ": " + f);
 	}
 	gm.select_row(int(longest));
 	for (int i = 0; i < 8; i++) { shot("", w, h); SDL_Delay(40); }   // (the rows' slide, 0.12 s, over before the picture)
@@ -248,52 +250,56 @@ void pages(game_menu &gm, int w, int h)
 		{ M_RESUME, M_RESUME_HELP, "" }, { P_DISPLAY, M_DISPLAY_HELP, "" }, { P_SOUND, M_SOUND_HELP, "" }, { P_GAME, M_GAME_HELP, "" },
 		{ M_ARCADE, M_ARCADE_HELP, "" }, { P_ONLINE, M_ONLINE_HELP, "" }, { P_CONTROLS, M_CONTROLS_MATCH_HELP, "" },
 		{ P_CHEATS, M_CHEATS_HELP, "" }, { M_QUIT, M_QUIT_HELP, "" } });
-	page_shots(gm, w, h, "pages_display.png", P_DISPLAY, {   // (Windows' rows, the most of any: 20 and Back)
+	// Display: its three pages' rows, each with what it's set to, and the free camera's; then each page (as main.cpp's
+	// display_page, picture_page, quality_page and screen_page), with every system's rows (more than any one has)
+	auto listed = [&](std::initializer_list<std::string> parts) {
+		std::string out;
+		for (const std::string &x : parts) out = out.empty() ? x : F(LIST_PAIR, { { "a", out }, { "b", x } });
+		return out;
+	};
+	page_shots(gm, w, h, "pages_display.png", P_DISPLAY, {
+		{ D_PICTURE, listed({ D_SHAPE, D_WINDOW_SIZE, D_FULLSCREEN, D_FS_MODE, D_HUD, D_SHOW_FPS, D_ON_SCREEN }), listed({ D_SUM_FIT, F(D_SUM_WINDOW_N, { { "n", "4" } }) }) },
+		{ D_QUALITY, listed({ D_SCALE, D_AA, D_RENDERER, D_DRIVER, D_GPU_QUALITY, D_BG_FILTER, D_SMOOTH_MOTION, D_VSYNC, D_FRAME_LIMIT, D_FRAMES_IN_FLIGHT, D_PERF_HINTS }),
+		  listed({ F(N_X, { { "n", "6" } }), F(D_SUM_AA, { { "n", F(N_X, { { "n", "3" } }) } }), R3D_GPU }) },
+		{ D_SCREEN, listed({ D_SCREEN_FILTER, D_CRT_COLOURS, D_BRIGHTNESS, D_GAMMA }), listed({ D_SCANLINES, D_CRT_COLOURS }) },
+		{ D_FREECAM, D_FREECAM_HELP, D_FREECAM_NOT_NOW } });
+	page_shots(gm, w, h, "pages_display_more.png", P_DISPLAY, {   // (the other values of its rows)
+		{ D_PICTURE, "", listed({ "21:9", D_FULLSCREEN }) }, { D_PICTURE, "", listed({ "4:3", D_SUM_WINDOW }) },
+		{ D_QUALITY, "", listed({ F(N_X, { { "n", "1" } }), R3D_CPU }) }, { D_QUALITY, "", listed({ F(N_X, { { "n", "2" } }), F(D_SUM_AA, { { "n", D_AA_LOW } }), R3D_CPU }) },
+		{ D_SCREEN, "", OFF }, { D_SCREEN, "", listed({ D_CRT, D_CRT_COLOURS }) },
+		{ D_FREECAM, D_FREECAM_HELP, on } });
+	page_shots(gm, w, h, "pages_picture.png", D_PICTURE, {
+		{ D_SHAPE, D_SHAPE_HELP, D_SHAPE_FIT },
+		{ D_WINDOW_SIZE, D_WINDOW_SIZE_HELP, F(D_WINDOW_N_IN_WINDOW, { { "n", "3" }, { "w", "1536" }, { "h", "1152" } }) },
+		{ D_FULLSCREEN, D_FULLSCREEN_HELP, on },
+		{ D_FS_MODE, D_FS_MODE_HELP, D_BORDERLESS },
+		{ D_HUD, D_HUD_HELP, on },
+		{ D_SHOW_FPS, D_SHOW_FPS_HELP, off },
+		{ D_ON_SCREEN, D_ON_SCREEN_HELP, D_ON_SCREEN_AUTO },
+		{ D_WINDOW_SIZE, D_WINDOW_SIZE_HELP, D_FREE }, { D_FS_MODE, D_FS_MODE_HELP, D_STANDARD }, { D_ON_SCREEN, D_ON_SCREEN_HELP, on } });
+	page_shots(gm, w, h, "pages_quality.png", D_QUALITY, {   // (Windows', a Mac's and Android's rows together: 11)
 		{ D_SCALE, D_SCALE_HELP, F(D_SCALE_NARROWER, { { "n", "2" }, { "want", "6" } }) },
 		{ D_AA, D_AA_HELP, D_AA_OFF_TOO_LARGE },
 		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_BUILD },
 		{ D_DRIVER, D_DRIVER_HELP, D_DRIVER_AUTO },
-		{ D_SHAPE, D_SHAPE_HELP, D_SHAPE_FIT },
+		{ D_GPU_QUALITY, D_GPU_QUALITY_HELP, D_EXACT },
 		{ D_BG_FILTER, D_BG_FILTER_HELP, D_SMOOTH },
 		{ D_SMOOTH_MOTION, D_SMOOTH_MOTION_HELP, on },
+		{ D_VSYNC, D_VSYNC_HELP, on },
+		{ D_FRAME_LIMIT, D_FRAME_LIMIT_HELP, F(D_FRAME_LIMIT_SCREEN, { { "n", "144" } }) },
+		{ D_FRAMES_IN_FLIGHT, D_FRAMES_IN_FLIGHT_HELP, "2" },
+		{ D_PERF_HINTS, D_PERF_HINTS_HELP, on } });
+	page_shots(gm, w, h, "pages_quality_more.png", D_QUALITY, {   // (the other values of its rows)
+		{ D_RENDERER, D_RENDERER_HELP, D_R3D_CRASHED }, { D_RENDERER, D_RENDERER_HELP, F(D_R3D_NEXT_START, { { "what", AUTO } }) },
+		{ D_RENDERER, D_RENDERER_HELP, F(AUTO_IS, { { "what", R3D_GPU } }) }, { D_RENDERER, D_RENDERER_HELP, D_R3D_FAILED },
+		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_GPU }, { D_AA, D_AA_HELP, D_AA_LOW }, { D_AA, D_AA_HELP, F(N_X, { { "n", "3" } }) },
+		{ D_GPU_QUALITY, D_GPU_QUALITY_HELP, D_FAST } });
+	page_shots(gm, w, h, "pages_screen.png", D_SCREEN, {
 		{ D_SCREEN_FILTER, D_SCREEN_FILTER_HELP, D_SCANLINES },
 		{ D_CRT_COLOURS, D_CRT_COLOURS_HELP, F(NOT_WITH_RENDERER, { { "what", CRT_PAL } }) },
 		{ D_BRIGHTNESS, D_BRIGHTNESS_HELP, F(N_PERCENT, { { "n", "100" } }) },
 		{ D_GAMMA, D_GAMMA_HELP, F(NOT_WITH_RENDERER, { { "what", F(N_PERCENT, { { "n", "100" } }) } }) },
-		{ D_SHOW_FPS, D_SHOW_FPS_HELP, off },
-		{ D_HUD, D_HUD_HELP, on },
-		{ D_VSYNC, D_VSYNC_HELP, on },
-		{ D_FRAME_LIMIT, D_FRAME_LIMIT_HELP, F(D_FRAME_LIMIT_SCREEN, { { "n", "144" } }) },
-		{ D_FRAMES_IN_FLIGHT, D_FRAMES_IN_FLIGHT_HELP, "2" },
-		{ D_WINDOW_SIZE, D_WINDOW_SIZE_HELP, F(D_WINDOW_N_IN_WINDOW, { { "n", "3" }, { "w", "1536" }, { "h", "1152" } }) },
-		{ D_FULLSCREEN, D_FULLSCREEN_HELP, on },
-		{ D_FS_MODE, D_FS_MODE_HELP, D_BORDERLESS },
-		{ D_ON_SCREEN, D_ON_SCREEN_HELP, D_ON_SCREEN_AUTO } });
-	page_shots(gm, w, h, "pages_display_mac.png", P_DISPLAY, {   // (a Mac's: GPU quality, no Graphics driver or Fullscreen mode)
-		{ D_SCALE, D_SCALE_HELP, F(D_SCALE_NARROWER, { { "n", "2" }, { "want", "6" } }) }, { D_AA, D_AA_HELP, D_AA_OFF_TOO_LARGE },
-		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_BUILD }, { D_GPU_QUALITY, D_GPU_QUALITY_HELP, D_EXACT }, { D_SHAPE, D_SHAPE_HELP, D_SHAPE_FIT },
-		{ D_BG_FILTER, D_BG_FILTER_HELP, D_SMOOTH }, { D_SMOOTH_MOTION, D_SMOOTH_MOTION_HELP, on }, { D_SCREEN_FILTER, D_SCREEN_FILTER_HELP, D_SCANLINES },
-		{ D_CRT_COLOURS, D_CRT_COLOURS_HELP, F(NOT_WITH_RENDERER, { { "what", CRT_PAL } }) }, { D_BRIGHTNESS, D_BRIGHTNESS_HELP, F(N_PERCENT, { { "n", "100" } }) },
-		{ D_GAMMA, D_GAMMA_HELP, F(NOT_WITH_RENDERER, { { "what", F(N_PERCENT, { { "n", "100" } }) } }) }, { D_SHOW_FPS, D_SHOW_FPS_HELP, off },
-		{ D_HUD, D_HUD_HELP, on }, { D_VSYNC, D_VSYNC_HELP, on }, { D_FRAME_LIMIT, D_FRAME_LIMIT_HELP, F(D_FRAME_LIMIT_SCREEN, { { "n", "120" } }) },
-		{ D_FRAMES_IN_FLIGHT, D_FRAMES_IN_FLIGHT_HELP, "2" }, { D_WINDOW_SIZE, D_WINDOW_SIZE_HELP, D_FREE }, { D_FULLSCREEN, D_FULLSCREEN_HELP, on },
-		{ D_ON_SCREEN, D_ON_SCREEN_HELP, D_ON_SCREEN_AUTO } });
-	page_shots(gm, w, h, "pages_display_android.png", P_DISPLAY, {   // (Android's: Performance hints, no Window size)
-		{ D_SCALE, D_SCALE_HELP, F(D_SCALE_NARROWER, { { "n", "2" }, { "want", "6" } }) }, { D_AA, D_AA_HELP, D_AA_OFF_TOO_LARGE },
-		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_BUILD }, { D_SHAPE, D_SHAPE_HELP, D_SHAPE_FIT }, { D_BG_FILTER, D_BG_FILTER_HELP, D_SMOOTH },
-		{ D_SMOOTH_MOTION, D_SMOOTH_MOTION_HELP, on }, { D_SCREEN_FILTER, D_SCREEN_FILTER_HELP, D_SCANLINES },
-		{ D_CRT_COLOURS, D_CRT_COLOURS_HELP, F(NOT_WITH_RENDERER, { { "what", CRT_PAL } }) }, { D_BRIGHTNESS, D_BRIGHTNESS_HELP, F(N_PERCENT, { { "n", "100" } }) },
-		{ D_GAMMA, D_GAMMA_HELP, F(NOT_WITH_RENDERER, { { "what", F(N_PERCENT, { { "n", "100" } }) } }) }, { D_SHOW_FPS, D_SHOW_FPS_HELP, off },
-		{ D_HUD, D_HUD_HELP, on }, { D_VSYNC, D_VSYNC_HELP, on }, { D_FRAME_LIMIT, D_FRAME_LIMIT_HELP, F(D_FRAME_LIMIT_SCREEN, { { "n", "120" } }) },
-		{ D_FRAMES_IN_FLIGHT, D_FRAMES_IN_FLIGHT_HELP, "2" }, { D_PERF_HINTS, D_PERF_HINTS_HELP, on }, { D_FULLSCREEN, D_FULLSCREEN_HELP, on },
-		{ D_ON_SCREEN, D_ON_SCREEN_HELP, D_ON_SCREEN_AUTO } });
-	page_shots(gm, w, h, "pages_display_more.png", P_DISPLAY, {   // (the other values of its rows)
-		{ D_RENDERER, D_RENDERER_HELP, D_R3D_CRASHED }, { D_RENDERER, D_RENDERER_HELP, F(D_R3D_NEXT_START, { { "what", AUTO } }) },
-		{ D_RENDERER, D_RENDERER_HELP, F(AUTO_IS, { { "what", R3D_GPU } }) }, { D_RENDERER, D_RENDERER_HELP, D_R3D_FAILED },
-		{ D_RENDERER, D_RENDERER_HELP, D_R3D_NO_GPU }, { D_AA, D_AA_HELP, D_AA_LOW }, { D_AA, D_AA_HELP, F(N_X, { { "n", "3" } }) },
-		{ D_GPU_QUALITY, D_GPU_QUALITY_HELP, D_FAST }, { D_CRT_COLOURS, D_CRT_COLOURS_HELP, CRT_SEGA }, { D_CRT_COLOURS, D_CRT_COLOURS_HELP, CRT_NTSC_JP },
-		{ D_SCREEN_FILTER, D_SCREEN_FILTER_HELP, D_CRT }, { D_WINDOW_SIZE, D_WINDOW_SIZE_HELP, D_FREE }, { D_FS_MODE, D_FS_MODE_HELP, D_STANDARD },
-		{ D_ON_SCREEN, D_ON_SCREEN_HELP, on } });
+		{ D_CRT_COLOURS, D_CRT_COLOURS_HELP, CRT_SEGA }, { D_CRT_COLOURS, D_CRT_COLOURS_HELP, CRT_NTSC_JP }, { D_SCREEN_FILTER, D_SCREEN_FILTER_HELP, D_CRT } });
 	page_shots(gm, w, h, "pages_sound.png", P_SOUND, {
 		{ S_VOLUME, S_VOLUME_HELP, F(N_PERCENT, { { "n", "100" } }) }, { S_MUSIC, S_MUSIC_HELP, F(N_PERCENT, { { "n", "80" } }) },
 		{ S_EFFECTS, S_EFFECTS_HELP, F(N_PERCENT, { { "n", "100" } }) } });
@@ -303,7 +309,10 @@ void pages(game_menu &gm, int w, int h)
 	{   // (Game > Language: each of its choices, its name in its own letters)
 		std::vector<row> v;
 		for (int i = 0; i < CHOICES; i++) v.push_back({ G_LANGUAGE, G_LANGUAGE_HELP, choice_name(tr::choice{ i }) });
-		page_shots(gm, w, h, "pages_languages.png", P_GAME, v);
+		// (in two pictures: a page is 14 rows at most)
+		const size_t half = v.size() / 2;
+		page_shots(gm, w, h, "pages_languages.png", P_GAME, std::vector<row>(v.begin(), v.begin() + std::ptrdiff_t(half)));
+		page_shots(gm, w, h, "pages_languages2.png", P_GAME, std::vector<row>(v.begin() + std::ptrdiff_t(half), v.end()));
 	}
 	page_shots(gm, w, h, "pages_arcade.png", P_ARCADE, {
 		{ A_DIFFICULTY, A_DIFFICULTY_HELP, A_HARDEST }, { A_RING, A_RING_HELP, A_RING_XL }, { A_ROUNDS_CPU, A_ROUNDS_CPU_HELP, "3" },
@@ -353,12 +362,15 @@ void pages(game_menu &gm, int w, int h)
 	{
 		const tr::text names[] = { CTL_UP, CTL_DOWN, CTL_LEFT, CTL_RIGHT, CTL_GUARD, CTL_PUNCH, CTL_KICK, CTL_GUARD_PUNCH, CTL_PUNCH_KICK, CTL_GUARD_KICK,
 			CTL_ALL_THREE, CTL_START, CTL_COIN, CTL_MENU };
-		std::vector<row> keys, pads;
+		// (a player's keys: the four combinations on a page of their own, Button combinations, as main.cpp's keys_page)
+		std::vector<row> keys, pads, combos;
 		for (int a = 0; a < 14; a++) {
-			keys.push_back({ names[a], a == 12 ? CTL_KEY_HELP_COIN : a == 13 ? CTL_KEY_HELP_MENU : CTL_KEY_HELP, a == 13 ? F(CTL_KEY_N, { { "n", "231" } }) : "Left Shift" });
+			if (a == 7) keys.push_back({ CTL_COMBOS, F(CTL_COMBOS_HELP, { { "list", listed({ CTL_GUARD_PUNCH, CTL_PUNCH_KICK, CTL_GUARD_KICK, CTL_ALL_THREE }) } }), "" });
+			(a >= 7 && a <= 10 ? combos : keys).push_back({ names[a], a == 12 ? CTL_KEY_HELP_COIN : a == 13 ? CTL_KEY_HELP_MENU : CTL_KEY_HELP, a == 13 ? F(CTL_KEY_N, { { "n", "231" } }) : "Left Shift" });
 			if (a >= 4) pads.push_back({ names[a], a == 12 ? CTL_PADB_HELP_COIN : a == 13 ? CTL_PADB_HELP_MENU : CTL_PADB_HELP, a == 5 ? PAD_RIGHT_STICK : a == 6 ? PAD_TOUCHPAD : a == 7 ? std::string(PAD_DPAD_RIGHT) : std::string("LB") });
 		}
 		page_shots(gm, w, h, "pages_keys.png", P_P2_KEYBOARD, keys);
+		page_shots(gm, w, h, "pages_combos.png", CTL_COMBOS, combos);
 		page_shots(gm, w, h, "pages_pad.png", P_P2_PAD, pads);
 		page_shots(gm, w, h, "pages_keys2.png", P_P2_KEYBOARD2, keys);   // (the second keys' and buttons': the same rows)
 		page_shots(gm, w, h, "pages_pad2.png", P_P2_PAD2, pads);
