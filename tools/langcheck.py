@@ -30,8 +30,25 @@ def run(menutest, out, code):
     return over, fails
 
 
+def stale(menutest):
+    """what menutest is built from that's newer than it (a test binary left from before a change tests the old menu)"""
+    root = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+    built = os.path.getmtime(menutest)
+    newer = []
+    for folder, ends in (('tools', ('menutest.cpp',)), ('src/host', ('.cpp', '.h')), ('src/host/lang', ('.inc',))):
+        for name in sorted(os.listdir(os.path.join(root, folder))):
+            path = os.path.join(root, folder, name)
+            if name.endswith(ends) and os.path.isfile(path) and os.path.getmtime(path) > built:
+                newer.append(os.path.join(folder, name))
+    return newer
+
+
 def main():
     menutest, out = sys.argv[1], sys.argv[2]
+    newer = stale(menutest)
+    if newer:
+        print('langcheck: %s is older than %s: build it first (make tests)' % (menutest, ', '.join(newer[:6])))
+        sys.exit(2)
     codes = sys.argv[3:] or CODES
     if 'en' not in codes:
         codes = ['en'] + codes
@@ -56,7 +73,7 @@ def main():
             print('   check: %s' % f)
         if status == 'FAIL':
             bad += 1
-    sys.exit(1 if bad else 0)
+    sys.exit(1 if bad or en_fails else 0)   # (the English's own failing checks fail the run too)
 
 
 if __name__ == '__main__':

@@ -320,9 +320,16 @@ fullscreen (`fullscreen_window = 1` gives them the borderless window).
 - **Game:** language, play style (PC or arcade), reset, the log file.
 - **Arcade settings:** difficulty, ring size, rounds, continue, demo sound, what follows a versus match, the game's
   version, stage select, the arcade's debug mode and the service menu. A change restarts the game.
+  **Debug mode** (offline only) is the arcade's hidden one, as its secret code turns it on: the CPU load, the polygon
+  count and the hits on the screen. In a fight, hold P2 Guard and press P2 Start: the game stops for the debug menu;
+  hold P2 Start to see it, move in it with P1's stick, let go and press P1 Start to choose (camera, fighter and stage
+  info, tests); P2 Start with P2 Guard again goes back to the game.
 - **Online:** a random opponent, rooms, play by address, your name, and its settings: input delay, connection display,
   hide my IP, max ping, your fighter, the match found chime, show my Quick Match games.
-- **Cheats:** each player's fighter (random fighters, a seed) and the secret characters. A change restarts the game.
+- **Cheats:** each player's fighter (Normal, Random or Seed: see [Random fighters](#random-fighters)) and **Secret
+  character** (see [Secret characters](#secret-characters)): Dural, MUE or KOJAC in Akira's spot on the player select,
+  shown with their portrait and Akira's name and profile; MUE and KOJAC (Lion's body with Akira's moves, from the
+  debug menu) are off while a player's fighter is Random or Seed. A change restarts the game.
 - **Controls:** each player's pad, keys and buttons (a key for two or three buttons at once: Button combinations, on
   the keys' page).
 

@@ -211,6 +211,16 @@ $(BIN)/langtest: $(call objs,src/host/i18n.cpp src/host/text.cpp tools/langtest.
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(SDL_LIBS) $(FT_LIBS)
 $(OBJ)/tools/langtest.o: CXXFLAGS += $(FT_CFLAGS)
 
+# The menus' tests: `make tests` builds them (they aren't part of `make`: menutest is a desktop's, with sockets of its
+# own), `make test` builds and runs them: langtest, then menutest in English into build/menutest. Build them with
+# this before any run of theirs: a menutest left from before a change tests the menu as it was (tools/langcheck.py
+# stops on one older than what it's built from).
+tests: $(BIN)/langtest $(BIN)/menutest
+test: tests
+	$(BIN)/langtest
+	SDL_VIDEO_DRIVER=offscreen $(BIN)/menutest build/menutest
+.PHONY: tests test
+
 clean:
 	rm -rf $(OBJ) $(BIN)
 

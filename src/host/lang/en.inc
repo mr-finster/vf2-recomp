@@ -223,7 +223,7 @@ T(A_STAGE_SELECT_HELP, "The stage a versus begins on (both players in from Start
 T(A_STAGE_N, "Stage {n}")
 T(A_STAGE_DURAL, "Dural's stage")
 T(A_DEBUG, "Debug mode")
-T(A_DEBUG_HELP, "The arcade's hidden debug mode, as its secret code turns it on (no code to enter). It shows the CPU load, the polygon count and the hits on the screen. In a fight, hold P2 Guard and press P2 Start: the game stops for the debug menu. Hold P2 Start to see it, move in it with P1's stick, let go and press P1 Start to choose (camera, fighter and stage info, tests). P2 Start with P2 Guard again goes back to the game. Offline only: off online. Changing it restarts the game when the menu closes.")
+T(A_DEBUG_HELP, "The arcade's hidden debug mode, as its secret code turns it on. It shows the CPU load, the polygon count and the hits on the screen. In a fight, hold P2 Guard and press P2 Start: the game stops for the debug menu. Offline only: off online. Changing it restarts the game when the menu closes.")
 T(A_SERVICE, "Service menu")
 T(A_SERVICE_HELP, "The arcade's own test menu: input and sound tests, coin settings and bookkeeping. Down moves, Start selects (or 9 and F2 on a keyboard). Choose EXIT to come back.")
 
@@ -233,7 +233,7 @@ T(C_FIGHTERS, "FIGHTERS")                    // (a heading over rows: small capi
 T(C_SECRET_HEAD, "SECRET CHARACTERS")
 T(C_P1_FIGHTER, "Player 1 fighter")
 T(C_P2_FIGHTER, "Player 2 fighter")
-T(C_FIGHTER_HELP, "Normal: pick at the select. Random: a new fighter every game, made of three of the cast: head, body and limbs from the three, its moves dealt from them. Seed: one such fighter by its name, the same on any machine. Anything but Normal is picked for you at the select (in MUE's and KOJAC's places: Secret character's MUE and KOJAC are off meanwhile).")
+T(C_FIGHTER_HELP, "Normal: pick at the select. Random: a new mixed fighter every game. Seed: one mixed fighter, the same on any machine. Anything but Normal is picked for you at the select.")
 T(FIGHTER_NORMAL, "Normal")                  // (a player's fighter: the select's own, a random one, or one by its seed)
 T(FIGHTER_RANDOM, "Random")
 T(FIGHTER_SEED, "Seed")                      // (a random fighter's name, which makes the same one anywhere: a row's name and a value)
@@ -246,7 +246,7 @@ T(SEED_NOT_NOW, "Not while hosting, joining or playing")
 T(C_RANDOM_CPU, "Random opponents")
 T(C_RANDOM_CPU_HELP, "Every computer opponent a random fighter, looks and moves, made afresh for each match (not one you're playing as).")
 T(C_SECRET, "Secret character")
-T(C_SECRET_HELP, "Puts a fighter the arcade never let you pick in Akira's spot on the player select, for either player: Dural, the final boss, or MUE and KOJAC, two unused fighters left in the game (Lion's body with Akira's moves, from its debug menu). The select shows their portrait with Akira's name and profile. MUE and KOJAC are off while a player's fighter is Random or Seed.")   // (its values: Off, then the fighters' names as they are)
+T(C_SECRET_HELP, "Puts a fighter the arcade never let you pick in Akira's spot on the player select, for either player: Dural, the final boss, or MUE and KOJAC, two unused fighters left in the game. MUE and KOJAC are off while a player's fighter is Random or Seed.")   // (its values: Off, then the fighters' names as they are)
 
 // ---- Controls ----
 T(CTL_UP, "Up")                            // (the game's controls: rows in Controls, and the steps of Set up buttons)
@@ -519,7 +519,7 @@ T(OS_CHIME_HELP, "The game's own coin sound when an online match is found (and t
 T(QUICK_LISTED, "Show my Quick Match games in Rooms")
 T(QUICK_LISTED_HELP, "On: anyone can find your Quick Match games in Rooms and watch them. Off: they're not listed (listed only if both players have it On).")
 T(F_YOUR_FIGHTER, "Your fighter")            // (Online > Settings: Cheats' random fighters, online)
-T(F_YOUR_FIGHTER_HELP, "Online, whichever side you're on. Normal: you pick at the select. Random: a new random fighter at every select, three of the cast made one. Seed: one such fighter, the same build and moves every game (its name from its energy bar). Your opponent sees it before the fight. You meet everyone: each player plays their own choice, Normal or not. An older version with Normal plays Normal fighters on both sides (said as the match starts). Not while hosting, joining or playing.")
+T(F_YOUR_FIGHTER_HELP, "Online, whichever side you're on. Normal: you pick at the select. Random: a new random fighter at every select. Seed: one mixed fighter, the same build and moves every game. Your opponent sees it before the fight. Not while hosting, joining or playing.")
 T(F_SEED_HELP, "A random fighter's name, from its energy bar: the same seed is the same build and moves on any machine, in new colours each game. Enter: type a new one.")
 
 // ---- Play by address ----
