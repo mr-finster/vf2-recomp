@@ -7,6 +7,7 @@
 #pragma once
 #include <unordered_map>
 #include <array>
+#include <functional>
 #include "mame_lite.h"
 #include "poly.h"
 #include <memory>
@@ -259,6 +260,17 @@ public:
 	// move); false if there was none
 	bool freecam_sky(double &yaw, double &pitch) const;
 	bool m_fc_scene = true;   // (the board's: a scene it's for, a stage's; else the game's own view)
+	// (tests: the free camera flown along a path, the host's free_cam_path.h: called as each picture is set up, with
+	// the camera, the game's camera then and the fighters' middle, in the anchor's view (the world the free camera
+	// stays put in: x right, y up, z ahead as the game's camera was when it came on); it sets the place and the look)
+	struct freecam_pilot_state {
+		double p[3] = {}, yaw = 0, pitch = 0;          // the free camera: its place, its look (radians: right of h0, up)
+		double u[3] = {}, h0[3] = {}, s0[3] = {};      // the world's up, and level ahead and to the right as it came on
+		double gp[3] = {}, gf[3] = {};                 // the game's camera now: its place and the way it looks
+		double mid[3] = {}; bool mid_ok = false;       // the fighters' middle in this picture's frame (m_fc_fighters')
+	};
+	std::function<void(freecam_pilot_state &)> m_fc_pilot;
+	std::vector<u32> m_fc_fighters[2];   // (each side's fighter's models, their polygon ROM addresses: the board's freecam_fighters)
 
 	u32 m_geo_read_start_address = 0;
 	u16 *m_fbvramA = nullptr, *m_fbvramB = nullptr;

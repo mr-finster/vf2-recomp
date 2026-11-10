@@ -2080,6 +2080,7 @@ void model2a::redraw_into(const picture_desc &pic, u32 *out, size_t stride)
 	}
 	int bdx = 0, bdy = 0;
 	bd_pixels(pic.bd_mode, pic.bd_h, pic.bd_v, bdx, bdy);
+	bdx += m_fc_fx; bdy += m_fc_fy;   // (the free camera's: the rest of its move of the backdrop)
 	compose(out, stride, layer3d, x0, x1, smooth, pen0, bdx, bdy);
 	if (x0) {   // (the sides go by the frame's 2D)
 		if (!live) swap_2d(st);
@@ -2119,6 +2120,7 @@ void model2a::draw_picture(u32 *out, size_t stride, bool polygons, bool async, f
 		bd_mode = backdrop_move(double(m_frame_number) - 2 + (smoothly ? alpha : 1.0), bd_h, bd_v);
 		bd_pixels(bd_mode, bd_h, bd_v, bdx, bdy);
 	}
+	bdx += m_fc_fx; bdy += m_fc_fy;   // (the free camera's: the rest of its move of the backdrop)
 	// what's needed to draw this picture again (redraw)
 	if (m_video->smooth()) {
 		auto pic = std::make_shared<picture_desc>();
@@ -2969,23 +2971,59 @@ void model2a::resize_screen()
 
 // A fight's screens (the attract's demos, the intros, knockouts and replays too) have a stage's
 // backdrop up: tile map 2's control register set. It's 0 on the title, select and versus screens.
+void model2a::freecam_fighters()
+{
+	constexpr u32 RECORDS = 0x0200620c, MODELS = 0x020e0004;   // (random_fighter.cpp's: the fighters' records, the models' table)
+	auto rd = [&](u32 a) -> u32 {
+		const std::vector<u8> &r = a >= 0x02000000 ? m_roms.regions[romset::MAIN_DATA] : m_roms.regions[romset::MAINCPU];
+		const u32 o = a >= 0x02000000 ? a - 0x02000000 : a;
+		if (size_t(o) + 4 > r.size()) return 0;
+		u32 v; memcpy(&v, &r[o], 4); return v;
+	};
+	std::vector<u32> obas[2];
+	for (int pl = 0; pl < 2; pl++) {
+		u32 b;
+		memcpy(&b, &m_workram[0x804 + 4 * pl], 4);
+		if (b < 0x500000 || b - 0x500000 + 0x200 >= m_workram.size()) continue;
+		const int f = m_workram[b - 0x500000 + 0x1b0];
+		if (f >= 26) continue;
+		const u32 rec = rd(RECORDS + 4 * u32(f));
+		for (u32 o : { 0u, 0x34u, 0x44u }) {
+			const u32 q = rd(rec + o);
+			if (!q) continue;
+			for (u32 s = 0; s < 16; s++) {
+				const u32 mdl = rd(q + 4 * s);
+				if (!mdl || mdl >= 0x2000) continue;
+				if (const u32 oba = rd(MODELS + 16 * mdl + 8)) obas[pl].push_back(oba);
+			}
+		}
+	}
+	if (obas[0] != m_video->m_fc_fighters[0] || obas[1] != m_video->m_fc_fighters[1]) { render_wait(); m_video->m_fc_fighters[0] = std::move(obas[0]); m_video->m_fc_fighters[1] = std::move(obas[1]); }
+}
+
 bool model2a::freecam_scene() const
 {
 	const u16 bd = m_tiles.tile_r(0x5006);
 	return bd != 0 && !(bd & 0x8000);
 }
 
-// The free camera's backdrop move: its yaw and pitch against the game's camera, at the backdrop's own rate (the
-// stage's panorama, 2048 pixels a turn; the game's pitch scroll the same), as the game scrolls it for its camera
+// The free camera's backdrop move: its yaw and pitch against the game's camera, at the backdrop's own rate (the game
+// scrolls it by its camera's heading and pitch / 16, of 65536 a turn: 4096 pixels a turn, measured against the camera's
+// yaw over a fight's pans: 11.4 a degree), in whole arcade pixels (m_fc_dx, m_fc_dy: the layers drawn moved) and the
+// rest in the render scale's pixels (m_fc_fx, m_fc_fy: added to the backdrop's smooth move as it's put together), so it
+// moves smoothly, not a pixel at a time
 void model2a::freecam_sky_move()
 {
-	m_fc_dx = m_fc_dy = 0;
+	m_fc_dx = m_fc_dy = m_fc_fx = m_fc_fy = 0;
 	m_video->m_fc_scene = freecam_scene();
 	double yaw, pitch;
 	if (!m_video->freecam_on() || !freecam_scene() || !m_video->freecam_sky(yaw, pitch)) return;
-	constexpr double PX_PER_DEGREE = 2048.0 / 360;
-	m_fc_dx = int(std::lround(FC_SKY_SX * yaw * PX_PER_DEGREE));
-	m_fc_dy = int(std::lround(FC_SKY_SY * pitch * PX_PER_DEGREE));
+	constexpr double PX_PER_DEGREE = 4096.0 / 360;
+	const double x = FC_SKY_SX * yaw * PX_PER_DEGREE, y = FC_SKY_SY * pitch * PX_PER_DEGREE;
+	m_fc_dx = int(std::floor(x));
+	m_fc_dy = int(std::floor(y));
+	m_fc_fx = int(std::lround((x - m_fc_dx) * m_scale));
+	m_fc_fy = int(std::lround((y - m_fc_dy) * m_scale));
 }
 
 bool model2a::wide_frame() const

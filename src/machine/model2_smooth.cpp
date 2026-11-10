@@ -43,6 +43,7 @@ void inverse(const double *m, double *o)
 double dot3(const double *a, const double *b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
 void norm3(double *a) { const double n = std::sqrt(dot3(a, a)); if (n > 0) for (int i = 0; i < 3; i++) a[i] /= n; }
 constexpr double DEG = 3.14159265358979323846 / 180;
+constexpr double FIGHTERS_APART = 8;   // (the free camera's path: two fighters further apart than this (world units) aren't one fight's)
 }
 
 // The game's camera at r's frame from the anchor's view (the free camera's world): the frame before's, moved by the
@@ -839,6 +840,50 @@ void model2_video::replay_into(const moment &mo, std::vector<drawn_poly> &drawn)
 			for (int e = 0; e < 12; e++) K[e] = ka[e] + (kb[e] - ka[e]) * alpha;
 		memcpy(m_fc_K, K, sizeof K);
 		m_fc_K_ok = true;
+		if (m_fc_pilot) {   // (tests: a path flies it)
+			freecam_pilot_state st;
+			double Ki[12], Kbi[12];
+			inverse(K, Ki);
+			inverse(kb, Kbi);
+			for (int e = 0; e < 3; e++) {
+				st.p[e] = m_fc_pos[e];
+				st.u[e] = m_fc_up[e]; st.h0[e] = m_fc_fwd0[e]; st.s0[e] = m_fc_right0[e];
+				st.gp[e] = Ki[9 + e]; st.gf[e] = Ki[6 + e];
+			}
+			st.yaw = m_fc_yaw * DEG; st.pitch = m_fc_pitch * DEG;
+			// (the fighters' middle: each side's fighter's place (each of x, y and z the middle one of its models' places),
+			// taken into the anchor's view by the frame's own camera, and the middle of the two; a fighter far from the
+			// other (the game parks one away from a shot of the other alone) left out, the one nearer the camera kept)
+			double side[2][3];
+			bool have[2] = { false, false };
+			for (int pl = 0; pl < 2; pl++) {
+				std::vector<double> at[3];
+				for (const auto &o : b->objects)
+					if (std::find(m_fc_fighters[pl].begin(), m_fc_fighters[pl].end(), o.oba) != m_fc_fighters[pl].end())
+						for (int r = 0; r < 3; r++) at[r].push_back(o.m[9 + r]);
+				if (at[0].size() < 4) continue;
+				double v[3];
+				for (int r = 0; r < 3; r++) {
+					std::nth_element(at[r].begin(), at[r].begin() + std::ptrdiff_t(at[r].size() / 2), at[r].end());
+					v[r] = at[r][at[r].size() / 2];
+				}
+				if (!(v[2] > 0)) continue;   // (behind the game's camera: one put out of the way)
+				for (int r = 0; r < 3; r++) side[pl][r] = Kbi[r] * v[0] + Kbi[3 + r] * v[1] + Kbi[6 + r] * v[2] + Kbi[9 + r];
+				have[pl] = true;
+			}
+			if (have[0] && have[1]) {
+				const double d2 = (side[0][0] - side[1][0]) * (side[0][0] - side[1][0]) + (side[0][1] - side[1][1]) * (side[0][1] - side[1][1]) + (side[0][2] - side[1][2]) * (side[0][2] - side[1][2]);
+				if (d2 > FIGHTERS_APART * FIGHTERS_APART) have[1] = false;
+			}
+			if (have[0] || have[1]) {
+				for (int r = 0; r < 3; r++) st.mid[r] = have[0] && have[1] ? (side[0][r] + side[1][r]) / 2 : side[have[0] ? 0 : 1][r];
+				st.mid_ok = true;
+			}
+			m_fc_pilot(st);
+			for (int e = 0; e < 3; e++) m_fc_pos[e] = st.p[e];
+			m_fc_yaw = std::remainder(st.yaw / DEG, 360.0);
+			m_fc_pitch = std::clamp(st.pitch / DEG, -89.0, 89.0);
+		}
 		// F = the free camera's view (its pose inverted) after the game's camera inverted
 		double Ki[12], P[12], Pi[12];
 		inverse(K, Ki);

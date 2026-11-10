@@ -331,6 +331,11 @@ public:
 	void freecam_fly(float fwd, float right, float up, float yaw, float pitch) { render_wait(); m_video->freecam_fly(fwd, right, up, yaw, pitch); }
 	float freecam_unit() const { return m_video->freecam_unit(); }
 	bool freecam_scene() const;   // a stage's scene is up (its backdrop): the free camera's
+	// (tests: a free camera's path, the host's) the fighters' models now, by their polygon ROM addresses, into the
+	// video's m_fc_pilot's reach (m_fc_fighters): each side's fighter's record (its number in its block, +1b0), its 16
+	// parts near and far. The board is only read
+	void freecam_fighters();
+	void set_freecam_pilot(std::function<void(model2_video::freecam_pilot_state &)> f) { render_wait(); m_video->m_fc_pilot = std::move(f); }
 	bool backdrop_filter() const { return m_backdrop_smooth; }
 	// The attract's SEGA logo is up (it sets bit 16 of the flags at 0x500068 every frame it
 	// runs; clear again once the attract moves on): the first time, at about frame 728 from
@@ -654,6 +659,7 @@ private:
 	bool m_2d_wide = false, m_2d_filter = false;   // what the last draw_2d drew
 	bool m_hud_hidden = false;   // (set_hud_hidden: the host's, read when a picture's 2D is drawn)
 	int m_fc_dx = 0, m_fc_dy = 0;   // (the free camera's move of the backdrop for the picture being drawn: arcade pixels)
+	int m_fc_fx = 0, m_fc_fy = 0;   // (and the rest of it in the render scale's pixels)
 	void freecam_sky_move();
 	uint64_t m_2d_version = 0;
 	uint64_t m_2d_key[5] = { ~0ull };              // smooth motion: the frame, scale, width, filter and parts it was drawn for
