@@ -2803,9 +2803,9 @@ menu_page settings_page(Online &o, OnlineSettings &s, game_menu &menu, std::func
 			s.max_ping = steps[(i + (d < 0 ? 5 : 1)) % 6];
 			changed();
 		} });
+	fighter_rows(o, s, menu, changed, p.items);   // (the match's terms, after the connection's rows)
 	p.items.push_back({ tr::OS_CHIME, tr::OS_CHIME_HELP,
 		[&s] { return std::string(s.chime ? tr::ON : tr::OFF); }, [&s, changed](int) { s.chime = !s.chime; changed(); } });
-	fighter_rows(o, s, menu, changed, p.items);
 	p.items.push_back({ tr::QUICK_LISTED, tr::QUICK_LISTED_HELP,
 		[&s] { return std::string(s.quick_listed ? tr::ON : tr::OFF); }, [&s, changed](int) { s.quick_listed = !s.quick_listed; changed(); } });
 	p.items.push_back({ tr::BACK, "", {}, {}, [&menu] { menu.pop(); } });

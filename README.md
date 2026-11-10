@@ -247,14 +247,17 @@ Change them in the menu (<kbd>Esc</kbd>, or View / Select on a pad).
 | <kbd>I</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> | Player 2: move |
 | <kbd>B</kbd> <kbd>N</kbd> <kbd>M</kbd> | Player 2: guard, punch, kick |
 | <kbd>2</kbd> | Player 2: start |
-| <kbd>Esc</kbd> | Menu (see below): display, sound, game, arcade settings, online, controls, cheats, quit |
+| <kbd>5</kbd> <kbd>6</kbd> | Coins (Arcade play style) |
+| <kbd>Esc</kbd> | Menu (see [Menu](#menu)): display, sound, game, arcade settings, online, controls, cheats, quit |
 | <kbd>P</kbd> | Pause |
-| <kbd>F3</kbd> | Reset |
+| <kbd>F3</kbd> | Reset (not in an online match) |
 | <kbd>F4</kbd> | Free camera (see below) |
 | <kbd>F5</kbd> / <kbd>F6</kbd> | Render scale / picture shape |
 | <kbd>F9</kbd> | Frame timings |
-| <kbd>F11</kbd> | Fullscreen |
+| <kbd>F11</kbd>, <kbd>F</kbd> or <kbd>Alt</kbd>+<kbd>Enter</kbd> | Fullscreen |
 | <kbd>F12</kbd> | Screenshot |
+| <kbd>Tab</kbd> (held) | As fast as it goes |
+| <kbd>F2</kbd> / <kbd>9</kbd> | The arcade's test and service buttons (in its test menu, Down and Start do too) |
 
 Gamepad (Xbox layout): d-pad or stick to move, X guard, A punch, B kick, Y guard + punch (throws), RB punch + kick,
 LB guard + kick, RT all three, Start to start. View (tap), L3 + R3 or the touchpad click opens the menu (Menu can be
@@ -264,22 +267,6 @@ mode, set Coin in Controls (View works) for a coin button.
 Arcade sticks the game doesn't know (DirectInput sticks such as HORI's Virtua Stick High Grade or the Astro City
 Mini) get a fighting stick's layout; Controls > Player 1 (or 2) > Set up buttons sets theirs by pressing each in turn. A
 `gamecontrollerdb.txt` (SDL's mappings) in the data folder or beside the program is read too.
-
-### Menu
-
-- **Resume** and **Quit**.
-- **Display:** three pages, each shown on its row with what it's set to, and the free camera's On / Off:
-  - **Picture:** picture shape (fit the window, 4:3, 16:10, 16:9, 21:9), window size, fullscreen and (on Windows)
-    fullscreen mode, the HUD, Show FPS, the on-screen controls.
-  - **Quality:** render scale (up to 6x), antialiasing (Low, 2x, 3x), the 3D renderer and (on Windows) the graphics
-    driver or (on a Mac) the GPU quality, background filter, smooth motion, V-Sync, frame limit.
-  - **Screen filter and colours:** screen filter (scanlines, CRT), CRT colours (an arcade monitor's), brightness,
-    gamma.
-  - **Free camera** (see [Free camera](#free-camera)).
-- **Sound**, **Game** (language, play style, reset), **Arcade settings** (the game's own, and the service menu),
-  **Online**, **Cheats**.
-- **Controls:** each player's pad, keys and buttons (a key for two or three buttons at once: Button combinations, on
-  the keys' page).
 
 ### Free camera
 
@@ -317,6 +304,27 @@ for a game's own fullscreen): switching to fullscreen froze on AMD cards in the 
 (vf3-recomp #7). Display > Picture > **Fullscreen mode** (Windows only) switches to **Standard**, the old way, as does
 `fullscreen_exclusive = 1` in settings.ini. A Mac (its green button too), Linux and the Steam Deck keep the system's own
 fullscreen (`fullscreen_window = 1` gives them the borderless window).
+
+## Menu
+
+- **Resume** and **Quit**.
+- **Display:** three pages, each shown on its row with what it's set to, and the free camera's On / Off:
+  - **Picture:** picture shape (fit the window, 4:3, 16:10, 16:9, 21:9), window size, fullscreen and (on Windows)
+    fullscreen mode, the HUD, Show FPS, and the on-screen controls (on Android, or with a touch screen).
+  - **Quality:** render scale (up to 6x), antialiasing (Low, 2x, 3x), the 3D renderer and (on Windows) the graphics
+    driver or (on a Mac) the GPU quality, background filter, smooth motion, V-Sync, frame limit.
+  - **Screen filter and colours:** screen filter (scanlines, CRT), CRT colours (an arcade monitor's), brightness,
+    gamma.
+  - **Free camera** (see [Free camera](#free-camera)).
+- **Sound:** the overall, music and effects volumes.
+- **Game:** language, play style (PC or arcade), reset, the log file.
+- **Arcade settings:** difficulty, ring size, rounds, continue, demo sound, what follows a versus match, the game's
+  version, stage select, the arcade's debug mode and the service menu. A change restarts the game.
+- **Online:** a random opponent, rooms, play by address, your name, and its settings: input delay, connection display,
+  hide my IP, max ping, your fighter, the match found chime, show my Quick Match games.
+- **Cheats:** each player's fighter (random fighters, a seed) and the secret characters. A change restarts the game.
+- **Controls:** each player's pad, keys and buttons (a key for two or three buttons at once: Button combinations, on
+  the keys' page).
 
 ## Online play (experimental)
 

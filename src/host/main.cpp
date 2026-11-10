@@ -65,9 +65,9 @@
 // with it, each pixel a square block: as sharp as the arcade's (Display > Background filter:
 // Smooth softens and smoothly enlarges a fight's stage backdrop instead). Until one is chosen,
 // the scale fits the window as it first opens (the scale whose picture is at least as tall as
-// the window's, 4 at most); F5 steps through 1 to 6. If the computer can't keep up (the work
-// leaves no time to spare, or the sound runs dry), antialiasing goes off, then the scale is
-// lowered a step at a time, down to 1 (for this run: the player's own choice is what's saved).
+// the window's, 4 at most); F5 steps through 1 to 6. The player's scale and antialiasing stay as
+// set (the governor lowers them only in tests, VF2_GOVERN_CUTS; a 3D left to the CPU with the
+// setting not CPU is drawn at 1x for the run, and says so).
 //
 // --aspect sets the picture's shape; F6 steps through them. The default, fit, follows the window's
 // shape (between 4:3 and 80:9: five 16:9 screens side by side); the others keep theirs, with black bars. 4:3 is the arcade's
@@ -3330,6 +3330,15 @@ int main(int argc, char **argv)
 	auto touch_shown = [&] {
 		return !menu.is_open() && (cfg.on_screen == 2 || (cfg.on_screen == 1 && touch_present && !pads[0]));
 	};
+	// (Display > Picture's row for them: on Android, or with a touch screen here; and while they're On, so they can
+	// always be turned off. A saved Auto without a touch screen shows nothing, as ever)
+	auto on_screen_row = [&] {
+#if defined(__ANDROID__)
+		return true;
+#else
+		return touch_present || cfg.on_screen == 2;
+#endif
+	};
 	auto back_item = [&] { return menu_item{ tr::BACK, tr::BACK_HELP, {}, {}, [&] { menu.pop(); } }; };
 	// Game > Language: the setting, and the menus made again in the language at once (the page it's on kept)
 	std::function<void()> menus_relabelled;   // (set below, with the pages)
@@ -3386,9 +3395,10 @@ int main(int argc, char **argv)
 		p.items.push_back({ tr::D_SHOW_FPS, tr::D_SHOW_FPS_HELP,
 			[&] { return on_off(cfg.show_fps); },
 			[&](int) { cfg.show_fps = !cfg.show_fps; cfg_dirty = true; if (!cfg.show_fps) menu.set_fps(""); } });
-		p.items.push_back({ tr::D_ON_SCREEN, tr::D_ON_SCREEN_HELP,
-			[&] { return std::string(cfg.on_screen == 0 ? tr::OFF : cfg.on_screen == 2 ? tr::ON : tr::D_ON_SCREEN_AUTO); },
-			[&](int d) { cfg.on_screen = wrap(cfg.on_screen + d, 3); cfg_dirty = true; if (!touch_shown()) touch.release(); } });
+		if (on_screen_row())
+			p.items.push_back({ tr::D_ON_SCREEN, tr::D_ON_SCREEN_HELP,
+				[&] { return std::string(cfg.on_screen == 0 ? tr::OFF : cfg.on_screen == 2 ? tr::ON : tr::D_ON_SCREEN_AUTO); },
+				[&](int d) { cfg.on_screen = wrap(cfg.on_screen + d, 3); cfg_dirty = true; if (!touch_shown()) touch.release(); } });
 		p.items.push_back(back_item());
 		return p;
 	};
@@ -3520,15 +3530,18 @@ int main(int argc, char **argv)
 				const tr::text names[] = { tr::OFF, tr::CRT_SEGA, tr::CRT_SONY, tr::CRT_NTSC_JP, tr::CRT_NTSC_US, tr::CRT_PAL };
 				static_assert(sizeof names / sizeof names[0] == crt::N_PRESETS, "a name for each of crt::PRESETS");
 				const std::string n = names[cfg.crt_colours];
-				return crt_on && crt_paint.failed() ? tr::fill(tr::NOT_WITH_RENDERER, { { "what", n } }) : n;
+				return n;
 			},
 			[&](int d) { cfg.crt_colours = wrap(cfg.crt_colours + d, crt::N_PRESETS); cfg_dirty = true; } });
 		p.items.push_back({ tr::D_BRIGHTNESS, tr::D_BRIGHTNESS_HELP,
-			[&] { const std::string n = tr::fill(tr::N_PERCENT, { { "n", std::to_string(cfg.brightness) } }); return crt_on && crt_paint.failed() ? tr::fill(tr::NOT_WITH_RENDERER, { { "what", n } }) : n; },
+			[&] { return tr::fill(tr::N_PERCENT, { { "n", std::to_string(cfg.brightness) } }); },
 			[&](int d) { cfg.brightness = std::clamp(cfg.brightness + 5 * d, crt::BRIGHT_MIN, crt::BRIGHT_MAX); cfg_dirty = true; } });
 		p.items.push_back({ tr::D_GAMMA, tr::D_GAMMA_HELP,
-			[&] { const std::string n = tr::fill(tr::N_PERCENT, { { "n", std::to_string(cfg.gamma) } }); return crt_on && crt_paint.failed() ? tr::fill(tr::NOT_WITH_RENDERER, { { "what", n } }) : n; },
+			[&] { return tr::fill(tr::N_PERCENT, { { "n", std::to_string(cfg.gamma) } }); },
 			[&](int d) { cfg.gamma = std::clamp(cfg.gamma + 5 * d, crt::GAMMA_MIN, crt::GAMMA_MAX); cfg_dirty = true; } });
+		// (a renderer that can't paint them: said under each of the three, their values as set)
+		for (size_t i = 1; i < p.items.size(); i++)
+			p.items[i].below = [&] { return crt_on && crt_paint.failed() ? std::string(tr::D_NOT_WITH_RENDERER) : std::string(); };
 		p.items.push_back(back_item());
 		return p;
 	};
@@ -3550,7 +3563,7 @@ int main(int argc, char **argv)
 #ifdef _WIN32
 				tr::D_FS_MODE,
 #endif
-				tr::D_HUD, tr::D_SHOW_FPS, tr::D_ON_SCREEN }),
+				tr::D_HUD, tr::D_SHOW_FPS, on_screen_row() ? std::string(tr::D_ON_SCREEN) : std::string() }),
 			[&] {
 				return listed({ std::string(aspect_i ? ASPECT_NAMES[aspect_i] : tr::D_SUM_FIT.c_str()),
 				                is_fullscreen() ? std::string(tr::D_FULLSCREEN)
@@ -3582,8 +3595,8 @@ int main(int argc, char **argv)
 				return listed({ std::string(names[cfg.filter]), cfg.crt_colours ? std::string(tr::D_CRT_COLOURS) : std::string() });
 			}, {}, [&] { menu.push(screen_page()); } });
 		p.items.push_back({ tr::D_FREECAM, tr::D_FREECAM_HELP,
-			[&] { return fc_blocked() ? std::string(tr::D_FREECAM_NOT_NOW) : on_off(fc_menu); },
-			[&](int) { if (!fc_blocked()) fc_menu = !fc_menu; } });   // (on or off as the menu closes)
+			[&] { return fc_blocked() ? std::string(tr::D_FREECAM_NOT_ONLINE) : on_off(fc_menu); },
+			[&](int) { if (fc_blocked()) menu.toast(tr::FREECAM_NOT_ONLINE); else fc_menu = !fc_menu; } });   // (on or off as the menu closes; in a match of the player's own, the toast)
 		p.items.push_back(back_item());
 		return p;
 	};
@@ -5073,7 +5086,7 @@ int main(int argc, char **argv)
 					timings = !timings; cfg_dirty = true;
 					if (!timings) SDL_SetWindowTitle(win, title_base);
 				}
-				else if (e.key.scancode == SDL_SCANCODE_F3) reset_game();
+				else if (e.key.scancode == SDL_SCANCODE_F3 && !online.playing()) reset_game();   // (never in a match)
 				else if (e.key.scancode == SDL_SCANCODE_F5) set_scale(scale_wanted % MAX_SCALE + 1);
 				else if (e.key.scancode == SDL_SCANCODE_F6) set_shape((aspect_i + 1) % N_ASPECTS);
 				else if (e.key.scancode == SDL_SCANCODE_F11 || fullscreen_key(e.key)) set_fullscreen(!is_fullscreen());
