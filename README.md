@@ -131,9 +131,10 @@ code is otherwise untouched, and every byte changed is put back when they're off
 An experimental arm64 Android port lives in [`android/`](android/README.md). It builds with Gradle and
 the NDK, needs Android 8.0 or newer and your own `vf2.zip` (no game files are included), and is not
 part of the desktop build. Random fighters and Online's **Play by address** work; the lobby and room
-codes need libcurl, which Android doesn't ship, so this build plays by address only. It asks for the
-`INTERNET` permission (no prompt) for that. See [`android/README.md`](android/README.md) for build,
-install and controls.
+codes work too, through the port's own libcurl (pinned in `tools/android/deps.sh`), with the lobby's
+address given at build time as on the desktop (`.lobby-url`/`VF_LOBBY_URL`, none by default: a build
+without one plays by address). It asks for the `INTERNET` permission (no prompt) for that. See
+[`android/README.md`](android/README.md) for build, install and controls.
 
 ## Secret characters
 

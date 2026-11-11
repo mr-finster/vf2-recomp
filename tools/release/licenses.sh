@@ -2,7 +2,8 @@
 # Writes LICENSES.txt for a download: the notices of everything built into the program.
 #   tools/release/licenses.sh [out] [--windows]    (default build/release/LICENSES.txt; --windows adds
 #                                                  the MinGW-w64 runtime the Windows exe links in)
-# SDL3's, FreeType's and zlib's come from their release tarballs in build/deps (tools/mac/deps.sh).
+# SDL3's, FreeType's and zlib's come from their release tarballs in build/deps (tools/mac/deps.sh);
+# curl's and mbedTLS's (the Android build's) from build/deps/android (tools/android/deps.sh).
 set -e
 cd "$(dirname "$0")/../.."
 OUT=${1:-build/release/LICENSES.txt}
@@ -65,6 +66,12 @@ sec "FreeType (FreeType License)"
 echo "Portions of this software are copyright (c) The FreeType Project (www.freetype.org). All rights reserved."
 echo; tar xJf $D/freetype.tar.xz -O freetype-2.14.3/docs/FTL.TXT
 sec "zlib, Jean-loup Gailly and Mark Adler"; tar xzf $D/zlib.tar.gz -O zlib-1.3.1/LICENSE
+# curl and mbedTLS are the Android build's (it links both; the desktop uses the system's libcurl at
+# run time): their tarballs are tools/android/deps.sh's, in build/deps/android.
+if [ -f $D/android/curl.tar.gz ] && [ -f $D/android/mbedtls.tar.bz2 ]; then
+	sec "libcurl, Daniel Stenberg and contributors (curl licence) — the Android build's lobby HTTPS"; tar xzf $D/android/curl.tar.gz -O curl-8.23.0/COPYING
+	sec "mbedTLS, The Mbed TLS Contributors (Apache License 2.0) — libcurl's TLS, Android"; tar xjf $D/android/mbedtls.tar.bz2 -O mbedtls-3.6.7/LICENSE
+fi
 sec "Barlow Condensed font (SIL Open Font License 1.1)"; cat assets/fonts/OFL.txt
 sec "JetBrains Mono font (SIL Open Font License 1.1)"; cat assets/fonts/OFL-JetBrainsMono.txt
 sec "Noto Sans KR, JP, SC and TC fonts (SIL Open Font License 1.1)"; cat assets/fonts/OFL-NotoSansCJK.txt

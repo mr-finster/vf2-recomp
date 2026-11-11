@@ -16,16 +16,20 @@ set(REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../..")
 get_filename_component(REPO_ROOT "${REPO_ROOT}" ABSOLUTE)
 
 # ---------------------------------------------------------------- dependencies
-# Neither SDL3 nor FreeType is in the repository: tools/android/deps.sh fetches their pinned
-# release tarballs, checks them against the SHA-256 tools/mac/deps.sh pins, and unpacks them into
-# build/deps/android (Gradle runs it before this configure). The versions are that script's.
+# SDL3, FreeType, mbedTLS and curl are not in the repository: tools/android/deps.sh fetches their
+# pinned release tarballs, checks the SHA-256 (SDL3's and FreeType's the same as tools/mac/deps.sh
+# pins), and unpacks them into build/deps/android (Gradle runs it before this configure). The
+# versions are that script's.
 set(VF2_DEPS_DIR "${REPO_ROOT}/build/deps/android" CACHE PATH
-    "where tools/android/deps.sh unpacks SDL3 and FreeType")
+    "where tools/android/deps.sh unpacks SDL3, FreeType, mbedTLS and curl")
 set(VF2_SDL3_DIR "${VF2_DEPS_DIR}/SDL3-3.4.18")
 set(VF2_FREETYPE_DIR "${VF2_DEPS_DIR}/freetype-2.14.3")
-if(NOT EXISTS "${VF2_SDL3_DIR}/CMakeLists.txt" OR NOT EXISTS "${VF2_FREETYPE_DIR}/CMakeLists.txt")
+set(VF2_MBEDTLS_DIR "${VF2_DEPS_DIR}/mbedtls-3.6.7")
+set(VF2_CURL_DIR "${VF2_DEPS_DIR}/curl-8.23.0")
+if(NOT EXISTS "${VF2_SDL3_DIR}/CMakeLists.txt" OR NOT EXISTS "${VF2_FREETYPE_DIR}/CMakeLists.txt"
+   OR NOT EXISTS "${VF2_MBEDTLS_DIR}/CMakeLists.txt" OR NOT EXISTS "${VF2_CURL_DIR}/CMakeLists.txt")
     message(FATAL_ERROR
-        "SDL3 and FreeType are not in ${VF2_DEPS_DIR}.\n"
+        "SDL3, FreeType, mbedTLS and curl are not in ${VF2_DEPS_DIR}.\n"
         "Run tools/android/deps.sh first (Gradle does: ./gradlew :app:assembleDebug).")
 endif()
 
@@ -44,6 +48,60 @@ set(FT_DISABLE_PNG TRUE CACHE BOOL "" FORCE)
 set(FT_DISABLE_HARFBUZZ TRUE CACHE BOOL "" FORCE)
 set(FT_DISABLE_BROTLI TRUE CACHE BOOL "" FORCE)
 add_subdirectory("${VF2_FREETYPE_DIR}" "${CMAKE_BINARY_DIR}/freetype")
+
+# mbedTLS (static; curl's TLS backend). Built before curl, whose FindMbedTLS is handed the include
+# dir and the three archive paths: it uses a variable that's already set instead of searching for
+# an installed mbedTLS, which a subdirectory build never installs.
+set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
+set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "" FORCE)
+set(USE_SHARED_MBEDTLS_LIBRARY OFF CACHE BOOL "" FORCE)
+set(USE_STATIC_MBEDTLS_LIBRARY ON CACHE BOOL "" FORCE)
+add_subdirectory("${VF2_MBEDTLS_DIR}" "${CMAKE_BINARY_DIR}/mbedtls")
+set(MBEDTLS_INCLUDE_DIR "${VF2_MBEDTLS_DIR}/include" CACHE STRING "" FORCE)
+set(MBEDTLS_LIBRARY    "${CMAKE_BINARY_DIR}/mbedtls/library/libmbedtls.a" CACHE FILEPATH "" FORCE)
+set(MBEDX509_LIBRARY   "${CMAKE_BINARY_DIR}/mbedtls/library/libmbedx509.a" CACHE FILEPATH "" FORCE)
+set(MBEDCRYPTO_LIBRARY "${CMAKE_BINARY_DIR}/mbedtls/library/libmbedcrypto.a" CACHE FILEPATH "" FORCE)
+
+# curl (shared: libcurl.so, the lobby's HTTPS). src/net/http.cpp loads libcurl by name as it runs
+# (the desktop's system one the same way), so nothing links it here: the APK just ships the .so,
+# and the game says "no lobby" when the build carries no address (VF_LOBBY_URL). Only HTTP(S) and
+# the WebSockets watching uses are wanted; the other protocols and the optional libraries (brotli,
+# zstd, libpsl, nghttp2, idn, SSH, LDAP) stay out, so nothing extra is needed to build it.
+set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+set(BUILD_STATIC_LIBS OFF CACHE BOOL "" FORCE)
+# curl's own default names a debug build's library libcurl-d.so; src/net/http.cpp loads "libcurl.so"
+# by name, so the postfix is dropped and both build types ship the same name.
+set(CMAKE_DEBUG_POSTFIX "" CACHE STRING "" FORCE)
+set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CURL_USE_MBEDTLS ON CACHE BOOL "" FORCE)
+set(CURL_USE_OPENSSL OFF CACHE BOOL "" FORCE)
+set(CURL_USE_LIBPSL OFF CACHE BOOL "" FORCE)
+set(CURL_USE_LIBSSH2 OFF CACHE BOOL "" FORCE)
+set(CURL_BROTLI OFF CACHE BOOL "" FORCE)
+set(CURL_ZSTD OFF CACHE BOOL "" FORCE)
+set(USE_NGHTTP2 OFF CACHE BOOL "" FORCE)
+# Android has no single CA file, but its trust store is a directory of hashed certificates
+# (/system/etc/security/cacerts, world readable since Android 1.0). Point libcurl's default CA path
+# at it: the mbedTLS backend reads the directory
+# (mbedtls_x509_crt_parse_path), so HTTPS to the lobby verifies with nothing to ship.
+set(CURL_CA_PATH "/system/etc/security/cacerts" CACHE STRING "" FORCE)
+set(CURL_DISABLE_LDAP ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_LDAPS ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_DICT ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_FILE ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_FTP ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_GOPHER ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_IMAP ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_MQTT ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_POP3 ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_RTSP ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_SMTP ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_TELNET ON CACHE BOOL "" FORCE)
+set(CURL_DISABLE_TFTP ON CACHE BOOL "" FORCE)
+add_subdirectory("${VF2_CURL_DIR}" "${CMAKE_BINARY_DIR}/curl")
 
 # SLJIT (BSD-2): the i960's native code, made at start-up (mirrors the Makefile).
 add_library(sljit STATIC "${REPO_ROOT}/third_party/sljit/sljitLir.c")
