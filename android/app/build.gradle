@@ -109,10 +109,11 @@ tasks.matching { it.name == 'packageDebug' || it.name == 'packageRelease' }.conf
     dependsOn clearPackagedApks
 }
 
-// SDL3 and FreeType are not in the repository: tools/android/deps.sh fetches their pinned release
-// tarballs, checks the SHA-256 and unpacks them into build/deps/android, where CMakeLists.txt
-// builds them. It runs before CMake configures, on every build: the check is a pair of hashes, so
-// a truncated download or an edited tarball fails the build rather than changing the game.
+// SDL3, FreeType, mbedTLS and curl are not in the repository: tools/android/deps.sh fetches their
+// pinned release tarballs, checks the SHA-256 and unpacks them into build/deps/android, where
+// CMakeLists.txt builds them. It runs before CMake configures, on every build: the check is a pair
+// of hashes, so a truncated download or an edited tarball fails the build rather than changing the
+// game.
 def fetchAndroidDeps = tasks.register('fetchAndroidDeps', Exec) {
     workingDir rootProject.projectDir
     commandLine 'sh', rootProject.file('../tools/android/deps.sh').absolutePath
