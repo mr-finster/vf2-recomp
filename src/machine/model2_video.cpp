@@ -405,6 +405,7 @@ void model2_video::power_on()
 	m_deferred = false;
 	smooth_reset();
 	m_geo_keeps.clear();
+	m_geo_keep_next = 0;   // (the ring filled from its first slot again: each save in the slot just made until it's full)
 }
 
 // (the rasterizer's part: its registers as a list leaves them, as smooth_record_start keeps them, and its RAMs)
