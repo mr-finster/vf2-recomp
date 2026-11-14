@@ -43,7 +43,7 @@ T(M_ARCADE_HELP, "Difficoltà, dimensione del ring, round, continue, audio della
 T(P_ONLINE, "Online")
 T(M_ONLINE_HELP, "Gioca contro qualcuno in rete: un avversario a caso, o un amico con un codice stanza.")
 T(P_CHEATS, "Trucchi")
-T(M_CHEATS_HELP, "Lottatori casuali (tre del cast fusi in uno, per te o per ogni avversario del computer), o gioca con Dural, MUE o KOJAC, lottatori inutilizzati rimasti nel gioco. Cambiarli riavvia il gioco. Le opzioni di combattimento (energia infinita, nessun limite di tempo, un ring enorme) valgono subito, solo offline.")
+T(M_CHEATS_HELP, "Lottatori casuali (tre del cast fusi in uno, per te o per ogni avversario del computer), o gioca con Dural, MUE o KOJAC, lottatori inutilizzati rimasti nel gioco. Cambiarli riavvia il gioco. Le opzioni di combattimento (energia infinita, KO con un colpo, nessun limite di tempo, un ring enorme) valgono subito, solo offline.")
 T(P_CONTROLS, "Comandi")
 T(M_CONTROLS_HELP, "Il controller, i tasti e i pulsanti di ogni giocatore.")
 T(M_CONTROLS_MATCH_HELP, "Il controller, i tasti e i pulsanti di ogni giocatore. Online, i comandi di entrambi muovono il tuo lottatore.")

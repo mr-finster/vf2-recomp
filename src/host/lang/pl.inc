@@ -43,7 +43,7 @@ T(M_ARCADE_HELP, "Poziom trudności, rozmiar ringu, rundy, kontynuacje, dźwięk
 T(P_ONLINE, "Online")
 T(M_ONLINE_HELP, "Graj z kimś przez sieć: z losowym rywalem albo ze znajomym przez kod pokoju.")
 T(P_CHEATS, "Kody")
-T(M_CHEATS_HELP, "Losowe postacie (trzy postacie z obsady w jednej, dla ciebie albo każdego rywala komputera) albo graj jako Dural, MUE lub KOJAC, nieużywane postacie, które zostały w grze. Zmiana restartuje grę. Przełączniki walki (nieskończona energia, bez limitu czasu, ogromny ring) działają od razu, tylko offline.")
+T(M_CHEATS_HELP, "Losowe postacie (trzy postacie z obsady w jednej, dla ciebie albo każdego rywala komputera) albo graj jako Dural, MUE lub KOJAC, nieużywane postacie, które zostały w grze. Zmiana restartuje grę. Przełączniki walki (nieskończona energia, KO jednym ciosem, bez limitu czasu, ogromny ring) działają od razu, tylko offline.")
 T(P_CONTROLS, "Sterowanie")
 T(M_CONTROLS_HELP, "Kontroler, klawisze i przyciski każdego gracza.")
 T(M_CONTROLS_MATCH_HELP, "Kontroler, klawisze i przyciski każdego gracza. Online sterowanie obu graczy steruje twoim zawodnikiem.")

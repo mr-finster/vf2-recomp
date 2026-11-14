@@ -43,7 +43,7 @@ T(M_ARCADE_HELP, "Schwierigkeit, Ringgröße, Runden, Continue, Demo-Ton, was na
 T(P_ONLINE, "Online")
 T(M_ONLINE_HELP, "Spiel übers Netz gegen jemanden: einen zufälligen Gegner oder einen Freund mit einem Raumcode.")
 T(P_CHEATS, "Cheats")
-T(M_CHEATS_HELP, "Zufallskämpfer (drei aus der Besetzung zu einem gemacht, für dich oder jeden Computergegner), oder spiel Dural, MUE oder KOJAC, unbenutzte Kämpfer, die im Spiel geblieben sind. Eine Änderung startet das Spiel neu. Kampfschalter (unendliche Energie, kein Zeitlimit, ein riesiger Ring) wirken sofort, nur offline.")
+T(M_CHEATS_HELP, "Zufallskämpfer (drei aus der Besetzung zu einem gemacht, für dich oder jeden Computergegner), oder spiel Dural, MUE oder KOJAC, unbenutzte Kämpfer, die im Spiel geblieben sind. Eine Änderung startet das Spiel neu. Kampfschalter (unendliche Energie, K.O. mit einem Treffer, kein Zeitlimit, ein riesiger Ring) wirken sofort, nur offline.")
 T(P_CONTROLS, "Steuerung")
 T(M_CONTROLS_HELP, "Controller, Tasten und Knöpfe jedes Spielers.")
 T(M_CONTROLS_MATCH_HELP, "Controller, Tasten und Knöpfe jedes Spielers. Online steuern die Eingaben beider Spieler deinen Kämpfer.")

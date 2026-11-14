@@ -48,7 +48,7 @@ T(M_ARCADE_HELP, "Difficulty, ring size, rounds, continue, demo sound, what foll
 T(P_ONLINE, "Online")
 T(M_ONLINE_HELP, "Play someone over the network: a random opponent, or a friend with a room code.")
 T(P_CHEATS, "Cheats")
-T(M_CHEATS_HELP, "Random fighters (three of the cast made one, for you or every computer opponent), or play as Dural, MUE or KOJAC, unused fighters left in the game. Changing them restarts the game. Fight switches (infinite energy, no time limit, a huge ring) work at once, offline only.")
+T(M_CHEATS_HELP, "Random fighters (three of the cast made one, for you or every computer opponent), or play as Dural, MUE or KOJAC, unused fighters left in the game. Changing them restarts the game. Fight switches (infinite energy, one-hit KO, no time limit, a huge ring) work at once, offline only.")
 T(P_CONTROLS, "Controls")
 T(M_CONTROLS_HELP, "Each player's controller, keys and buttons.")
 T(M_CONTROLS_MATCH_HELP, "Each player's controller, keys and buttons. Online, either player's controls play your fighter.")

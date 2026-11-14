@@ -43,7 +43,7 @@ T(M_ARCADE_HELP, "Dificuldade, tamanho do ringue, rounds, continue, som da demo,
 T(P_ONLINE, "Online")
 T(M_ONLINE_HELP, "Jogue com alguém pela rede: um oponente aleatório, ou um amigo com um código de sala.")
 T(P_CHEATS, "Trapaças")
-T(M_CHEATS_HELP, "Lutadores aleatórios (três do elenco feitos um, para você ou para todo oponente do computador), ou jogue com Dural, MUE ou KOJAC, lutadores não usados que ficaram no jogo. Mudar reinicia o jogo. As opções de luta (energia infinita, sem limite de tempo, um ringue enorme) valem na hora, só offline.")
+T(M_CHEATS_HELP, "Lutadores aleatórios (três do elenco feitos um, para você ou para todo oponente do computador), ou jogue com Dural, MUE ou KOJAC, lutadores não usados que ficaram no jogo. Mudar reinicia o jogo. As opções de luta (energia infinita, KO com um golpe, sem limite de tempo, um ringue enorme) valem na hora, só offline.")
 T(P_CONTROLS, "Controles")
 T(M_CONTROLS_HELP, "O controle, as teclas e os botões de cada jogador.")
 T(M_CONTROLS_MATCH_HELP, "O controle, as teclas e os botões de cada jogador. Online, os controles de qualquer um dos dois jogam com seu lutador.")

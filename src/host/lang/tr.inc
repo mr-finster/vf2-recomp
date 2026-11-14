@@ -44,7 +44,7 @@ T(M_ARCADE_HELP, "Zorluk, ring boyutu, rauntlar, devam, demo sesi, iki oyunculu 
 T(P_ONLINE, "Çevrimiçi")
 T(M_ONLINE_HELP, "Ağ üzerinden biriyle oyna: rastgele bir rakip ya da oda koduyla bir arkadaş.")
 T(P_CHEATS, "Hileler")
-T(M_CHEATS_HELP, "Rastgele dövüşçüler (kadrodan üç kişi tek dövüşçüde, senin için ya da her bilgisayar rakibi için) ya da oyunda kalmış kullanılmamış dövüşçüler Dural, MUE veya KOJAC ile oyna. Değiştirmek oyunu yeniden başlatır. Dövüş ayarları (sonsuz enerji, süre sınırı yok, dev ring) hemen etkili olur, yalnızca çevrimdışı.")
+T(M_CHEATS_HELP, "Rastgele dövüşçüler (kadrodan üç kişi tek dövüşçüde, senin için ya da her bilgisayar rakibi için) ya da oyunda kalmış kullanılmamış dövüşçüler Dural, MUE veya KOJAC ile oyna. Değiştirmek oyunu yeniden başlatır. Dövüş ayarları (sonsuz enerji, tek vuruşta KO, süre sınırı yok, dev ring) hemen etkili olur, yalnızca çevrimdışı.")
 T(P_CONTROLS, "Kontroller")
 T(M_CONTROLS_HELP, "Her oyuncunun kontrolcüsü, tuşları ve düğmeleri.")
 T(M_CONTROLS_MATCH_HELP, "Her oyuncunun kontrolcüsü, tuşları ve düğmeleri. Çevrimiçide iki oyuncunun kontrolleri de senin dövüşçünü oynatır.")

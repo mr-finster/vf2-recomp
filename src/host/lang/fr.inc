@@ -43,7 +43,7 @@ T(M_ARCADE_HELP, "Difficulté, taille du ring, rounds, continue, son de la démo
 T(P_ONLINE, "En ligne")
 T(M_ONLINE_HELP, "Joue contre quelqu'un en réseau\xC2\xA0: un adversaire au hasard, ou un ami avec un code de salon.")
 T(P_CHEATS, "Astuces")
-T(M_CHEATS_HELP, "Combattants aléatoires (trois du casting fondus en un, pour toi ou pour chaque adversaire de l'ordinateur), ou joue Dural, MUE ou KOJAC, des combattants inutilisés restés dans le jeu. Les changer relance le jeu. Les options de combat (énergie infinie, pas de limite de temps, un ring énorme) agissent tout de suite, hors ligne seulement.")
+T(M_CHEATS_HELP, "Combattants aléatoires (trois du casting fondus en un, pour toi ou pour chaque adversaire de l'ordinateur), ou joue Dural, MUE ou KOJAC, des combattants inutilisés restés dans le jeu. Les changer relance le jeu. Les options de combat (énergie infinie, KO en un coup, pas de limite de temps, un ring énorme) agissent tout de suite, hors ligne seulement.")
 T(P_CONTROLS, "Commandes")
 T(M_CONTROLS_HELP, "La manette, les touches et les boutons de chaque joueur.")
 T(M_CONTROLS_MATCH_HELP, "La manette, les touches et les boutons de chaque joueur. En ligne, les commandes de l'un ou l'autre jouent ton combattant.")
