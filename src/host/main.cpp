@@ -4358,7 +4358,10 @@ int main(int argc, char **argv)
 		});
 	};
 	online.adapter.run = [&](bool resim) {
-		m.set_draw_3d(!resim);   // (a frame run again after a rollback: the board alone, no picture)
+		// (a frame run again after a rollback: no picture of its own, but with scene sync its 3D set up, as every frame's
+		// offline: deferred, drawn only if shown, as the next frame's two frames late is. Not set up, the 3D shown after
+		// a rollback was the frames taken back's)
+		m.set_draw_3d(!resim || sync.enabled);
 		m.run_frame();
 		m.set_draw_3d(true);
 		if (resim) resimmed = true;
@@ -5390,8 +5393,16 @@ int main(int argc, char **argv)
 				step_carry = 0;
 				pace.emu += SDL_GetTicksNS() - te;
 				if (std::exchange(resimmed, false)) m.smooth_cut();   // (a rollback: the frames before aren't the ones shown)
-				draw_into_texture = true;
-				held = false;
+				// scene sync, as offline (frame_done): the 3D shown as MAME shows it while they fight, two frames late
+				// with the backdrop it was set for between, a scene's start held till it's whole. (It wasn't run in a
+				// match: the delay stayed as the last frame before it left it, two frames in a fight after the attract's
+				// demo, and the 3D shown late, after a rollback the frames taken back's)
+				if (m.newest_3d_cut()) pass_cut = true;
+				const bool show = sync.show(m);
+				if (show && !last_shown) m.smooth_cut();
+				last_shown = show;
+				draw_into_texture = show;
+				held = hold_on = !show;
 				m.m_audio_out.clear();
 				load.frames++;
 				game_frame++;
