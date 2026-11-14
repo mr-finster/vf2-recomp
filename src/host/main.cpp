@@ -901,6 +901,10 @@ struct settings
 	std::string random_player[2];   // Cheats: each player's fighter: "" the select as ever, "*" a random one each game, or a name's (model2a::set_random_player)
 	std::string random_named[2];    // (each player's last name typed: Left / Right come back to it)
 	bool random_cpu = false;        // Cheats: Random opponents, every computer opponent a random fighter
+	// Cheats > Fight switches (model2a::fight_cheats), offline only: never on an online match's board
+	int infinite_energy = 0;        // bit 0 player 1, bit 1 player 2
+	bool one_hit_ko = false, no_time_limit = false;
+	int ring_cheat = 0;             // 0 the game's (Arcade settings' Ring size), 1 tiny (650), 2 huge (5000: no ring outs)
 	bool debug_mode = false;        // Arcade settings: Debug mode, the arcade's own (model2a::set_debug_mode), offline only
 	// settings.ini's version: 2 from v0.1.2 (none before), 3 from the phone's fullscreen (this
 	// fork) or from the GPU's failures forgotten once (upstream v0.1.15), 4 the merged build. Its
@@ -1052,6 +1056,10 @@ struct settings
 			if (auto it = kv.find(p ? "random_p2_name" : "random_p1_name"); it != kv.end()) random_named[p] = trimmed(it->second);
 		}
 		flag("random_opponents", random_cpu);
+		num("infinite_energy", infinite_energy, 0, 3);
+		flag("one_hit_ko", one_hit_ko);
+		flag("no_time_limit", no_time_limit);
+		num("ring_cheat", ring_cheat, 0, 2);
 		flag("debug_mode", debug_mode);
 		num("stage_select", stage, -1, vf2net::STAGES);
 		if (stage == 0) stage = -1;   // (the versus order's first: the game's own)
@@ -1134,6 +1142,10 @@ struct settings
 			if (!random_named[p].empty()) fprintf(f, "random_p%d_name = %s\n", p + 1, random_named[p].c_str());
 		}
 		if (random_cpu) fprintf(f, "random_opponents = 1\n");
+		if (infinite_energy) fprintf(f, "infinite_energy = %d\n", infinite_energy);
+		if (one_hit_ko) fprintf(f, "one_hit_ko = 1\n");
+		if (no_time_limit) fprintf(f, "no_time_limit = 1\n");
+		if (ring_cheat) fprintf(f, "ring_cheat = %d\n", ring_cheat);
 		if (debug_mode) fprintf(f, "debug_mode = 1\n");
 		if (stage >= 0) fprintf(f, "stage_select = %d\n", stage);
 		fprintf(f, "crt_colours = %d\nbrightness = %d\ngamma = %d\n", crt_colours, brightness, gamma);
@@ -3760,6 +3772,27 @@ int main(int argc, char **argv)
 	auto kind_of = [&](int pl) { const std::string &v = cfg.random_player[pl]; return v.empty() ? 0 : v == "*" ? 1 : 2; };
 	static const tr::text KINDS[] = { tr::FIGHTER_NORMAL, tr::FIGHTER_RANDOM, tr::FIGHTER_SEED };
 	auto rebuild = [&](int pl, bool sub) { menu_page pg = cheats_page(); menu.replace(std::move(pg), sub && fighter_sub[pl] >= 0 ? fighter_sub[pl] : fighter_row[pl]); };
+	// Fight switches: a page of its own, as VF1's (Infinite energy, One-hit KO, No time limit, Ring). None restarts the
+	// game: each is written into the fight's RAM before each frame, offline only (an online match's board never)
+	auto fight_page = [&] {
+		menu_page p{ tr::C_FIGHT_SWITCHES, "", {} };
+		static const tr::text WHO[] = { tr::OFF, tr::P_PLAYER_1, tr::P_PLAYER_2, tr::C_BOTH };
+		p.items.push_back({ tr::C_INFINITE, tr::C_INFINITE_HELP,
+			[&] { return std::string(WHO[cfg.infinite_energy]); },
+			[&](int d) { cfg.infinite_energy = wrap(cfg.infinite_energy + d, 4); cfg_dirty = true; } });
+		p.items.push_back({ tr::C_ONE_HIT, tr::C_ONE_HIT_HELP,
+			[&] { return on_off(cfg.one_hit_ko); },
+			[&](int) { cfg.one_hit_ko = !cfg.one_hit_ko; cfg_dirty = true; } });
+		p.items.push_back({ tr::C_NO_TIME, tr::C_NO_TIME_HELP,
+			[&] { return on_off(cfg.no_time_limit); },
+			[&](int) { cfg.no_time_limit = !cfg.no_time_limit; cfg_dirty = true; } });
+		static const tr::text RING[] = { tr::C_RING_NORMAL, tr::C_RING_TINY, tr::C_RING_HUGE };
+		p.items.push_back({ tr::C_RING, tr::C_RING_HELP,
+			[&] { return std::string(RING[cfg.ring_cheat]); },
+			[&](int d) { cfg.ring_cheat = wrap(cfg.ring_cheat + d, 3); cfg_dirty = true; } });
+		p.items.push_back(back_item());
+		return p;
+	};
 	cheats_page = [&] {
 		if (!assign_before) assign_before = assignments_now();
 		menu_page p{ tr::P_CHEATS_PAGE, "", {} };
@@ -3837,6 +3870,10 @@ int main(int argc, char **argv)
 		p.items.push_back({ tr::C_RANDOM_CPU, tr::C_RANDOM_CPU_HELP,
 			[&] { return on_off(cfg.random_cpu); },
 			[&](int) { cfg.random_cpu = !cfg.random_cpu; cfg_dirty = true; } });   // (applied as the game restarts)
+		heading(tr::C_FIGHT_HEAD);
+		p.items.push_back({ tr::C_FIGHT_SWITCHES, listed({ tr::C_INFINITE, tr::C_ONE_HIT, tr::C_NO_TIME, tr::C_RING }),
+			[&] { return on_off(cfg.infinite_energy || cfg.one_hit_ko || cfg.no_time_limit || cfg.ring_cheat); },
+			{}, [&] { menu.push(fight_page()); } });
 		heading(tr::C_SECRET_HEAD);
 		static const int SECRET[] = { 0, 9, 11, 12 };
 		static const char *SECRET_NAMES[] = { "Off", "Dural", "MUE", "KOJAC" };   // (the fighters' names as they are; Off the language's)
@@ -5332,6 +5369,10 @@ int main(int argc, char **argv)
 			m.m_in1 = ports[input_script::IN1] & ~live[1];
 			m.m_in2 = ports[input_script::IN2] & ~live[2];
 			m.m_sw = ports[input_script::SW];
+			// Cheats > Fight switches, into the game's RAM for the next frame: offline only (this loop isn't a match's,
+			// and never on a match's board, as Debug mode)
+			if (!g_match_board && !online.playing() && (cfg.infinite_energy || cfg.one_hit_ko || cfg.no_time_limit || cfg.ring_cheat))
+				m.fight_cheats(cfg.infinite_energy, cfg.one_hit_ko, cfg.no_time_limit, cfg.ring_cheat);
 			auto [shot_first, shot_last] = script.shots.equal_range(game_frame);
 			for (auto it = shot_first; it != shot_last; ++it)
 				write_png(("build/host_" + it->second + ".png").c_str(), picture->data(), picture->width(), picture->height());

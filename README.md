@@ -60,6 +60,7 @@ screen's refresh rate.
 | Portable mode, your own ROM folder | Working |
 | Random fighters (Menu > Cheats): three of the cast made one, for a player or every computer opponent | Working (new), online too (Online > Settings > Your fighter) |
 | Secret characters (Menu > Cheats): Dural, MUE and KOJAC | Working |
+| Fight switches for practice (Menu > Cheats > Fight switches): infinite energy, one-hit KO, no time limit, a tiny or huge ring | Working (new), offline only |
 | The arcade's debug mode (Menu > Arcade settings > Debug mode): CPU load, polygon count, hits, and its debug menu | Working (new), offline only |
 | A stage select for a versus (Menu > Arcade settings > Stage select): the stage two players' first fight is on, the arcade's order on from it | Working (new), offline only |
 | Online play | Experimental: rollback netplay, a random opponent or a friend by room code, no setup (see [Online play](#online-play-experimental)) |
@@ -318,7 +319,8 @@ fullscreen (`fullscreen_window = 1` gives them the borderless window).
   - **Free camera** (see [Free camera](#free-camera)).
 - **Sound:** the overall, music and effects volumes.
 - **Game:** language, play style (PC or arcade), reset, the log file.
-- **Arcade settings:** difficulty, ring size, rounds, continue, demo sound, what follows a versus match, the game's
+- **Arcade settings:** difficulty, ring size, rounds (1 to 5 against the computer: 1 is the game's own, though its
+  test mode offers 2 to 5), continue, demo sound, what follows a versus match, the game's
   version, stage select, the arcade's debug mode and the service menu. A change restarts the game.
   **Debug mode** (offline only) is the arcade's hidden one, as its secret code turns it on: the CPU load, the polygon
   count and the hits on the screen. In a fight, hold P2 Guard and press P2 Start: the game stops for the debug menu;
@@ -330,6 +332,11 @@ fullscreen (`fullscreen_window = 1` gives them the borderless window).
   character** (see [Secret characters](#secret-characters)): Dural, MUE or KOJAC in Akira's spot on the player select,
   shown with their portrait and Akira's name and profile; MUE and KOJAC (Lion's body with Akira's moves, from the
   debug menu) are off while a player's fighter is Random or Seed. A change restarts the game.
+  **Fight switches** (as Virtua Fighter 1 Recomp's), for practice, at once and offline only (never in an online
+  match): **Infinite energy** (player 1, player 2 or both: hits land but never knock out), **One-hit KO** (every
+  other fighter on their last bit of energy), **No time limit** (the clock stays at 30"00: a round ends by knockout
+  or ring out) and **Ring** (Tiny, half the smallest ring: ring outs everywhere; Huge, far wider than the stage: no
+  ring outs).
 - **Controls:** each player's pad, keys and buttons (a key for two or three buttons at once: Button combinations, on
   the keys' page).
 

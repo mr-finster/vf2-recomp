@@ -364,6 +364,11 @@ public:
 	// Start with P2 Guard held stops the game for its menu, held P2 Start shows it, P1's stick moves in it). Set before
 	// each frame while on; off, nothing (the game as ever). Offline only: never on an online match's board.
 	void set_debug_mode(bool on) { m_debug_mode = on; }
+	// Cheats > Fight switches (offline only: never called on a match's board): written into work RAM before each frame
+	// of a fight (game_mode() 9). infinite: bit 0 player 1's energy, bit 1 player 2's, kept full; one_hit: every other
+	// fighter's energy down to 1; no_time: the round's clock held at its start; ring: 0 the game's, 1 tiny (650), 2 huge
+	// (5000: no ring outs), the width the round checks ring outs against. See model2a.cpp's fight_cheats
+	void fight_cheats(int infinite, bool one_hit, bool no_time, int ring);
 	bool debug_mode() const { return m_debug_mode; }
 	// Cheats' random fighters (random_fighter.cpp). Each player's fighter: "" the select as ever, "*" a random
 	// fighter, a new one each game, or a name's (as on its energy bar: a seed's, the same fighter on any machine).

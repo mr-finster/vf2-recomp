@@ -288,7 +288,7 @@ struct difficulty_set { u8 width; u16 energy_1p, energy_vs; };
 constexpr difficulty_set DIFFICULTY_SETS[4] = { { 16, 176, 220 }, { 15, 160, 200 }, { 14, 144, 180 }, { 13, 128, 160 } };   // EASY..HARDEST
 struct assignment_at { u32 at; int lo, hi; u8 bit; };   // bit: a switch in the flags byte (else the byte, lo-hi)
 constexpr assignment_at ASSIGNMENTS[] = {
-	{ SETTINGS + 0x40, 2, 5, 0 },      // MATCH COUNT(1P): rounds to win
+	{ SETTINGS + 0x40, 1, 5, 0 },      // MATCH COUNT(1P): rounds to win (1 too: the test mode offers 2-5, the game takes 0-5, 0x9e7c)
 	{ SETTINGS + 0x41, 2, 5, 0 },      // MATCH COUNT(VS)
 	{ SETTINGS + 0x42, 0, 3, 0 },      // DIFFICULTY: EASY, NORMAL, HARD, HARDEST
 	{ FLAGS_AT, 0, 1, 0x01 },          // ADVERTISE SOUND (the bit set: OFF)
@@ -378,6 +378,58 @@ bool model2a::set_ring_width(int width)
 		assignments_sign(m_backup);
 	}
 	return true;
+}
+
+// Cheats > Fight switches, in work RAM (found with a scratch watcher like tools/vf2detect and the program's own code):
+//   the fighters' records at [0x500804] and [0x500808] (0x510980 and 0x512980), each one's energy at +0x1ac (16-bit),
+//   the round's full energy at 0x5000a0 (what the round starts them with, 0xbb20; the "perfect" checks it at 0xe95c),
+//   and bit 5 of the record's first word set as a fighter goes down (it ends the round: 0xbc1c);
+//   the round's clock at 0x500028, in 64ths of a second (1920 = 30 s, set as the fight starts, 0xbaa4), taken down by
+//   1 each frame while the round's on (0xbc30, 0xc394: the time's up at 0), shown as it was before (25"59: 1638);
+//   the round's stage at 0x500030 (9 while the round's on: the clock runs) and at 0x500031 the one a frame before;
+//   the ring's half width at 0x50a00c (a float, in hundreds: 8.0 for 1600), set from 0x50a700 (versus) or 0x50a704
+//   (against the computer) as a match starts (0xcf50) and from a replay's record as it plays (0xe128): the width the
+//   ring outs are checked against.
+void model2a::fight_cheats(int infinite, bool one_hit, bool no_time, int ring)
+{
+	if (game_mode() != 9) return;
+	auto at = [&](u32 a, u32 n) -> u8 * { return a >= 0x500000 && a + n - 0x500000 <= m_workram.size() ? &m_workram[a - 0x500000] : nullptr; };
+	auto rd16 = [&](u32 a) { const u8 *p = at(a, 2); return p ? int16_t(p[0] | p[1] << 8) : int16_t(0); };
+	auto rd32 = [&](u32 a) { const u8 *p = at(a, 4); return p ? u32(p[0] | p[1] << 8 | p[2] << 16 | u32(p[3]) << 24) : 0u; };
+	auto wr16 = [&](u32 a, int16_t v) { if (u8 *p = at(a, 2)) { p[0] = u8(v); p[1] = u8(u16(v) >> 8); } };
+	const bool on = m_workram[0x30] == 9;   // (the round on, or starting this frame: its clock running)
+	const u32 fighter[2] = { rd32(0x500804), rd32(0x500808) };
+	const bool ok = at(fighter[0], 0x1b0) && at(fighter[1], 0x1b0);
+	static int told = 0;   // (log.txt: what the cheats found, once each way)
+	if (told < 2 && (ok ? told == 1 || told == 0 : told == 0)) {
+		fprintf(stderr, "cheats: fighters at %06x %06x%s, energy %d %d of %d, clock %d, ring %.2f\n", fighter[0], fighter[1],
+				ok ? "" : " (not set yet)", ok ? rd16(fighter[0] + 0x1ac) : 0, ok ? rd16(fighter[1] + 0x1ac) : 0, rd16(0x5000a0),
+				rd16(0x500028), [&] { float f; memcpy(&f, at(0x50a00c, 4), 4); return double(f); }());
+		told = ok ? 2 : 1;
+	}
+	// The ring: its half width each frame of a fight (a replay's too: its record holds the width it was played on)
+	if (ring == 1 || ring == 2) {
+		const float half = ring == 1 ? 3.25f : 25.0f;   // (650: half the smallest ring, 1300; 5000: far past the stage's floor)
+		memcpy(at(0x50a00c, 4), &half, 4);
+	}
+	// No time limit: while the round's on, the clock taken down by the last frame is put back to its start before the
+	// next (the HUD shows it as the frame starts, before it's taken down: 30"00). A round over (a knockout, a ring
+	// out) leaves it where it is.
+	if (no_time && on) {
+		const int t = rd16(0x500028);
+		if (t > 0 && t < 1920) wr16(0x500028, 1920);
+	}
+	if ((!infinite && !one_hit) || !ok || !on) return;
+	const int16_t full = rd16(0x5000a0);
+	if (full <= 0 || full > 1000) return;
+	for (int p = 0; p < 2; p++) {
+		const u32 a = fighter[p] + 0x1ac;
+		int16_t e = rd16(a);
+		if (infinite >> p & 1) e = full;
+		else if (one_hit && e > 1) e = 1;
+		else continue;
+		wr16(a, e);
+	}
 }
 
 // The notices are in the data ROM: the attract's FREE PLAY, a 17 x 2 tile image drawn by 0x8f1c
