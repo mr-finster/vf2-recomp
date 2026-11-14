@@ -366,8 +366,8 @@ public:
 	void set_debug_mode(bool on) { m_debug_mode = on; }
 	// Cheats > Fight switches (offline only: never called on a match's board): written into work RAM before each frame
 	// of a fight (game_mode() 9). infinite: bit 0 player 1's energy, bit 1 player 2's, kept full; one_hit: every other
-	// fighter's energy down to 1; no_time: the round's clock held at its start; ring: 0 the game's, 1 tiny (650), 2 huge
-	// (5000: no ring outs), the width the round checks ring outs against. See model2a.cpp's fight_cheats
+	// fighter's energy down to 1; no_time: the round's clock held at its start; ring: 0 the game's (put back if a cheat's
+	// was on), 1 tiny (650), 2 huge (5000: no ring outs), the width the round checks ring outs against. See model2a.cpp's fight_cheats
 	void fight_cheats(int infinite, bool one_hit, bool no_time, int ring);
 	bool debug_mode() const { return m_debug_mode; }
 	// Cheats' random fighters (random_fighter.cpp). Each player's fighter: "" the select as ever, "*" a random
@@ -519,6 +519,7 @@ private:
 
 	// memory
 	std::vector<u8> m_ram200, m_workram, m_bufferram, m_backup, m_cpuctl;
+	float m_ring_own = 0; bool m_ring_own_kept = false;   // (fight_cheats: the ring's width the game set, for Normal again; offline only, not in a state)
 	std::vector<u16> m_palram, m_colorxlat, m_fbvram_a, m_fbvram_b;
 	std::vector<u32> m_tex0, m_tex1;
 	std::vector<u8> m_lumaram, m_m2comm_share;

@@ -392,7 +392,7 @@ bool model2a::set_ring_width(int width)
 //   ring outs are checked against.
 void model2a::fight_cheats(int infinite, bool one_hit, bool no_time, int ring)
 {
-	if (game_mode() != 9) return;
+	if (game_mode() != 9 || (!infinite && !one_hit && !no_time && !ring && !m_ring_own_kept)) return;
 	auto at = [&](u32 a, u32 n) -> u8 * { return a >= 0x500000 && a + n - 0x500000 <= m_workram.size() ? &m_workram[a - 0x500000] : nullptr; };
 	auto rd16 = [&](u32 a) { const u8 *p = at(a, 2); return p ? int16_t(p[0] | p[1] << 8) : int16_t(0); };
 	auto rd32 = [&](u32 a) { const u8 *p = at(a, 4); return p ? u32(p[0] | p[1] << 8 | p[2] << 16 | u32(p[3]) << 24) : 0u; };
@@ -407,11 +407,16 @@ void model2a::fight_cheats(int infinite, bool one_hit, bool no_time, int ring)
 				rd16(0x500028), [&] { float f; memcpy(&f, at(0x50a00c, 4), 4); return double(f); }());
 		told = ok ? 2 : 1;
 	}
-	// The ring: its half width each frame of a fight (a replay's too: its record holds the width it was played on)
+	// The ring: its half width each frame of a fight (a replay's too: its record holds the width it was played on). The
+	// game sets it only as a match starts, so the width it set is kept (any not a cheat's), and Normal again puts it back
+	static const float HALF[2] = { 3.25f, 25.0f };   // (Tiny 650: half the smallest ring, 1300; Huge 5000: far past the stage's floor)
+	u8 *width = at(0x50a00c, 4);
+	const bool cheat_width = !memcmp(width, &HALF[0], 4) || !memcmp(width, &HALF[1], 4);
 	if (ring == 1 || ring == 2) {
-		const float half = ring == 1 ? 3.25f : 25.0f;   // (650: half the smallest ring, 1300; 5000: far past the stage's floor)
-		memcpy(at(0x50a00c, 4), &half, 4);
-	}
+		if (!cheat_width) { memcpy(&m_ring_own, width, 4); m_ring_own_kept = true; }
+		memcpy(width, &HALF[ring - 1], 4);
+	} else if (cheat_width && m_ring_own_kept)
+		memcpy(width, &m_ring_own, 4);
 	// No time limit: while the round's on, the clock taken down by the last frame is put back to its start before the
 	// next (the HUD shows it as the frame starts, before it's taken down: 30"00). A round over (a knockout, a ring
 	// out) leaves it where it is.

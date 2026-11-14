@@ -5371,7 +5371,7 @@ int main(int argc, char **argv)
 			m.m_sw = ports[input_script::SW];
 			// Cheats > Fight switches, into the game's RAM for the next frame: offline only (this loop isn't a match's,
 			// and never on a match's board, as Debug mode)
-			if (!g_match_board && !online.playing() && (cfg.infinite_energy || cfg.one_hit_ko || cfg.no_time_limit || cfg.ring_cheat))
+			if (!g_match_board && !online.playing())   // (all off too: Ring back to Normal puts the game's width back)
 				m.fight_cheats(cfg.infinite_energy, cfg.one_hit_ko, cfg.no_time_limit, cfg.ring_cheat);
 			auto [shot_first, shot_last] = script.shots.equal_range(game_frame);
 			for (auto it = shot_first; it != shot_last; ++it)
