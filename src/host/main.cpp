@@ -5499,7 +5499,10 @@ int main(int argc, char **argv)
 			smooth_budget = std::min(2.0, smooth_budget + double(bt - smooth_budget_t) * picture_cap / 1e9);
 			smooth_budget_t = bt;
 			const bool unseen = !hidden && (SDL_GetWindowFlags(win) & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_OCCLUDED));
-			if (smooth_on() && !stopped && !ff && last_shown && !held && !unseen && (draw_into_texture || rec.on || (due == 0 && !took_ahead && smooth_budget >= 1))) {
+			// (in a match each frame as it is, when it's run, as VF1's and VF3's: 57.5 pictures a second. A picture
+			// between two frames a rollback may yet change showed the change as a ghost, and the in-betweens made Show
+			// FPS read the screen's rate, 120 on a 120 Hz screen)
+			if (smooth_on() && !online.playing() && !stopped && !ff && last_shown && !held && !unseen && (draw_into_texture || rec.on || (due == 0 && !took_ahead && smooth_budget >= 1))) {
 				smooth_now = true;
 				smooth_budget = std::max(0.0, smooth_budget - 1);
 				alpha = float(std::clamp(frame_clock - double(frames_run), 0.0, 1.0));
