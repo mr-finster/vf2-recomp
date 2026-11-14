@@ -5,10 +5,12 @@
 Per stretch: loudness (RMS) of each, samples identical, the largest difference, the best
 alignment (lag in samples, from a cross-correlation) and how alike the two are at that lag
 (correlation), and how alike their spectra are.
-Our SCSP departs from MAME's on purpose in one place: 0x7c0-0x7ff is its own storage, not a
+Our SCSP departs from MAME's on purpose in two places: 0x7c0-0x7ff is its own storage, not a
 mirror of the DSP's MADRS (src/machine/scsp.h, m_madrs_hi), which VF2's reverb needs. Against
 MAME, run vf2run with VF2_SCSP_MADRS_MIRROR=1 (MAME's mirror): without it the two differ from
-the sound program's first DSP set-up on, as intended."""
+the sound program's first DSP set-up on, as intended. And its timers run a sample longer than
+MAME's (src/machine/scsp.cpp, timer_samples: the music 2% slower, as the arcade's): add
+VF2_SCSP_TIMER_MAME=1 (MAME's period), or the two drift apart from the music's first tick."""
 import sys
 import numpy as np
 

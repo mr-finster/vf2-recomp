@@ -356,6 +356,19 @@ void scsp_device::ResetInterrupts()
 	CheckPendingIRQ();
 }
 
+// A timer's time from a write of its register to its interrupt, in samples: the count goes up from the value
+// written, one every 2^prescale samples (the first a sample after the write), and the interrupt comes as it passes
+// 0xFF: ((255 - value) << prescale) + 1 samples, VF3's. MAME's (255 - value) << prescale is a sample short: VF2's
+// sound driver's tick, timer A at 0xCE re-armed in its handler about 0.9 sample after the interrupt, came every
+// 49.87 samples (884 a second) and its music ran 2% fast; a Sega Rally cabinet's music (the same board, timer A at
+// 0xCE) runs 2.18% slower than MAME's, a tick of 51 samples. Now 50.87 (867 a second). VF2_SCSP_TIMER_MAME=1
+// brings MAME's period back, for comparing the sound with MAME's (tools/sound_compare.py).
+u32 scsp_device::timer_samples(u16 reg)
+{
+	static const bool mame = [] { const char *e = getenv("VF2_SCSP_TIMER_MAME"); return e && *e == '1'; }();
+	return ((255u - (reg & 0xff)) << ((reg >> 8) & 7)) + (mame ? 0 : 1);
+}
+
 void scsp_device::timerA_cb()
 {
 	m_TimCnt[0] = 0xFFFF;
@@ -734,13 +747,7 @@ void scsp_device::UpdateReg(int reg)
 				m_TimCnt[0] = (m_udata.data[0x18/2] & 0xff) << 8;
 
 				if ((m_udata.data[0x18/2] & 0xff) != 255)
-				{
-					u32 time = (clock() / m_TimPris[0]) / (255 - (m_udata.data[0x18/2] & 0xff));
-					if (time)
-					{
-						m_host.timer_adjust(TIMER_A, from_ticks(512, time), 0);
-					}
-				}
+					m_host.timer_adjust(TIMER_A, from_ticks(512 * timer_samples(m_udata.data[0x18/2]), clock()), 0);
 			}
 			break;
 		case 0x1a:
@@ -751,13 +758,7 @@ void scsp_device::UpdateReg(int reg)
 				m_TimCnt[1] = (m_udata.data[0x1A/2] & 0xff) << 8;
 
 				if ((m_udata.data[0x1A/2] & 0xff) != 255)
-				{
-					u32 time = (clock() / m_TimPris[1]) / (255 - (m_udata.data[0x1A/2] & 0xff));
-					if (time)
-					{
-						m_host.timer_adjust(TIMER_B, from_ticks(512, time), 0);
-					}
-				}
+					m_host.timer_adjust(TIMER_B, from_ticks(512 * timer_samples(m_udata.data[0x1A/2]), clock()), 0);
 			}
 			break;
 		case 0x1c:
@@ -768,13 +769,7 @@ void scsp_device::UpdateReg(int reg)
 				m_TimCnt[2] = (m_udata.data[0x1C/2] & 0xff) << 8;
 
 				if ((m_udata.data[0x1C/2] & 0xff) != 255)
-				{
-					u32 time = (clock() / m_TimPris[2]) / (255 - (m_udata.data[0x1C/2] & 0xff));
-					if (time)
-					{
-						m_host.timer_adjust(TIMER_C, from_ticks(512, time), 0);
-					}
-				}
+					m_host.timer_adjust(TIMER_C, from_ticks(512 * timer_samples(m_udata.data[0x1C/2]), clock()), 0);
 			}
 			break;
 		case 0x1e: // SCIEB

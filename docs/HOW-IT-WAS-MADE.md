@@ -133,6 +133,13 @@ The AI wrote nearly all the code. A person decided what was right.
   own storage → the same here; the reverb is wide stereo again (correlation 0.65-0.85). The default music volume went
   from 20 to 50 to keep the same balance with the hits, and a saved 20 moves to 50 once. `VF2_SCSP_MADRS_MIRROR=1`
   brings MAME's behaviour back for comparisons.
+- **The music 2% fast** → MAME's SCSP timers fall due (255 - value) << prescale samples after the write, a sample
+  short of the chip's: a Sega Rally cabinet's music, on the same sound board, runs 2.18% slower than MAME's → a
+  timer counts from the sample after its write, ((255 - value) << prescale) + 1 samples, as VF3's. VF2's sound
+  driver's tick (timer A at 0xCE, re-armed in its handler) went from 49.87 samples (884 a second) to 50.87 (867):
+  every note 2.0% later, the pitches the same. Online play is untouched: a match holds the sound board and its state
+  never includes it (offline the main board's timeslices move with the sound board's timers, as before).
+  `VF2_SCSP_TIMER_MAME=1` brings MAME's period back for comparisons.
 - **Slow above 1x on Windows, even on fast PCs** → SDL's Direct3D 11 renderer makes a new staging texture each time a
   texture is locked, and the game drew its pictures straight into the locked texture → on Direct3D 11 the pictures
   are drawn in ordinary memory and copied into a texture mapped for writing only (`src/host/d3d11_map.cpp`). The

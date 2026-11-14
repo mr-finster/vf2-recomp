@@ -227,6 +227,7 @@ private:
 	void CheckPendingIRQ();
 	void MainCheckPendingIRQ(u16 irq_type);
 	void ResetInterrupts();
+	static u32 timer_samples(u16 reg);   // timers A-C: samples from a write of the register to the interrupt
 	void timerA_cb();
 	void timerB_cb();
 	void timerC_cb();
