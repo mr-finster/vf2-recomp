@@ -872,6 +872,9 @@ void model2a::save_state(std::vector<uint8_t> &out, std::vector<m2::StateSection
 	}
 	m2::StateWriter w(out, sections, true);
 	state(w);
+	// (the geometrizer's and rasterizer's state, the picture's alone, kept by the board under this save, for a load of it:
+	// model2_video::keep_geo. Only where there are pictures)
+	if (m_draw_3d || m_video->smooth()) m_video->keep_geo(uint64_t(m_snap_epoch) << 32 | m_snap_gen);
 	m_snap_gen++;   // (writes from now on are after this save)
 }
 
@@ -921,12 +924,21 @@ bool model2a::load_state(const uint8_t *p, size_t n)
 	m2::StateReader rd(p + fixed, n - fixed);
 	state(rd);
 	m_head = -1;
+	// the geometrizer and rasterizer as they were at the save (kept by this board), not as the frames since left them
+	if (since) m_video->restore_geo(uint64_t(h.epoch) << 32 | h.gen);
 	// smooth motion's record of the 3D's RAMs changing: the frames from the one restored on are to run again
 	if (!m_ram_log.empty()) {
 		auto it = m_ram_log.begin();
 		while (it != m_ram_log.end() && it->frame < m_frame_number) ++it;
 		m_ram_log.erase(it, m_ram_log.end());
 	}
+	// smooth motion's backdrop: the camera's heading and pitch the next frame scrolls by, from the RAM restored (they
+	// were the last frame run's: after a rollback, a frame of the timeline taken back's, the backdrop's place for the
+	// first frame run again wrong), and the frames from the one restored on recorded again
+	m_next_heading = u16(m_workram[0x3012] | m_workram[0x3013] << 8);
+	m_next_pitch = int16_t(m_workram[0x3010] | m_workram[0x3011] << 8);
+	for (auto &in : m_scroll_in) if (in.frame >= int64_t(m_frame_number)) in = scroll_input{};
+	for (auto &sm : m_scroll_hist) if (sm.frame >= int64_t(m_frame_number)) sm = scroll_sample{};
 	return rd.done();
 }
 

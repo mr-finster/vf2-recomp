@@ -404,6 +404,67 @@ void model2_video::power_on()
 	for (int p = 0; p < 4; p++) m_pictures[p].deferred = false;
 	m_deferred = false;
 	smooth_reset();
+	m_geo_keeps.clear();
+}
+
+// (the rasterizer's part: its registers as a list leaves them, as smooth_record_start keeps them, and its RAMs)
+struct model2_video::geo_keep
+{
+	uint64_t key = 0;
+	geo_state geo;
+	int16_t viewport[4]; bool widened; int16_t center[4][2]; u16 center_sel; u32 reverse; s32 z_adjust;
+	u32 cur_command; u32 command_buffer[32]; u32 command_index; u8 cur_window;
+	plane clip_plane[4][4];
+	u16 texture_ram[0x10000];
+	u8 log_ram[0x8000];
+};
+
+void model2_video::keep_geo(uint64_t key)
+{
+	constexpr size_t KEEPS = 40;   // (more saves than a rollback goes back over: the session saves each frame, 15 frames back at the most)
+	if (m_geo_keeps.size() < KEEPS) m_geo_keeps.push_back(std::make_unique<geo_keep>());
+	geo_keep &k = *m_geo_keeps[m_geo_keep_next++ % m_geo_keeps.size()];
+	const raster_state &ra = *m_raster;
+	k.key = key;
+	k.geo = *m_geo;
+	memcpy(k.viewport, ra.viewport, sizeof k.viewport);
+	k.widened = ra.widened;
+	memcpy(k.center, ra.center, sizeof k.center);
+	k.center_sel = ra.center_sel;
+	k.reverse = ra.reverse;
+	k.z_adjust = ra.z_adjust;
+	k.cur_command = ra.cur_command;
+	memcpy(k.command_buffer, ra.command_buffer, sizeof k.command_buffer);
+	k.command_index = ra.command_index;
+	k.cur_window = ra.cur_window;
+	for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) k.clip_plane[i][j] = ra.clip_plane[i][j];
+	memcpy(k.texture_ram, ra.texture_ram, sizeof k.texture_ram);
+	memcpy(k.log_ram, ra.log_ram, sizeof k.log_ram);
+}
+
+bool model2_video::restore_geo(uint64_t key)
+{
+	for (const auto &p : m_geo_keeps) {
+		if (p->key != key) continue;
+		const geo_keep &k = *p;
+		raster_state &ra = *m_raster;
+		*m_geo = k.geo;   // (its raster, polygon ROM and owner the same as the live one's)
+		memcpy(ra.viewport, k.viewport, sizeof k.viewport);
+		ra.widened = k.widened;
+		memcpy(ra.center, k.center, sizeof k.center);
+		ra.center_sel = k.center_sel;
+		ra.reverse = k.reverse;
+		ra.z_adjust = k.z_adjust;
+		ra.cur_command = k.cur_command;
+		memcpy(ra.command_buffer, k.command_buffer, sizeof k.command_buffer);
+		ra.command_index = k.command_index;
+		ra.cur_window = k.cur_window;
+		for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) ra.clip_plane[i][j] = k.clip_plane[i][j];
+		memcpy(ra.texture_ram, k.texture_ram, sizeof k.texture_ram);
+		memcpy(ra.log_ram, k.log_ram, sizeof k.log_ram);
+		return true;
+	}
+	return false;
 }
 
 // What screen_update draws between the tile layers' two passes, worked out when MAME does it

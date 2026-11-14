@@ -165,6 +165,14 @@ public:
 	void set_regs(int16_t xoffset, int16_t yoffset, u8 zclip);
 	// A cold start's: the geometrizer and rasterizer as made, nothing kept from before (the board's power_on)
 	void power_on();
+	// A rollback's: what the geometrizer and rasterizer carry from one frame's list to the next (the matrices, lights,
+	// texture parameters, polygon RAMs, the rasterizer's registers, its texture header and log RAMs), which a save
+	// state leaves out (the picture's alone). keep_geo at a save, under its key; restore_geo at a load of that save: the
+	// frames run again set up from where they were, not from where the timeline taken back left them (a polygon set
+	// up from another frame's texture header: its texture, its transparency, its colours wrong until the game set it
+	// again). False: none kept under the key.
+	void keep_geo(uint64_t key);
+	bool restore_geo(uint64_t key);
 	// The 3D drawn at `scale` times the arcade's 496 x 384 (1: MAME's picture). Only where the
 	// polygons fall on the screen is scaled: each pixel's colour comes from the same texels, at
 	// its own u, v and z, by the same code. The last polygons drawn are drawn again at once.
@@ -346,6 +354,9 @@ private:
 	bool m_gradual = false;                            // the delay set without a cut: smooth moments from the newest frame back
 	u64 m_smooth_floor = 0;                            // no blending from a frame before this one
 	u64 m_parsed_frame = 0, m_pic_frame[4] = {};       // the last list's frame; each picture's list's
+	struct geo_keep;
+	std::vector<std::unique_ptr<geo_keep>> m_geo_keeps;   // keep_geo's, the last few saves'
+	size_t m_geo_keep_next = 0;
 	void smooth_record_start();
 	void smooth_record_end();
 	void smooth_pair(const smooth_rec &a, const smooth_rec &b);
