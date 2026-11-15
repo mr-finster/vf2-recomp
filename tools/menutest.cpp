@@ -327,12 +327,13 @@ void pages(game_menu &gm, int w, int h)
 	page_shots(gm, w, h, "pages_cheats.png", P_CHEATS_PAGE, {
 		{ C_FIGHTERS, "", "", true }, { C_P1_FIGHTER, C_FIGHTER_HELP, FIGHTER_SEED }, { FIGHTER_SEED, C_SEED_HELP, SEED_PENDING, false, true },
 		{ C_P2_FIGHTER, C_FIGHTER_HELP, FIGHTER_RANDOM }, { C_RANDOM_CPU, C_RANDOM_CPU_HELP, on }, { C_FIGHT_HEAD, "", "", true },
-		{ C_FIGHT_SWITCHES, listed({ C_INFINITE, C_ONE_HIT, C_NO_TIME, C_RING }), on }, { C_SECRET_HEAD, "", "", true },
+		{ C_FIGHT_SWITCHES, listed({ C_INFINITE, C_ONE_HIT, C_NO_TIME, C_RING, C_BIRD }), on }, { C_SECRET_HEAD, "", "", true },
 		{ C_SECRET, C_SECRET_HELP, "KOJAC" } });
 	page_shots(gm, w, h, "pages_fight.png", C_FIGHT_SWITCHES, {   // (Cheats > Fight switches: each value)
 		{ C_INFINITE, C_INFINITE_HELP, C_BOTH }, { C_INFINITE, C_INFINITE_HELP, P_PLAYER_1 }, { C_INFINITE, C_INFINITE_HELP, P_PLAYER_2 },
 		{ C_ONE_HIT, C_ONE_HIT_HELP, on }, { C_NO_TIME, C_NO_TIME_HELP, on }, { C_RING, C_RING_HELP, C_RING_NORMAL },
-		{ C_RING, C_RING_HELP, C_RING_TINY }, { C_RING, C_RING_HELP, C_RING_HUGE } });
+		{ C_RING, C_RING_HELP, C_RING_TINY }, { C_RING, C_RING_HELP, C_RING_HUGE }, { C_BIRD, C_BIRD_HELP, C_BIRD_CLASSIC },
+		{ C_BIRD, C_BIRD_HELP, C_BIRD_EASY }, { C_BIRD, C_BIRD_HELP, C_BIRD_ALWAYS } });
 	page_shots(gm, w, h, "pages_cheats_more.png", P_CHEATS_PAGE, {   // (a seed typed, and a mistake under it; Normal; Off)
 		{ C_P1_FIGHTER, C_FIGHTER_HELP, FIGHTER_NORMAL }, { FIGHTER_SEED, C_SEED_HELP, "WWWWWWWWWWWW_", false, true },
 		{ C_SECRET, C_SECRET_HELP, off } });

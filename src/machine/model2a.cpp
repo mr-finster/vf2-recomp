@@ -686,6 +686,7 @@ void model2a::power_on()
 	render_wait();
 	std::fill(m_ram200.begin(), m_ram200.end(), 0);
 	std::fill(m_workram.begin(), m_workram.end(), 0);
+	m_ring_own_kept = false;   // (fight_cheats: the ring's width the game sets, found again from the next match)
 	std::fill(m_bufferram.begin(), m_bufferram.end(), 0);
 	std::fill(m_backup.begin(), m_backup.end(), 0xff);
 	std::fill(m_cpuctl.begin(), m_cpuctl.end(), 0);

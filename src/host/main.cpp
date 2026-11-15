@@ -3880,8 +3880,8 @@ int main(int argc, char **argv)
 			[&] { return on_off(cfg.random_cpu); },
 			[&](int) { cfg.random_cpu = !cfg.random_cpu; cfg_dirty = true; } });   // (applied as the game restarts)
 		heading(tr::C_FIGHT_HEAD);
-		p.items.push_back({ tr::C_FIGHT_SWITCHES, listed({ tr::C_INFINITE, tr::C_ONE_HIT, tr::C_NO_TIME, tr::C_RING }),
-			[&] { return on_off(cfg.infinite_energy || cfg.one_hit_ko || cfg.no_time_limit || cfg.ring_cheat); },
+		p.items.push_back({ tr::C_FIGHT_SWITCHES, listed({ tr::C_INFINITE, tr::C_ONE_HIT, tr::C_NO_TIME, tr::C_RING, tr::C_BIRD }),
+			[&] { return on_off(cfg.infinite_energy || cfg.one_hit_ko || cfg.no_time_limit || cfg.ring_cheat || cfg.jacky_bird); },
 			{}, [&] { menu.push(fight_page()); } });
 		heading(tr::C_SECRET_HEAD);
 		static const int SECRET[] = { 0, 9, 11, 12 };
