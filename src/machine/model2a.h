@@ -368,7 +368,9 @@ public:
 	// of a fight (game_mode() 9). infinite: bit 0 player 1's energy, bit 1 player 2's, kept full; one_hit: every other
 	// fighter's energy down to 1; no_time: the round's clock held at its start; ring: 0 the game's (put back if a cheat's
 	// was on), 1 tiny (650), 2 huge (5000: no ring outs), the width the round checks ring outs against. See model2a.cpp's fight_cheats
-	void fight_cheats(int infinite, bool one_hit, bool no_time, int ring);
+	// bird: Jacky's stage's bird (the arcade's code, both players holding Start, Down and P+K+G): 0 as the arcade, 1 one
+	// player's code calls it, 2 it's called as each fight on the stage starts
+	void fight_cheats(int infinite, bool one_hit, bool no_time, int ring, int bird = 0);
 	bool debug_mode() const { return m_debug_mode; }
 	// Cheats' random fighters (random_fighter.cpp). Each player's fighter: "" the select as ever, "*" a random
 	// fighter, a new one each game, or a name's (as on its energy bar: a seed's, the same fighter on any machine).

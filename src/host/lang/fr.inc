@@ -252,6 +252,11 @@ T(C_RING_HELP, "Minuscule fait la moitié du plus petit ring\xC2\xA0: des ring o
 T(C_RING_NORMAL, "Normal")
 T(C_RING_TINY, "Minuscule")
 T(C_RING_HUGE, "Énorme")
+T(C_BIRD, "L'oiseau de Jacky")
+T(C_BIRD_HELP, "L'oiseau du stage de Jacky. Classique\xC2\xA0: les deux joueurs maintiennent Start, bas et tous les boutons, comme en arcade. Facile\xC2\xA0: un seul joueur suffit. Toujours\xC2\xA0: il vient à chaque combat là-bas. Hors ligne seulement\xC2\xA0: en ligne, le classique.")
+T(C_BIRD_CLASSIC, "Classique")
+T(C_BIRD_EASY, "Facile")
+T(C_BIRD_ALWAYS, "Toujours")
 T(C_SECRET, "Personnage secret")
 T(C_SECRET_HELP, "Met un combattant que l'arcade n'a jamais laissé choisir à la place d'Akira sur la sélection, pour les deux joueurs\xC2\xA0: Dural, le boss final, ou MUE et KOJAC, deux combattants inutilisés restés dans le jeu. MUE et KOJAC sont désactivés tant que le combattant d'un joueur est Aléatoire ou Graine.")
 

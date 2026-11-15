@@ -252,6 +252,11 @@ T(C_RING_HELP, "Minuscolo è metà del ring più piccolo: ring out ovunque. Enor
 T(C_RING_NORMAL, "Normale")
 T(C_RING_TINY, "Minuscolo")
 T(C_RING_HUGE, "Enorme")
+T(C_BIRD, "L'uccello di Jacky")
+T(C_BIRD_HELP, "L'uccello dello stage di Jacky. Classico: entrambi i giocatori tengono Start, giù e tutti i pulsanti, come in sala giochi. Facile: basta un giocatore. Sempre: arriva a ogni incontro lì. Solo offline: online, il classico.")
+T(C_BIRD_CLASSIC, "Classico")
+T(C_BIRD_EASY, "Facile")
+T(C_BIRD_ALWAYS, "Sempre")
 T(C_SECRET, "Personaggio segreto")
 T(C_SECRET_HELP, "Mette un lottatore che l'arcade non ti ha mai lasciato scegliere al posto di Akira nella selezione, per entrambi i giocatori: Dural, il boss finale, o MUE e KOJAC, due lottatori inutilizzati rimasti nel gioco. MUE e KOJAC sono spenti finché il lottatore di un giocatore è Casuale o Seme.")
 

@@ -252,6 +252,11 @@ T(C_RING_HELP, "Diminuto es la mitad del ring más pequeño: ring outs por todas
 T(C_RING_NORMAL, "Normal")
 T(C_RING_TINY, "Diminuto")
 T(C_RING_HUGE, "Enorme")
+T(C_BIRD, "El pájaro de Jacky")
+T(C_BIRD_HELP, "El pájaro del escenario de Jacky. Clásico: los dos jugadores mantienen Start, abajo y todos los botones, como en la recreativa. Fácil: basta un jugador. Siempre: aparece en cada combate allí. Solo sin conexión: online, el clásico.")
+T(C_BIRD_CLASSIC, "Clásico")
+T(C_BIRD_EASY, "Fácil")
+T(C_BIRD_ALWAYS, "Siempre")
 T(C_SECRET, "Personaje secreto")
 T(C_SECRET_HELP, "Pone un luchador que el arcade nunca dejó elegir en el hueco de Akira en la selección, para los dos jugadores: Dural, la jefa final, o MUE y KOJAC, dos luchadores sin usar que quedaron en el juego. MUE y KOJAC se desactivan mientras el luchador de un jugador sea Aleatorio o Semilla.")
 

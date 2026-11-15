@@ -252,6 +252,11 @@ T(C_RING_HELP, "Malutki to połowa najmniejszego ringu: ring outy wszędzie. Ogr
 T(C_RING_NORMAL, "Normalny")
 T(C_RING_TINY, "Malutki")
 T(C_RING_HUGE, "Ogromny")
+T(C_BIRD, "Ptak Jacky'ego")
+T(C_BIRD_HELP, "Ptak na arenie Jacky'ego. Klasycznie: obaj gracze trzymają Start, dół i wszystkie przyciski, jak na automacie. Łatwo: wystarczy jeden gracz. Zawsze: przylatuje w każdej walce tam. Tylko offline: online klasycznie.")
+T(C_BIRD_CLASSIC, "Klasycznie")
+T(C_BIRD_EASY, "Łatwo")
+T(C_BIRD_ALWAYS, "Zawsze")
 T(C_SECRET, "Tajna postać")
 T(C_SECRET_HELP, "Stawia postać, której automat nigdy nie pozwalał wybrać, na miejscu Akiry w wyborze postaci, dla obu graczy: Dural, ostatnią przeciwniczkę, albo MUE i KOJAC, dwie nieużywane postacie, które zostały w grze. MUE i KOJAC są wyłączone, gdy postać któregoś gracza to Losowa lub Ziarno.")
 

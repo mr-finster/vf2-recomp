@@ -259,6 +259,11 @@ T(C_RING_HELP, "Tiny is half the smallest ring: ring outs everywhere. Huge is fa
 T(C_RING_NORMAL, "Normal")   // (the Ring cheat's values)
 T(C_RING_TINY, "Tiny")
 T(C_RING_HUGE, "Huge")
+T(C_BIRD, "Jacky's bird")   // (Cheats > Fight switches: the bird on Jacky's stage, the arcade's easter egg)
+T(C_BIRD_HELP, "The bird on Jacky's stage. Classic: both players hold Start, Down and all buttons, as the arcade. Easy: one player is enough. Always: it flies in at every fight there. Offline only: online, the classic way.")
+T(C_BIRD_CLASSIC, "Classic")
+T(C_BIRD_EASY, "Easy")
+T(C_BIRD_ALWAYS, "Always")
 T(C_SECRET, "Secret character")
 T(C_SECRET_HELP, "Puts a fighter the arcade never let you pick in Akira's spot on the player select, for either player: Dural, the final boss, or MUE and KOJAC, two unused fighters left in the game. MUE and KOJAC are off while a player's fighter is Random or Seed.")   // (its values: Off, then the fighters' names as they are)
 

@@ -252,6 +252,11 @@ T(C_RING_HELP, "Minúsculo é metade do menor ringue: ring out em todo lugar. En
 T(C_RING_NORMAL, "Normal")
 T(C_RING_TINY, "Minúsculo")
 T(C_RING_HUGE, "Enorme")
+T(C_BIRD, "O pássaro do Jacky")
+T(C_BIRD_HELP, "O pássaro do cenário do Jacky. Clássico: os dois jogadores seguram Start, baixo e todos os botões, como no fliperama. Fácil: basta um jogador. Sempre: aparece em toda luta lá. Só offline: online, o clássico.")
+T(C_BIRD_CLASSIC, "Clássico")
+T(C_BIRD_EASY, "Fácil")
+T(C_BIRD_ALWAYS, "Sempre")
 T(C_SECRET, "Personagem secreto")
 T(C_SECRET_HELP, "Põe um lutador que o arcade nunca deixou escolher no lugar do Akira na seleção, para os dois jogadores: Dural, a chefe final, ou MUE e KOJAC, dois lutadores não usados que ficaram no jogo. MUE e KOJAC ficam desligados enquanto o lutador de um jogador for Aleatório ou Semente.")
 

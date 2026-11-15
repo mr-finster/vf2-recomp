@@ -336,7 +336,9 @@ fullscreen (`fullscreen_window = 1` gives them the borderless window).
   match): **Infinite energy** (player 1, player 2 or both: hits land but never knock out), **One-hit KO** (every
   other fighter on their last bit of energy), **No time limit** (the clock stays at 30"00: a round ends by knockout
   or ring out) and **Ring** (Tiny, half the smallest ring: ring outs everywhere; Huge, far wider than the stage: no
-  ring outs).
+  ring outs). **Jacky's bird**, the arcade's easter egg on Jacky's stage (the bird comes down off the rock and flies
+  round the fighters): **Classic** as the arcade (both players hold Start, Down, Punch, Kick and Guard), **Easy**
+  (one player is enough) or **Always** (it comes at every fight there); online it's always the classic code.
 - **Controls:** each player's pad, keys and buttons (a key for two or three buttons at once: Button combinations, on
   the keys' page).
 

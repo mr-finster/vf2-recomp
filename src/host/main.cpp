@@ -190,6 +190,8 @@
 //                        -1@300 an axis to one end (each 8 passes), q@900 quit (a run that saves), p@100 plugged
 //                        in then (not at the start); "1": no presses. Player 1's controls logged as they change
 //   VF2_TEST_RAM_LOG=f   the game's work RAM hashed every 30 game frames to f (a display setting changes no frame)
+//   VF2_TEST_RAM_DUMP=d  the game's work RAM to d/ram_<frame>.bin every 10 game frames (tests: finding a place)
+//   VF2_TEST_POKE=a=v@f  the work RAM's byte a (hex, from 0x500000) set to v (hex) at game frame f (tests)
 //   VF2_TEST_CHIME_WAV=f the match found chime's sound (the game's coin, made at the start) to f, a .wav
 #include "version.h"      // VF2_VERSION, VF2_DATE (made by the Makefile from git)
 #include "../machine/model2a.h"
@@ -905,6 +907,7 @@ struct settings
 	int infinite_energy = 0;        // bit 0 player 1, bit 1 player 2
 	bool one_hit_ko = false, no_time_limit = false;
 	int ring_cheat = 0;             // 0 the game's (Arcade settings' Ring size), 1 tiny (650), 2 huge (5000: no ring outs)
+	int jacky_bird = 0;             // Jacky's stage's bird: 0 the arcade's code (both players), 1 one player's, 2 always
 	bool debug_mode = false;        // Arcade settings: Debug mode, the arcade's own (model2a::set_debug_mode), offline only
 	// settings.ini's version: 2 from v0.1.2 (none before), 3 from the phone's fullscreen (this
 	// fork) or from the GPU's failures forgotten once (upstream v0.1.15), 4 the merged build. Its
@@ -1060,6 +1063,7 @@ struct settings
 		flag("one_hit_ko", one_hit_ko);
 		flag("no_time_limit", no_time_limit);
 		num("ring_cheat", ring_cheat, 0, 2);
+		num("jacky_bird", jacky_bird, 0, 2);
 		flag("debug_mode", debug_mode);
 		num("stage_select", stage, -1, vf2net::STAGES);
 		if (stage == 0) stage = -1;   // (the versus order's first: the game's own)
@@ -1146,6 +1150,7 @@ struct settings
 		if (one_hit_ko) fprintf(f, "one_hit_ko = 1\n");
 		if (no_time_limit) fprintf(f, "no_time_limit = 1\n");
 		if (ring_cheat) fprintf(f, "ring_cheat = %d\n", ring_cheat);
+		if (jacky_bird) fprintf(f, "jacky_bird = %d\n", jacky_bird);
 		if (debug_mode) fprintf(f, "debug_mode = 1\n");
 		if (stage >= 0) fprintf(f, "stage_select = %d\n", stage);
 		fprintf(f, "crt_colours = %d\nbrightness = %d\ngamma = %d\n", crt_colours, brightness, gamma);
@@ -3790,6 +3795,10 @@ int main(int argc, char **argv)
 		p.items.push_back({ tr::C_RING, tr::C_RING_HELP,
 			[&] { return std::string(RING[cfg.ring_cheat]); },
 			[&](int d) { cfg.ring_cheat = wrap(cfg.ring_cheat + d, 3); cfg_dirty = true; } });
+		static const tr::text BIRD[] = { tr::C_BIRD_CLASSIC, tr::C_BIRD_EASY, tr::C_BIRD_ALWAYS };
+		p.items.push_back({ tr::C_BIRD, tr::C_BIRD_HELP,
+			[&] { return std::string(BIRD[cfg.jacky_bird]); },
+			[&](int d) { cfg.jacky_bird = wrap(cfg.jacky_bird + d, 3); cfg_dirty = true; } });
 		p.items.push_back(back_item());
 		return p;
 	};
@@ -5372,7 +5381,7 @@ int main(int argc, char **argv)
 			// Cheats > Fight switches, into the game's RAM for the next frame: offline only (this loop isn't a match's,
 			// and never on a match's board, as Debug mode)
 			if (!g_match_board && !online.playing())   // (all off too: Ring back to Normal puts the game's width back)
-				m.fight_cheats(cfg.infinite_energy, cfg.one_hit_ko, cfg.no_time_limit, cfg.ring_cheat);
+				m.fight_cheats(cfg.infinite_energy, cfg.one_hit_ko, cfg.no_time_limit, cfg.ring_cheat, cfg.jacky_bird);
 			auto [shot_first, shot_last] = script.shots.equal_range(game_frame);
 			for (auto it = shot_first; it != shot_last; ++it)
 				write_png(("build/host_" + it->second + ".png").c_str(), picture->data(), picture->width(), picture->height());
@@ -5387,6 +5396,13 @@ int main(int argc, char **argv)
 			game_frame++;
 			// (tests: the game's work RAM hashed every 30 frames, with the polygon counts it read, VF2_TEST_RAM_LOG=file: the game the same whatever the
 			// display's settings, Display > HUD's, V-Sync's, the frame limit's)
+			if (static const char *pk = getenv("VF2_TEST_POKE"); pk) {   // (tests: addr=byte@frame, a work RAM byte written once)
+				unsigned a = 0, v = 0; unsigned long long at = 0;
+				if (sscanf(pk, "%x=%x@%llu", &a, &v, &at) == 3 && game_frame == at && a < m.workram().size()) const_cast<std::vector<u8> &>(m.workram())[a] = u8(v);
+			}
+			if (static const char *rd = getenv("VF2_TEST_RAM_DUMP"); rd) {   // (tests: the work RAM to dir/ram_<frame>.bin every 10 frames)
+				if (game_frame % 10 == 0) if (FILE *f = fopen((std::string(rd) + "/ram_" + std::to_string(game_frame) + ".bin").c_str(), "wb")) { fwrite(m.workram().data(), 1, m.workram().size(), f); fclose(f); }
+			}
 			if (static FILE *rl = getenv("VF2_TEST_RAM_LOG") ? fopen(getenv("VF2_TEST_RAM_LOG"), "w") : nullptr; rl && game_frame % 30 == 0) {
 				fprintf(rl, "%llu %016llx %016llx\n", (unsigned long long)game_frame, (unsigned long long)fnv(m.workram().data(), m.workram().size()),
 					(unsigned long long)m.video().m_polygon_count_sum);   // (and every polygon count the game read from the 3D so far)

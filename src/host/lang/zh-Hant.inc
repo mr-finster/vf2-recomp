@@ -252,6 +252,11 @@ T(C_RING_HELP, "極小：最小擂台的一半，到處都會出界。巨大：�
 T(C_RING_NORMAL, "普通")
 T(C_RING_TINY, "極小")
 T(C_RING_HUGE, "巨大")
+T(C_BIRD, "傑克的鳥")
+T(C_BIRD_HELP, "傑克場地上的鳥。經典：雙方玩家按住開始、下和所有按鈕（同街機）。簡單：一名玩家即可。總是：那裡的每場對戰都會來。僅限離線：連線時為經典。")
+T(C_BIRD_CLASSIC, "經典")
+T(C_BIRD_EASY, "簡單")
+T(C_BIRD_ALWAYS, "總是")
 T(C_SECRET, "隱藏角色")
 T(C_SECRET_HELP, "把街機從不讓你選的角色放到選人畫面 Akira 的位置，雙方都能選：最終首領 Dural，或遊戲中留下的兩名未使用角色 MUE 和 KOJAC。玩家的角色為隨機或種子時，MUE 和 KOJAC 關閉。")
 

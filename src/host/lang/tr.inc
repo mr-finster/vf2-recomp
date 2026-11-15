@@ -253,6 +253,11 @@ T(C_RING_HELP, "Minicik, en küçük ringin yarısıdır: her yerde ring dışı
 T(C_RING_NORMAL, "Normal")
 T(C_RING_TINY, "Minicik")
 T(C_RING_HUGE, "Dev")
+T(C_BIRD, "Jacky'nin kuşu")
+T(C_BIRD_HELP, "Jacky'nin sahnesindeki kuş. Klasik: iki oyuncu da Start, aşağı ve tüm tuşları basılı tutar, salondaki gibi. Kolay: tek oyuncu yeter. Her zaman: oradaki her dövüşte gelir. Yalnızca çevrimdışı: çevrimiçide klasik.")
+T(C_BIRD_CLASSIC, "Klasik")
+T(C_BIRD_EASY, "Kolay")
+T(C_BIRD_ALWAYS, "Her zaman")
 T(C_SECRET, "Gizli karakter")
 T(C_SECRET_HELP, "Salon makinesinin seçtirmediği bir dövüşçüyü, oyuncu seçiminde Akira'nın yerine koyar, iki oyuncu için de: son boss Dural ya da oyunda kalmış iki kullanılmamış dövüşçü MUE ve KOJAC. Bir oyuncunun dövüşçüsü Rastgele ya da Tohum iken MUE ve KOJAC kapalıdır.")
 

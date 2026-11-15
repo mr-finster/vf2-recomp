@@ -390,8 +390,18 @@ bool model2a::set_ring_width(int width)
 //   the ring's half width at 0x50a00c (a float, in hundreds: 8.0 for 1600), set from 0x50a700 (versus) or 0x50a704
 //   (against the computer) as a match starts (0xcf50) and from a replay's record as it plays (0xe128): the width the
 //   ring outs are checked against.
-void model2a::fight_cheats(int infinite, bool one_hit, bool no_time, int ring)
+//   Jacky's stage's bird: called when the word at 0x515d40 is 2 (the arcade's code sets it: both players holding Start,
+//   Down and P+K+G; found by the work RAM with and without the code, and checked by writing it alone: the bird comes
+//   down from the rock and flies round the fighters). The players' inputs as the game reads them at 0x500700 (the
+//   starts, 0x10 1P and 0x20 2P), 0x500701 (1P: 0x10 down, 0x07 P+K+G) and 0x500702 (2P); the stage at 0x500064
+//   (Jacky's, 7).
+void model2a::fight_cheats(int infinite, bool one_hit, bool no_time, int ring, int bird)
 {
+	if (bird && game_mode() == 9 && m_workram.size() > 0x15d44 && m_workram[0x64] == 7 && m_workram[0x15d40] == 0) {
+		const u8 st = m_workram[0x700], p1 = m_workram[0x701], p2 = m_workram[0x702];
+		const bool one = ((st & 0x10) && (p1 & 0x17) == 0x17) || ((st & 0x20) && (p2 & 0x17) == 0x17);
+		if (bird == 2 || one) m_workram[0x15d40] = 2;
+	}
 	if (game_mode() != 9 || (!infinite && !one_hit && !no_time && !ring && !m_ring_own_kept)) return;
 	auto at = [&](u32 a, u32 n) -> u8 * { return a >= 0x500000 && a + n - 0x500000 <= m_workram.size() ? &m_workram[a - 0x500000] : nullptr; };
 	auto rd16 = [&](u32 a) { const u8 *p = at(a, 2); return p ? int16_t(p[0] | p[1] << 8) : int16_t(0); };

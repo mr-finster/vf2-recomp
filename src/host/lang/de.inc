@@ -252,6 +252,11 @@ T(C_RING_HELP, "Winzig ist der halbe kleinste Ring: Ring-outs überall. Riesig i
 T(C_RING_NORMAL, "Normal")
 T(C_RING_TINY, "Winzig")
 T(C_RING_HUGE, "Riesig")
+T(C_BIRD, "Jackys Vogel")
+T(C_BIRD_HELP, "Der Vogel auf Jackys Stage. Klassisch: Beide Spieler halten Start, Unten und alle Knöpfe, wie am Automaten. Leicht: Ein Spieler reicht. Immer: Er kommt in jedem Kampf dort. Nur offline: online klassisch.")
+T(C_BIRD_CLASSIC, "Klassisch")
+T(C_BIRD_EASY, "Leicht")
+T(C_BIRD_ALWAYS, "Immer")
 T(C_SECRET, "Geheime Figur")
 T(C_SECRET_HELP, "Setzt einen Kämpfer, den der Automat dich nie wählen ließ, auf Akiras Platz in der Spielerauswahl, für beide Spieler: Dural, den Endgegner, oder MUE und KOJAC, zwei unbenutzte Kämpfer, die im Spiel geblieben sind. MUE und KOJAC sind aus, solange der Kämpfer eines Spielers Zufall oder Seed ist.")
 
