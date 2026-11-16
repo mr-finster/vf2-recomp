@@ -676,7 +676,7 @@ void model2a::reset()
 	m_link_mode_edge = 0;
 	m_link_t0 = 0;
 	m_link_delivered = m_link_in_step = false;
-	if (!m_link_fast) timer_adjust(T_UART, AS_PER_SEC / 1000000);
+	if (!m_link_fast && !m_sound_only) timer_adjust(T_UART, AS_PER_SEC / 1000000);   // (a sound board alone: its bytes' own, sound_bytes)
 	irq_update();
 	set_input_line(L_TGP_HALT, ASSERT_LINE);   // model2_tgp_state: the TGP waits for its program
 }
@@ -1160,11 +1160,6 @@ void model2a::apply_suspend_changes()
 void model2a::timeslice()
 {
 	int head = timer_head();
-	if (m_sound_only && !m_snd_queue.empty() && m_base >= m_snd_next) {   // (a byte for the sound board, as the link's)
-		m_scsp->midi_in_byte(m_snd_queue.front());
-		m_snd_queue.pop_front();
-		m_snd_next = m_base + AS_PER_SEC / 1000000 * 320;
-	}
 	while (m_base < m_timer[head].expire) {
 		atime target = m_timer[head].expire;   // (MAME's 1/60 s quantum never comes first here)
 		if (m_suspend_changes) apply_suspend_changes();
@@ -1233,7 +1228,11 @@ void model2a::timer_fired(int id)
 	if (id >= T_SCSP0 && id < int(T_SCSP0) + int(scsp_device::N_TIMERS)) { m_scsp->timer_fired(id - T_SCSP0); return; }
 	switch (id) {
 	case T_SOUND_UPDATE: sound_update_tick(); break;
-	case T_UART: if (m_link_fast) link_event(); else uart_clock_tick(); break;
+	case T_UART:
+		if (m_sound_only) snd_link_byte();
+		else if (m_link_fast) link_event();
+		else uart_clock_tick();
+		break;
 	case T_VBLANK_START: {   // screen_vblank(1)
 		timer_adjust(T_VBLANK_START, atime(CYCLES_PER_FRAME) * m_sched[CPU_I960].period);
 		timer_adjust(T_VBLANK_END, atime(VBLANK_CYCLES) * m_sched[CPU_I960].period);
@@ -3571,6 +3570,34 @@ void model2a::take_audio()
 }
 
 void model2a::uart_txd(int state) { m_scsp->midi_in(state); }
+
+// A sound board alone (set_sound_only): the bytes it's given reach the SCSP's MIDI input a MIDI byte's time apart
+// (320 us), each at its own moment, on T_UART (no UART runs here), as the byte link delivers them on the game's
+// board. (They were taken only as a slice of the 68000's time began, so always at the instant another timer fired,
+// mostly the SCSP's timer A, the sound driver's tick. With the timers' new period (8ccab24) their interrupts met so
+// that the driver read the empty MIDI input thousands of times (3,007 in 52 s against 2), the last byte again each
+// time: its commands garbled, a match's voices, announcer and effects lost or cut short, sometimes its music)
+void model2a::sound_bytes(const uint8_t *b, size_t n)
+{
+	if (!n) return;
+	const bool idle = m_snd_queue.empty();
+	m_snd_queue.insert(m_snd_queue.end(), b, b + n);
+	if (m_sound_only && idle && !m_timer[T_UART].enabled) {
+		const atime now = time();
+		timer_adjust(T_UART, m_snd_next > now ? m_snd_next - now : 0);
+	}
+}
+
+void model2a::snd_link_byte()
+{
+	if (m_snd_queue.empty()) { timer_disable(T_UART); return; }
+	m_scsp->midi_in_byte(m_snd_queue.front());
+	m_snd_queue.pop_front();
+	const atime gap = AS_PER_SEC / 1000000 * 320;
+	m_snd_next = time() + gap;
+	if (m_snd_queue.empty()) timer_disable(T_UART);
+	else timer_adjust(T_UART, gap);
+}
 
 uint64_t model2a::snd_cycles() const
 {

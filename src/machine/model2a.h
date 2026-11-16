@@ -450,7 +450,7 @@ public:
 	// never do), and the bytes for the sound board come from sound_bytes, a MIDI byte's time apart (320 us), as
 	// the UART would send them. From the next reset() (with set_sound(true)).
 	void set_sound_only(bool on) { m_sound_only = on; }
-	void sound_bytes(const uint8_t *b, size_t n) { m_snd_queue.insert(m_snd_queue.end(), b, b + n); }
+	void sound_bytes(const uint8_t *b, size_t n);
 	size_t sound_bytes_waiting() const { return m_snd_queue.size(); }
 	// The link to the sound board a byte at a time (for the host): each byte the UART sends reaches
 	// the sound board's MIDI input when its stop bit would be read there, and the UART's status
@@ -623,6 +623,7 @@ private:
 	bool m_sound_only = false;
 	std::deque<uint8_t> m_snd_queue;   // (sound_only: the bytes to go to the sound board)
 	atime m_snd_next = 0;              // (and when the next may)
+	void snd_link_byte();              // (T_UART on a sound board alone: the next of them in)
 	float m_volume[2] = { 1, 1 };
 	float m_level = 1, m_limit = 1;   // set_level's gain; the limiter's gain now
 	bool m_backdrop_smooth = false;
