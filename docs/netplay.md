@@ -75,9 +75,12 @@ What's VF2's own:
 - **A late watcher runs the match from its start**, unseen: no watcher's state (a checkpoint) is ever handed to another,
   as one could be forged to the players' hash.
 - **The WebSocket** (`src/net/http`'s `Socket`, VF3's): WinHTTP's own on Windows; on macOS and Linux the system's
-  libcurl connected only, the upgrade and the frames written in `http.cpp`. Android has no system libcurl: the
-  WebSockets and the HTTPS requests alike say so and nothing is sent or watched there (it compiles: only `dlfcn.h`
-  and `poll.h`, both bionic's). The lobby's frames are read strictly (`FrameReader`: a masked frame, a reserved bit
+  libcurl connected only, the upgrade and the frames written in `http.cpp`. Android ships no libcurl, so the APK
+  carries its own (`tools/android/deps.sh` pins curl and mbedTLS, `android/app/CMakeLists.txt` builds them and points
+  libcurl's default CA path at Android's own trust store, `/system/etc/security/cacerts`): the same `http.cpp` then
+  runs unchanged on the phone. A build with no lobby address (`.lobby-url`/`VF_LOBBY_URL`) sends nothing and watches
+  nothing, and Online says so.
+  The lobby's frames are read strictly (`FrameReader`: a masked frame, a reserved bit
   or opcode, a control frame fragmented or over 125, a stray continuation, anything over 32 MB end the connection);
   `wsfuzz` (ASan/UBSan) reads valid streams cut every way back whole, refuses each forbidden case and takes random
   and spoilt streams without a fault.

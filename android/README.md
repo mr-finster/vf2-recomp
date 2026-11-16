@@ -13,10 +13,11 @@ This file is the part a player needs: build it, install it, get a ROM in.
 - A Vulkan driver (essentially every phone since 2017 has one): the 3D can also run on the CPU,
   and the game falls back to it by itself if the GPU's picture differs or its driver fails.
 - Your own `vf2.zip`.
-- One permission, `INTERNET`, for Online's **Play by address** (UDP sockets). It is Android's
-  normal permission (no prompt). The app asks for nothing else and keeps everything in its own
-  folders. The lobby and its room codes need libcurl, which Android doesn't ship, so this build
-  has no lobby address in it: Online plays by address (the same network, or a VPN).
+- One permission, `INTERNET`, for Online's **Play by address** (UDP sockets) and the lobby's HTTPS.
+  It is Android's normal permission (no prompt). The app asks for nothing else and keeps everything
+  in its own folders. The lobby needs libcurl, which Android ships none of, so the APK carries its own (with
+  mbedTLS; HTTPS verifies against Android's own trust store); its address is given at build time, and without one
+  Online plays by address only (the same network, or a VPN).
 
 ## Build
 
@@ -27,11 +28,11 @@ ANDROID_HOME=~/Android/Sdk ./gradlew :app:assembleDebug      # app/build/outputs
 
 It needs a JDK 17, the Android SDK (`ANDROID_HOME`/`ANDROID_SDK_ROOT`, or a `local.properties` with
 `sdk.dir=`), the SDK's CMake 3.22.1 and NDK 30.0.16248370 (both named in `app/build.gradle`).
-SDL3 and FreeType are not in the repository: the build itself runs `tools/android/deps.sh`, which
-fetches their pinned release tarballs, checks them against the SHA-256 that `tools/mac/deps.sh`
-pins for the Mac and Deck builds, and unpacks them into `build/deps/android/`. Nothing else is to be
-installed first, and the tarballs are cached: a first build takes a couple of minutes, later ones
-are seconds.
+SDL3, FreeType, mbedTLS and curl are not in the repository: the build itself runs
+`tools/android/deps.sh`, which fetches their pinned release tarballs, checks the SHA-256 (SDL3's and
+FreeType's the same that `tools/mac/deps.sh` pins for the Mac and Deck builds), and unpacks them into
+`build/deps/android/`. Nothing else is to be installed first, and the tarballs are cached: a first
+build takes a couple of minutes, later ones are seconds.
 
 The APK is signed with the debug key: it installs by sideloading, not from the Play Store.
 
@@ -141,10 +142,12 @@ network, or over a VPN, with no service in between; one side hosts, the other jo
 address and port. Both sides run the same game (the ROM's hash is checked) and the host's Rounds to
 win (vs player), 3 by default.
 
-The lobby — Online > Random, room codes, and the count on its card — needs libcurl, which Android
-doesn't ship, so this build carries no lobby address and those pages say so. Play by address is the
-way to play. A lobby can be built in with `.lobby-url` (one line, kept out of git) or `VF_LOBBY_URL`
-at build time, but it still needs libcurl at run time to reach it.
+The lobby — Online > Random, room codes, watching and the count on its card — works too: the build
+pins **libcurl** (its own, with mbedTLS; HTTPS verifies against Android's own trust store) in
+`tools/android/deps.sh`, and packs `libcurl.so` in the APK, so the lobby is the desktop's through the
+same `src/net`. As on the desktop, the lobby's address is given at build time with `.lobby-url` (one
+line, kept out of git) or `VF_LOBBY_URL`; **without one the APK carries no address and Online plays by
+address only** (room codes, random and watching then say "no lobby").
 
 Online's settings (your name, delay, max ping, the match-found chime, Your fighter's random or seed
 fighter) are in the game's menu and kept in `settings.ini` like the rest.
@@ -172,8 +175,8 @@ What is left:
 - The GPU's own 3D runs under the game's frame rate on a Dimensity 9300+, so **2x at full speed is the
   CPU 3D's**; at 5x/6x a 15-18 ms texture upload appears. During an online match the phone still holds
   57.5 frames/s at 4x.
-- The lobby and room codes need libcurl, which Android doesn't ship: this build carries no lobby address
-  (see **Online** above).
+- The lobby's address is the desktop's: a build gives it with `.lobby-url`/`VF_LOBBY_URL`, and
+  without one the phone plays by address only (see **Online** above).
 - The governor still walks the render scale down from 2x to 1x while the frames and pictures are whole:
   it costs sharpness and buys nothing.
 - Player 2 has no on-screen pad (a second gamepad or a keyboard plays them).
