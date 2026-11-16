@@ -238,7 +238,6 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #include <chrono>
 #include <climits>
 #include <cmath>
-#include <cerrno>
 #include <cstring>
 #include <deque>
 #include <filesystem>
@@ -909,9 +908,9 @@ struct settings
 	int ring_cheat = 0;             // 0 the game's (Arcade settings' Ring size), 1 tiny (650), 2 huge (5000: no ring outs)
 	int jacky_bird = 0;             // Jacky's stage's bird: 0 the arcade's code (both players), 1 one player's, 2 always
 	bool debug_mode = false;        // Arcade settings: Debug mode, the arcade's own (model2a::set_debug_mode), offline only
-	// settings.ini's version: 2 from v0.1.2 (none before), 3 from the phone's fullscreen (this
-	// fork) or from the GPU's failures forgotten once (upstream v0.1.15), 4 the merged build. Its
-	// upgrades, once, as it's read:
+	// settings.ini's version: 2 from v0.1.2 (none before), 3 from the GPU's failures forgotten once
+	// (v0.1.15) or the phone's fullscreen, 4 from Rounds to win (vs player) 3 (v0.1.17), 5 the same
+	// once more, for everyone (v0.1.18). Its upgrades, once, as it's read:
 	//   2: the old default music volume, 20, to the new one, 50 (the music's stereo reverb mended:
 	//      at 20 it's now too quiet); a 20 chosen later is kept (the file then says version 2)
 	//   3: on a phone, fullscreen = 0 (the old default: the menu couldn't open on Android before
@@ -1035,7 +1034,7 @@ struct settings
 		if (auto it = kv.find("gpu_3d_failed"); it != kv.end()) gpu3d_failed = it->second;
 		// (older builds saved a driver as failed for any GPU error in play, a suspend or a reset: every
 		// later start on the CPU. Forgotten once, each driver tried again from this build on)
-		if (file_version < 4 && (!gpu3d_failed.empty() || !auto3d.empty())) {
+		if (file_version < 3 && (!gpu3d_failed.empty() || !auto3d.empty())) {
 			if (!gpu3d_failed.empty()) fprintf(stderr, "settings: the GPU drivers saved as failed (%s) tried again (an older build saved one failure in play for good)\n", gpu3d_failed.c_str());
 			gpu3d_failed.clear(); auto3d.clear(); upgraded = true;
 		}
