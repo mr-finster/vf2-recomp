@@ -114,7 +114,7 @@ build/bin/vf2soundonly vf2.zip --frames 2400             # the match's sound boa
 SDL_VIDEO_DRIVER=offscreen build/bin/menutest /tmp/shots  # the Online screens as pictures, no ROM
 ```
 
-Rooms 2 (VF3's docs/ROOMS2-DESIGN.md; src/host/online_room.cpp, as VF3's): `VF2_ROOM2_CREATE=1` and `VF2_ROOM2_ENTER=CODE` (at pass 60), `VF2_ROOM2_READY=auto|never|late` (the ready check), `VF2_ROOM2_FIGHT=win|lose` (this player's input at the table), `VF2_ROOM2_LEAVE_AT=N`, `VF2_ROOM2_SHOT=1`, `VF2_TEST_STORY_AT=s:open,s:key:K,s:shot:NAME,s:leaveline,s:joinline,...`, `VF2_TEST_VS_ROUNDS=n`, `VF2_TEST_NET_DROP=S,D[,N]`, `VF2_TEST_DESYNC_AT=F` (main.cpp says what each does).
+Rooms 2 (VF3's docs/ROOMS2-DESIGN.md; src/host/online_room.cpp, as VF3's): `VF2_ROOM2_CREATE=1` and `VF2_ROOM2_ENTER=CODE` (at pass 60), `VF2_ROOM2_READY=now|esc|away` (READY or AWAY: Start or Esc 1 s into GET READY, or AWAY once in), `VF2_ROOM2_FIGHT=win|lose` (this player's input at the table), `VF2_ROOM2_LEAVE_AT=N`, `VF2_ROOM2_SHOT=1`, `VF2_TEST_STORY_AT=s:open,s:key:K,s:shot:NAME,s:leaveline,s:joinline,s:readyon,s:readyoff,...`, `VF2_TEST_VS_ROUNDS=n`, `VF2_TEST_NET_DROP=S,D[,N]`, `VF2_TEST_DESYNC_AT=F` (main.cpp says what each does).
 
 Tests with the real game: `VF2_HOST_ROOM=1`, `VF2_JOIN_CODE=XXXXXX`, `VF2_RANDOM=1` (at pass 60, as the menu's),
 `VF_LOBBY=http://127.0.0.1:8787` (a lobby on this machine), `VF3_NET_LAG` (the shared library's: a worse network),

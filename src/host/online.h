@@ -58,7 +58,7 @@ public:
 	enum class Step { none, getting_ready, opening, waiting, finding, searching, connecting };   // (searching: a random opponent)
 	// (tip: a toast, nothing more; watching: a watched match's first picture; called: a room's line has this player next,
 	// their ready check on: the match found chime and the window flashed, nothing shown)
-	struct Notice { enum Kind { joined, ended, refused, tip, watching, called } kind; tr::line text; };
+	struct Notice { enum Kind { joined, ended, refused, tip, watching, called, left_room } kind; tr::line text; };   // (left_room: a Rooms 2 room let this player go, or closed: said over whatever's on)
 	// The match that ended last: what ended it, who and how long, for the Online page to show after it (and offer
 	// the same again)
 	struct LastMatch
@@ -197,6 +197,7 @@ public:
 	void room2_line(bool join);  // (Leave line: no place in it, still in the room watching; Join the line: at its back)
 	// Start pressed (main.cpp's, keyboard or pad, whatever's on): the ready check on, ready said. True if it was taken
 	bool room2_ready();
+	void room2_set_ready(bool on);   // (READY: on, played in turn; off: AWAY, kept in the line and passed over)
 	int room2_ready_left() const;   // (the ready check on this player: its seconds left; -1 none)
 	// A moment's word over the game: 1 you lost (name: who's next), 2 a new challenger (name: theirs), 3 you're next,
 	// 4 you won and stay on, 5 the other left: a forfeit (name: theirs); 0 none
@@ -207,7 +208,7 @@ public:
 	void room2_close();   // (the creator's: the room closed for everyone)
 	void set_room2_file(const std::string &path) { r2_file = path; }   // (the data folder's room2.txt: a rejoin after a crash)
 	void set_room2_test(const std::string &state_json, const std::string &code = "KXQ4M7");   // (menutest: a member in a made-up state)
-	std::string room2_test_ready;   // (tests, VF2_ROOM2_READY: "auto" ready 2 s after the call, "late" 11 s after, "never")
+	std::string room2_test_ready;   // (tests, VF2_ROOM2_READY: "now" Start 1 s into getting ready, "esc" Esc then (AWAY), "away" AWAY once in)
 
 	// ---- watching (src/net/watch.h): a match's watchers, and watching one ----
 	// Watch a match by its room's code (the browser's, Enter code's or a link's): the game starts from the match's start
@@ -232,6 +233,7 @@ public:
 	// How many watch: this match's (the host told by the lobby with each upload, the guest asking now and then), or
 	// the watched one's; -1 a match nobody can watch
 	int watchers() const;
+	bool watching_room2(const std::string &code) const;   // (the rooms list has that code as a Rooms 2 room's: Play next enters it)
 	std::string watch_code() const;     // "KXQ-4M7": the room's code this match is watched by, or the watched one's ("" none)
 	const std::string &rooms_you() const { return rooms_region; }   // (the lobby's continent for this player: "near me")
 	// The rooms list (the lobby's /v1/online: listed rooms, open or playing), this game's; asked again every 15 s while
@@ -486,6 +488,9 @@ struct Online::Fetch
 	std::atomic<bool> done{ false };
 	vfnet::http::Reply reply;
 };
+
+// A Rooms 2 table's run of wins in words: "1 WIN", "3 WINS IN A ROW" (none: "")
+std::string room2_streak_text(int n);
 
 namespace online_menu {
 
