@@ -1479,9 +1479,15 @@ const std::vector<Online::RoomRow> &Online::rooms_list(const OnlineSettings &s, 
 		rooms_job.reset();
 	}
 	const std::string where = s.lobby.empty() ? lobby_default() : s.lobby;
-	if (!rooms_job && (again || t - rooms_at > 15000) && !where.empty() && where != "none" && !identity.game.empty()) {
+	if (where.empty() || where == "none") {   // (no lobby in this build, or one turned off: said at once, not "looking" forever)
+		rooms_job.reset();
+		rooms_rows.clear();
+		if (rooms_said != 4) { rooms_said = 4; rooms_seen++; }
+		return rooms_rows;
+	}
+	if (!rooms_job && (again || t - rooms_at > 15000) && !identity.game.empty()) {
 		rooms_at = t;
-		if (rooms_said < 0) rooms_said = 0;
+		if (rooms_said < 0 || rooms_said == 4) rooms_said = 0;   // (a lobby set after all: asking again)
 		rooms_job = fetch("GET", where + "/v1/online", "", 8000, 1 << 20);
 	}
 	return rooms_rows;
@@ -2961,7 +2967,8 @@ menu_page create_room_page(Online &o, OnlineSettings &s, game_menu &menu, std::f
 {
 	menu_page p{ tr::P_CREATE_ROOM, "", {} };
 	auto problem = std::make_shared<std::string>();
-	const bool listing = o.rooms_state() != 3;   // (no Rooms at the lobby: nothing to be listed in, not offered)
+	const int rooms = o.rooms_state();
+	const bool listing = rooms != 3 && rooms != 4;   // (no Rooms at the lobby, or no lobby: nothing to be listed in, not offered)
 	const int name = 0, listed = listing ? 1 : -1, go = listing ? 2 : 1;
 	p.items.push_back({ tr::ROOM_NAME_FIELD, "", {}, {}, [&s, &menu, changed] { menu.push(room_name_page(s, menu, changed)); } });
 	if (listing) p.items.push_back({ tr::LISTED_IN_ROOMS, "", {}, {}, [&s, changed] { s.room_who = s.room_who ? 0 : 2; changed(); } });
@@ -3230,6 +3237,7 @@ void browser_page(Online &o, OnlineSettings &s, game_menu &menu, std::function<v
 			if (st <= 0) big = tr::LOOKING_FOR_ROOMS;
 			else if (st == 2) { big = tr::ONLINE_UNREACHABLE; small = tr::ONLINE_UNREACHABLE_MORE; }
 			else if (st == 3) { big = tr::ROOMS_OFF; small = tr::ROOMS_OFF_MORE; }
+			else if (st == 4) big = tr::NO_LOBBY;
 			else if (all > 0 && s.rooms_show != 0) { big = s.rooms_show == 1 ? tr::NO_OPEN_ROOMS : tr::NO_MATCHES_LISTED; small = tr::ALL_SHOWS_EVERY_ROOM; }
 			else { big = tr::NO_ROOMS; small = tr::NO_ROOMS_MORE; }
 			r += "<div class=\"bicon" + std::string(st == 2 ? " bad" : "") + "\"><div style=\"top: 9dp;\"></div><div style=\"top: 19dp; right: 22dp;\"></div></div>";
