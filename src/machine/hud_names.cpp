@@ -131,6 +131,18 @@ bool champion_at(const segas24_tile &t, int side, int &c0, int &c1)
 	return false;
 }
 
+bool challenger_at(const segas24_tile &t, int side, int &c0, int &c1)
+{
+	// only with CHAMPION over the other bar: then this side's rows 1 and 2 hold CHALLENGER and nothing else
+	int o0, o1;
+	if (!champion_at(t, side ^ 1, o0, o1)) return false;
+	const int from = side ? 35 : 0, to = side ? 63 : 26;
+	c0 = -1;
+	for (int x = from; x <= to; x++)
+		if (!blank(code_at(t, 1, x)) || !blank(code_at(t, 2, x))) { if (c0 < 0) c0 = x; c1 = x; }
+	return c0 >= 0;
+}
+
 bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2], int flag_at[2][2], const std::string *tags)
 {
 	if (flag_at) for (int p = 0; p < 2; p++) flag_at[p][0] = flag_at[p][1] = -1;

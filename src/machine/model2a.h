@@ -322,8 +322,8 @@ public:
 	// the timer, the names, the rounds won, the round calls' text), isn't drawn, nor the names put in it; the backdrop's
 	// maps (2, 3) are, their tiles over the 3D too. The picture only: what's drawn never reaches the board's state
 	void set_hud_hidden(bool hidden) { m_hud_hidden = hidden; }
-	// A Rooms 2 room's match: the game's own CHAMPION n WIN(S) over the energy bars (m2hud::champion_at) not drawn, as
-	// if map 0 had nothing there (the room's run of wins is under the name: set_hud_names' tags). The picture only,
+	// A Rooms 2 room's match: the game's own CHAMPION n WIN(S) over the energy bars (m2hud::champion_at) and the
+	// CHALLENGER over the other (challenger_at) not drawn, as if map 0 had nothing there (the room's run of wins is under the name: set_hud_names' tags). The picture only,
 	// never the board's state (no RAM written): both sides, and a rollback, run the same whatever it is
 	void set_hide_champion(bool hide) { m_hide_champion = hide; }
 	// The free camera (model2_video's freecam_*: the picture only, never the board's state): on, the 3D of a stage's

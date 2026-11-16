@@ -34,5 +34,8 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 // letter; c0, c1 its first and last columns. False if it isn't there. (A Rooms 2 room's match hides it: the room's
 // run of wins is under the name, model2a::set_hide_champion)
 bool champion_at(const segas24_tile &tiles, int side, int &c0, int &c1);
+// The CHALLENGER over the other bar, on side 0 or 1: only while CHAMPION is over the other side's, this side's rows 1
+// and 2 from their first lit column to the last (hidden with it in a Rooms 2 room's match)
+bool challenger_at(const segas24_tile &tiles, int side, int &c0, int &c1);
 
 } // namespace m2hud

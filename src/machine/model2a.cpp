@@ -2421,10 +2421,10 @@ void model2a::draw_2d(bool polygons, bool parts)
 			}
 		}
 	});
-	if (m_hide_champion && !hud_off)   // (a Rooms 2 room's match: the game's CHAMPION n WINS line drawn again without map 0)
+	if (m_hide_champion && !hud_off)   // (a Rooms 2 room's match: the game's CHAMPION n WINS and CHALLENGER drawn again without map 0)
 		for (int side = 0; side < 2; side++) {
 			int c0, c1;
-			if (!m2hud::champion_at(m_tiles, side, c0, c1)) continue;
+			if (!m2hud::champion_at(m_tiles, side, c0, c1) && !m2hud::challenger_at(m_tiles, side, c0, c1)) continue;
 			const rectangle r(c0 * 8, c1 * 8 + 7, 8, 23);   // (rows 1 and 2, arcade pixels; the bitmaps' column 0 at e)
 			const rectangle f(r.min_x + e, r.max_x + e, r.min_y, r.max_y);
 			m_sys24_mid.fill(0, f);
