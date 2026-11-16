@@ -319,7 +319,7 @@ fullscreen (`fullscreen_window = 1` gives them the borderless window).
     gamma.
   - **Free camera** (see [Free camera](#free-camera)).
 - **Sound:** the overall, music and effects volumes.
-- **Game:** language, play style (PC or arcade), reset, the log file.
+- **Game:** language, play style (PC or arcade), reset, the log file, and **Check for updates** (On by default; not on Android: once a day at the start the game asks GitHub whether a newer release is out; if one is, the menu says "Version X is out" with **Get it**, which opens its release page in your browser. It only checks and tells, never downloads or installs anything; Off makes no request at all).
 - **Arcade settings:** difficulty, ring size, rounds (1 to 5 against the computer: 1 is the game's own, though its
   test mode offers 2 to 5), continue, demo sound, what follows a versus match, the game's
   version, stage select, the arcade's debug mode and the service menu. A change restarts the game.

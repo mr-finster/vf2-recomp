@@ -206,7 +206,7 @@ void text(const char *t)
 // The settings pages (main.cpp's: they need the game to be made, so here their rows as they are there, by the same
 // strings, each with its longest value): each page drawn, each row selected (its help under the rows), and every
 // line checked against its box. One picture a page: pages_<name>.png, its longest help showing.
-struct row { tr::text label; std::string help, value; bool heading = false, sub = false; };   // (heading: a section's title; sub: under the row above)
+struct row { std::string label, help, value; bool heading = false, sub = false; };   // (heading: a section's title; sub: under the row above)
 void page_shots(game_menu &gm, int w, int h, const char *file, tr::text title, const std::vector<row> &rows, const std::string &note = "")
 {
 	const bool top = title.id == tr::M_RESUME.id;   // (the main page: the menu's first, no name over its rows)
@@ -249,7 +249,9 @@ void pages(game_menu &gm, int w, int h)
 	page_shots(gm, w, h, "pages_main.png", M_RESUME, {   // (the main page: its rows' helps)
 		{ M_RESUME, M_RESUME_HELP, "" }, { P_DISPLAY, M_DISPLAY_HELP, "" }, { P_SOUND, M_SOUND_HELP, "" }, { P_GAME, M_GAME_HELP, "" },
 		{ M_ARCADE, M_ARCADE_HELP, "" }, { P_ONLINE, M_ONLINE_HELP, "" }, { P_CONTROLS, M_CONTROLS_MATCH_HELP, "" },
-		{ P_CHEATS, M_CHEATS_HELP, "" }, { M_QUIT, M_QUIT_HELP, "" } });
+		{ P_CHEATS, M_CHEATS_HELP, "" },
+		{ F(UPD_OUT, { { "v", "0.1.24" } }), UPD_OUT_HELP, UPD_GET },   // (a newer release out: update_check.h)
+		{ M_QUIT, M_QUIT_HELP, "" } });
 	// Display: its three pages' rows, each with what it's set to, and the free camera's; then each page (as main.cpp's
 	// display_page, picture_page, quality_page and screen_page), with every system's rows (more than any one has)
 	auto listed = [&](std::initializer_list<std::string> parts) {
@@ -305,7 +307,8 @@ void pages(game_menu &gm, int w, int h)
 		{ S_EFFECTS, S_EFFECTS_HELP, F(N_PERCENT, { { "n", "100" } }) } });
 	page_shots(gm, w, h, "pages_game.png", P_GAME, {
 		{ G_LANGUAGE, G_LANGUAGE_HELP, F(LANG_AUTO_IS, { { "lang", info(tr::current() == lang::en || tr::current() == lang::pseudo ? lang::pt_br : tr::current()).name } }) },
-		{ G_PLAY_STYLE, G_PLAY_STYLE_HELP, G_ARCADE }, { G_RESET, G_RESET_HELP, "" }, { G_LOG, G_LOG_HELP, on } });
+		{ G_PLAY_STYLE, G_PLAY_STYLE_HELP, G_ARCADE }, { G_RESET, G_RESET_HELP, "" }, { G_LOG, G_LOG_HELP, on },
+		{ G_UPDATES, G_UPDATES_HELP, on } });
 	{   // (Game > Language: each of its choices, its name in its own letters)
 		std::vector<row> v;
 		for (int i = 0; i < CHOICES; i++) v.push_back({ G_LANGUAGE, G_LANGUAGE_HELP, choice_name(tr::choice{ i }) });
@@ -403,7 +406,8 @@ void pages(game_menu &gm, int w, int h)
 	for (const std::string &t : { fill(CPU_NOTICE_CUT, { { "why", CPU_WHY_NO_DRIVER }, { "todo", CPU_TODO_OTHER_DRIVER } }),
 	                              fill(CPU_NOTICE_CUT, { { "why", CPU_WHY_TOO_LARGE }, { "todo", CPU_TODO_LOWER_SCALE } }), std::string(SETUP_HELD),
 	                              fill(SETUP_DONE_BOTH, { { "player", "1" }, { "other", "2" } }), std::string(CTL_RESET_FORGOTTEN), std::string(SETUP_STEAM),
-	                              tr::line(tr::THIS_MATCH, { { "terms", tr::line(TERM_NORMAL_FIGHTERS_OLD) } }).str(), std::string(LINK_FINISH_FIRST) }) {
+	                              tr::line(tr::THIS_MATCH, { { "terms", tr::line(TERM_NORMAL_FIGHTERS_OLD) } }).str(), std::string(LINK_FINISH_FIRST),
+	                              fill(UPD_TOAST, { { "v", "0.1.24" } }) }) {
 		gm.toast(t);
 		shot("", w, h);
 		for (const std::string &o : gm.overflow()) overflows.push_back("a toast: " + o);

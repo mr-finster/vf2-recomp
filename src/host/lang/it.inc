@@ -182,6 +182,12 @@ T(G_RESET, "Riavvia il gioco")
 T(G_RESET_HELP, "Riavvia il gioco, come spegnere e riaccendere l'arcade. Classifiche e impostazioni restano. (F3)")
 T(G_LOG, "File di log")
 T(G_LOG_HELP, "log.txt nella cartella dei dati: cosa ha fatto il gioco, pochi KB a sessione, tenuto per le segnalazioni di bug (mandalo con una). No: non viene scritto nulla. Dal prossimo avvio.")
+T(UPD_OUT, "È uscita la versione {v}")
+T(UPD_GET, "Prendila")
+T(UPD_OUT_HELP, "Apre la sua pagina su GitHub nel browser, da dove la scarichi. Il gioco controlla soltanto, una volta al giorno; non scarica né installa mai nulla.")
+T(UPD_TOAST, "È uscita la versione {v}. Prendila dal menu.")
+T(G_UPDATES, "Cerca aggiornamenti")
+T(G_UPDATES_HELP, "Una volta al giorno all'avvio chiede a GitHub se è uscita una versione più nuova e lo dice nel menu. Non scarica né installa mai nulla. No: nessuna richiesta.")
 
 // ---- Arcade settings ----
 T(P_ARCADE, "Impostazioni arcade: un cambio riavvia il gioco alla chiusura del menu")

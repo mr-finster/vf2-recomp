@@ -183,6 +183,12 @@ T(G_RESET, "Oyunu sıfırla")
 T(G_RESET_HELP, "Salon makinesini kapatıp açmak gibi oyunu yeniden başlatır. Sıralamalar ve ayarlar korunur. (F3)")
 T(G_LOG, "Günlük dosyası")
 T(G_LOG_HELP, "Veri klasöründeki log.txt: oyunun ne yaptığı, oturum başına birkaç kilobayt, hata bildirimleri için saklanır (bildirimle birlikte gönder). Kapalıyken hiçbir şey yazılmaz. Bir sonraki açılıştan itibaren.")
+T(UPD_OUT, "{v} sürümü çıktı")
+T(UPD_GET, "Edin")
+T(UPD_OUT_HELP, "GitHub'daki sayfasını tarayıcında açar, indirmeyi oradan yaparsın. Oyun yalnızca kontrol eder, günde bir kez; hiçbir şey indirmez ya da kurmaz.")
+T(UPD_TOAST, "{v} sürümü çıktı. Menüden edinebilirsin.")
+T(G_UPDATES, "Güncellemeleri denetle")
+T(G_UPDATES_HELP, "Günde bir kez, açılışta GitHub'a daha yeni bir sürüm çıkıp çıkmadığını sorar ve menüde söyler. Hiçbir şey indirmez ya da kurmaz. Kapalıyken hiç istek gönderilmez.")
 
 // ---- Arcade settings (the arcade's own test menu's) ----
 T(P_ARCADE, "Salon ayarları: değişiklik, menü kapanınca oyunu yeniden başlatır")

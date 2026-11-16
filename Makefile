@@ -211,13 +211,19 @@ $(BIN)/langtest: $(call objs,src/host/i18n.cpp src/host/text.cpp tools/langtest.
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(SDL_LIBS) $(FT_LIBS)
 $(OBJ)/tools/langtest.o: CXXFLAGS += $(FT_CFLAGS)
 
+# updatetest: the update check's versions compared and GitHub's answers read (src/host/update_check.h); no network
+$(BIN)/updatetest: $(call objs,tools/updatetest.cpp)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS) -lpthread
+
 # The menus' tests: `make tests` builds them (they aren't part of `make`: menutest is a desktop's, with sockets of its
-# own), `make test` builds and runs them: langtest, then menutest in English into build/menutest. Build them with
-# this before any run of theirs: a menutest left from before a change tests the menu as it was (tools/langcheck.py
-# stops on one older than what it's built from).
-tests: $(BIN)/langtest $(BIN)/menutest
+# own), `make test` builds and runs them: langtest, updatetest (the update check's versions and answers), then
+# menutest in English into build/menutest. Build them with this before any run of theirs: a menutest left from before a
+# change tests the menu as it was (tools/langcheck.py stops on one older than what it's built from).
+tests: $(BIN)/langtest $(BIN)/menutest $(BIN)/updatetest
 test: tests
 	$(BIN)/langtest
+	$(BIN)/updatetest
 	SDL_VIDEO_DRIVER=offscreen $(BIN)/menutest build/menutest
 .PHONY: tests test
 
