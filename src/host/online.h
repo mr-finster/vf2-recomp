@@ -217,7 +217,7 @@ public:
 	const std::vector<RoomRow> &rooms_list(const OnlineSettings &s, bool again = false);
 	// A listed room's name as the lobby lists it (its own, or "<HOST>'S ROOM" if the lobby's word filter wouldn't show it)
 	const std::string &listed_as_name() const { return listed_as; }
-	int rooms_state() const { return rooms_said; }   // (-1 not asked yet, 0 asking, 1 have, 2 couldn't reach the lobby, 3 no rooms there)
+	int rooms_state() const { return rooms_said; }   // (-1 not asked yet, 0 asking, 1 have, 2 couldn't reach the lobby, 3 no rooms there, 4 no lobby)
 	bool lobby_watches() const { return lobby_watch_on; }   // (the lobby's last word: watching on; an older lobby's none)
 	int rooms_version() const { return rooms_seen; }   // (the list, or whether the lobby was reached, changed: the browser made again)
 	// (tests: a list made up, as a lobby with watching gives; or without it, or with rooms off: said 3)
