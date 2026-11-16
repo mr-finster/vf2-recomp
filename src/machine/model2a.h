@@ -322,6 +322,10 @@ public:
 	// the timer, the names, the rounds won, the round calls' text), isn't drawn, nor the names put in it; the backdrop's
 	// maps (2, 3) are, their tiles over the 3D too. The picture only: what's drawn never reaches the board's state
 	void set_hud_hidden(bool hidden) { m_hud_hidden = hidden; }
+	// A Rooms 2 room's match: the game's own CHAMPION n WIN(S) over the energy bars (m2hud::champion_at) not drawn, as
+	// if map 0 had nothing there (the room's run of wins is under the name: set_hud_names' tags). The picture only,
+	// never the board's state (no RAM written): both sides, and a rollback, run the same whatever it is
+	void set_hide_champion(bool hide) { m_hide_champion = hide; }
 	// The free camera (model2_video's freecam_*: the picture only, never the board's state): on, the 3D of a stage's
 	// scene (its backdrop up: a fight, the attract's) seen from it, the 2D of maps 0 and 1 (the HUD) not drawn and
 	// the backdrop (maps 2 and 3) moved by its yaw and pitch against the game's camera (from the stage's panorama where
@@ -668,6 +672,7 @@ private:
 	void draw_2d(bool polygons, bool parts);
 	bool m_2d_wide = false, m_2d_filter = false;   // what the last draw_2d drew
 	bool m_hud_hidden = false;   // (set_hud_hidden: the host's, read when a picture's 2D is drawn)
+	bool m_hide_champion = false;   // (set_hide_champion: the same)
 	int m_fc_dx = 0, m_fc_dy = 0;   // (the free camera's move of the backdrop for the picture being drawn: arcade pixels)
 	int m_fc_fx = 0, m_fc_fy = 0;   // (and the rest of it in the render scale's pixels)
 	void freecam_sky_move();

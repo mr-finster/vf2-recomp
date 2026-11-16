@@ -4683,6 +4683,9 @@ int main(int argc, char **argv)
 			const int k = match_on ? online.room2_streak(p) : 0;
 			hud_tag[p] = k > 0 ? std::to_string(k) + (k == 1 ? " WIN" : " WINS") : std::string();
 		}
+		// (and the game's own CHAMPION n WINS over the bars not drawn in a room's match, played or watched: two counts of
+		// wins would disagree, the game's only of this session's. The picture only: the board's state is the same)
+		m.set_hide_champion(match_on && online.in_room2());
 		if (match_on) {   // (each player's name and flag on the HUD only while they're in the game: a side the CPU has, the game's own)
 			const int in = online.players_in_game();
 			if (in != hud_in_shown || hud_tag[0] != hud_tags_shown[0] || hud_tag[1] != hud_tags_shown[1]) {

@@ -2421,6 +2421,17 @@ void model2a::draw_2d(bool polygons, bool parts)
 			}
 		}
 	});
+	if (m_hide_champion && !hud_off)   // (a Rooms 2 room's match: the game's CHAMPION n WINS line drawn again without map 0)
+		for (int side = 0; side < 2; side++) {
+			int c0, c1;
+			if (!m2hud::champion_at(m_tiles, side, c0, c1)) continue;
+			const rectangle r(c0 * 8, c1 * 8 + 7, 8, 23);   // (rows 1 and 2, arcade pixels; the bitmaps' column 0 at e)
+			const rectangle f(r.min_x + e, r.max_x + e, r.min_y, r.max_y);
+			m_sys24_mid.fill(0, f);
+			m_tiles.draw(m_sys24_mid, r, 1 << 1, 0, 0);   // (map 1 under the 3D; map 0 left out)
+			m_sys24_top.fill(0, f);
+			for (int layer = 3; layer >= 1; layer--) m_tiles.draw(m_sys24_top, r, (layer << 1) | 1, 0, 0);
+		}
 	m_tiles.m_ox = 0;
 	{   // (online play: the players' names in place of their fighters', in the picture only; offline, a random fighter's)
 		std::lock_guard<std::mutex> lk(m_hud_mx);

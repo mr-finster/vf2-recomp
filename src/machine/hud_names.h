@@ -29,4 +29,10 @@ struct Flag { int w = 0, h = 0; std::vector<uint32_t> px; };
 bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2] = nullptr, int flag_at[2][2] = nullptr,
           const std::string *tags = nullptr);
 
+// The game's own CHAMPION n WIN(S) over the energy bars, on side 0 (player 1's, left of the timer) or 1: map 0's rows
+// 1 and 2 (its letters two tiles tall), from the C of CHAMPION (found by its top row's tiles) to the line's last
+// letter; c0, c1 its first and last columns. False if it isn't there. (A Rooms 2 room's match hides it: the room's
+// run of wins is under the name, model2a::set_hide_champion)
+bool champion_at(const segas24_tile &tiles, int side, int &c0, int &c1);
+
 } // namespace m2hud

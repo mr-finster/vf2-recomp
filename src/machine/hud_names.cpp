@@ -108,6 +108,29 @@ bool plain_column(const bitmap_rgb32 &top, int x, int y0, int y1)
 
 } // namespace
 
+bool champion_at(const segas24_tile &t, int side, int &c0, int &c1)
+{
+	// CHAMPION's top row as the game's map has it (its letters' tiles, the palette and priority bits as they come)
+	static constexpr uint16_t WORD[8] = { 0x893c, 0x8945, 0x891b, 0x894c, 0x893e, 0x8901, 0x891b, 0x894d };
+	const int from = side ? 35 : 0, to = side ? 63 : 26;   // (either side of the timer's box, columns 27-34)
+	for (int c = from; c + 7 <= to; c++) {
+		bool is = true;
+		for (int k = 0; k < 8 && is; k++) is = code_at(t, 1, c + k) == t.tile_code(WORD[k]);
+		if (!is) continue;
+		// the line to its end: the count and WIN or WINS after it, a column's space between words
+		int end = c + 7;
+		for (int x = end + 1; x <= to; x++) {
+			const bool lit = !blank(code_at(t, 1, x)) || !blank(code_at(t, 2, x));
+			if (lit) end = x;
+			else if (x - end > 1) break;
+		}
+		c0 = c;
+		c1 = end;
+		return true;
+	}
+	return false;
+}
+
 bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2], int flag_at[2][2], const std::string *tags)
 {
 	if (flag_at) for (int p = 0; p < 2; p++) flag_at[p][0] = flag_at[p][1] = -1;
