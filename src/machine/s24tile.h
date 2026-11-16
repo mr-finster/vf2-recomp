@@ -84,6 +84,28 @@ public:
 			}
 	}
 
+	// One tile (a map entry's word: its code and palette) drawn into bm at x, y, its pen 0 see-through; after
+	// update(). Drawing only: neither RAM is written
+	void draw_tile(bitmap_rgb32 &bm, int x, int y, uint16_t val) const
+	{
+		const uint32_t code = val & tile_mask, color = (val >> 7) & 0xff;
+		const uint16_t *c = &char_ram[(code * 16) & 0x3ffff];
+		for (int ty = 0; ty < 8; ty++) {
+			if (y + ty < 0 || y + ty >= bm.height()) continue;
+			const uint32_t row = (uint32_t(c[ty * 2]) << 16) | c[ty * 2 + 1];
+			for (int tx = 0; tx < 8; tx++)
+				if (const uint32_t p = (row >> (28 - 4 * tx)) & 0xf; p && x + tx >= 0 && x + tx < bm.width())
+					bm.pix(y + ty, x + tx) = m_pens[(color * 16 + p) & 0x1fff];
+		}
+	}
+	// whether a tile's graphics are all pen 0 (nothing there)
+	bool tile_empty(uint32_t code) const
+	{
+		const uint16_t *c = &char_ram[(code * 16) & 0x3ffff];
+		for (int i = 0; i < 16; i++) if (c[i]) return false;
+		return true;
+	}
+
 	// Decodes the four maps into 512x512 pen and flag planes; call once per frame before draw().
 	// The planes hold pen numbers, not colours (a new palette changes nothing here): only the map
 	// entries written since, and those showing a tile written since, are decoded again (as MAME's

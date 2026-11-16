@@ -2421,7 +2421,7 @@ void model2a::draw_2d(bool polygons, bool parts)
 			}
 		}
 	});
-	if (m_hide_champion && !hud_off)   // (a Rooms 2 room's match: the game's CHAMPION n WINS and CHALLENGER drawn again without map 0)
+	if (m_hide_champion && !hud_off)   // (a Rooms 2 room's match: the game's CHAMPION n WINS and CHALLENGER drawn again without map 0; the room's streak in their place below)
 		for (int side = 0; side < 2; side++) {
 			int c0, c1;
 			if (!m2hud::champion_at(m_tiles, side, c0, c1) && !m2hud::challenger_at(m_tiles, side, c0, c1)) continue;
@@ -2439,10 +2439,12 @@ void model2a::draw_2d(bool polygons, bool parts)
 		const std::string *names = online ? m_hud_names : m_random_hud;
 		if (!hud_off && (!names[0].empty() || !names[1].empty())) {
 			const m2hud::Flag *fl[2] = { &m_hud_flags[0], &m_hud_flags[1] };
-			if (!m2hud::draw(m_tiles, m_sys24_top, e, names, online ? fl : nullptr, m_hud_flag_at, online ? m_hud_tags : nullptr))
+			if (!m2hud::draw(m_tiles, m_sys24_top, e, names, online ? fl : nullptr, m_hud_flag_at))
 				for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
 		} else
 			for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
+		if (m_hide_champion && !hud_off)   // (a Rooms 2 room's run of wins where the game's CHAMPION was, over its holder's bar)
+			for (int p = 0; p < 2; p++) m2hud::draw_streak(m_tiles, m_sys24_top, e, p, m_hud_tags[p]);
 	}
 	const bool smooth = m_backdrop_smooth && s > 1 && wide && !(polygons && m_video->shows_framebuffer());
 	if (smooth) backdrop_smooth(w, !parts);

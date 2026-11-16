@@ -4332,7 +4332,7 @@ int main(int argc, char **argv)
 	uint16_t own_eeprom[64] = {};
 	bool match_on = false, resimmed = false;
 	std::string hud_player[2];   // (a match's: the players' names for the HUD, each shown while they're in the game)
-	std::string hud_tag[2];      // (and a line under them: a Rooms 2 room's run of wins, "3 WINS")
+	std::string hud_tag[2];      // (and a Rooms 2 room's run of wins, "3 WINS", where the game's CHAMPION is)
 	int hud_in_shown = -1;
 	std::string hud_tags_shown[2];
 	bool menu_closed_elsewhere = false;   // (the menu closed by a match starting: its closing's bookkeeping still owed)
@@ -4741,12 +4741,12 @@ int main(int argc, char **argv)
 			}
 			fprintf(stderr, "online: %s\n", Online::log_masked(n.text.en()).c_str());
 		}
-		for (int p = 0; p < 2; p++) {   // (a Rooms 2 room's run of wins, under its holder's name: the HUD's own letters, as the game's text, never translated)
+		for (int p = 0; p < 2; p++) {   // (a Rooms 2 room's run of wins, over its holder's bar where the game's CHAMPION is, in the game's letters: never translated)
 			const int k = match_on ? online.room2_streak(p) : 0;
 			hud_tag[p] = k > 0 ? std::to_string(k) + (k == 1 ? " WIN" : " WINS") : std::string();
 		}
 		// (and the game's own CHAMPION n WINS over the bars not drawn in a room's match, played or watched: two counts of
-		// wins would disagree, the game's only of this session's. The picture only: the board's state is the same)
+		// wins would disagree, the game's only of this session's; the room's is drawn there. The picture only: the board's state is the same)
 		m.set_hide_champion(match_on && online.in_room2());
 		if (match_on) {   // (each player's name and flag on the HUD only while they're in the game: a side the CPU has, the game's own)
 			const int in = online.players_in_game();

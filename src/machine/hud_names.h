@@ -25,14 +25,18 @@ struct Flag { int w = 0, h = 0; std::vector<uint32_t> px; };
 // top: the layers over the 3D (model2a's), the arcade's column 0 at ox. False if the HUD wasn't there. flag_at: each
 // player's flag's place, its left and the box's top (the flag 3.5 lower, in the middle of the letters' rows), in top's
 // pixels; -1 for none drawn
-// tags: a line under each box ("" none; a Rooms 2 room's run of wins, "3 WINS"), in the same letters, out from the middle
-bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2] = nullptr, int flag_at[2][2] = nullptr,
-          const std::string *tags = nullptr);
+bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2] = nullptr, int flag_at[2][2] = nullptr);
+
+// A Rooms 2 room's run of wins ("3 WINS") where the game's CHAMPION n WIN(S) is, over side 0's (player 1's) bar or 1's,
+// in the game's own two-tile-tall heading letters (its tiles drawn into top, the arcade's column 0 at ox; no RAM
+// written), from the column the game starts CHAMPION at on that side. Only with the fight's HUD there (false if not);
+// the tiles not there, the names' letters in their place
+bool draw_streak(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, int side, const std::string &text);
 
 // The game's own CHAMPION n WIN(S) over the energy bars, on side 0 (player 1's, left of the timer) or 1: map 0's rows
 // 1 and 2 (its letters two tiles tall), from the C of CHAMPION (found by its top row's tiles) to the line's last
 // letter; c0, c1 its first and last columns. False if it isn't there. (A Rooms 2 room's match hides it: the room's
-// run of wins is under the name, model2a::set_hide_champion)
+// run of wins is drawn there instead, draw_streak, model2a::set_hide_champion)
 bool champion_at(const segas24_tile &tiles, int side, int &c0, int &c1);
 // The CHALLENGER over the other bar, on side 0 or 1: only while CHAMPION is over the other side's, this side's rows 1
 // and 2 from their first lit column to the last (hidden with it in a Rooms 2 room's match)

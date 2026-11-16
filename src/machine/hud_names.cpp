@@ -106,6 +106,40 @@ bool plain_column(const bitmap_rgb32 &top, int x, int y0, int y1)
 	return true;
 }
 
+// each letter outlined in black first, as the game's own are (a pixel round every stroke's, corners too), so it reads
+// over the checker; then the letters over the outlines. x: where the next letter goes, after
+void letters(bitmap_rgb32 &top, const std::string &t, int &x, int ty)
+{
+	int ox2 = x;
+	for (char ch : t) {
+		if (ch == ' ') { ox2 += SPACE; continue; }
+		if (const Glyph *g = glyph(ch))
+			for (int r = 0; r < GH; r++)
+				for (int k = 0; k < GW; k++) {
+					if (g->rows[r][k] != '#') continue;
+					for (int dy = -1; dy <= 1; dy++)
+						for (int dx = -1; dx <= 1; dx++) {
+							const int yy = ty + r + dy, xx = ox2 + k + dx;
+							if (yy >= 0 && yy < top.height() && xx >= 0 && xx < top.width()) top.pix(yy, xx) = OUTLINE;
+						}
+				}
+		ox2 += PITCH;
+	}
+	for (char ch : t) {
+		if (ch == ' ') { x += SPACE; continue; }
+		if (const Glyph *g = glyph(ch))
+			for (int r = 0; r < GH; r++)
+				for (int k = 0; k < GW; k++) {
+					if (g->rows[r][k] != '#') continue;
+					const bool right_edge = k + 1 >= GW || g->rows[r][k + 1] != '#';
+					const bool shine = (r == 0 || g->rows[r - 1][k] != '#') && (k == 0 || g->rows[r][k - 1] != '#');
+					const int yy = ty + r, xx = x + k;
+					if (yy >= 0 && yy < top.height() && xx >= 0 && xx < top.width()) top.pix(yy, xx) = shine ? SHINE : right_edge ? SHADOW : LIT;
+				}
+		x += PITCH;
+	}
+}
+
 } // namespace
 
 bool champion_at(const segas24_tile &t, int side, int &c0, int &c1)
@@ -143,7 +177,47 @@ bool challenger_at(const segas24_tile &t, int side, int &c0, int &c1)
 	return c0 >= 0;
 }
 
-bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2], int flag_at[2][2], const std::string *tags)
+bool draw_streak(const segas24_tile &t, bitmap_rgb32 &top, int ox, int side, const std::string &text)
+{
+	int p1_first, p2_last;
+	if (text.empty() || !fight_hud(t, p1_first, p2_last)) return false;
+	// The game's own heading letters: each two tiles tall, its top and bottom halves' tiles as the game's table of
+	// them has them (shared halves: 0's top is O's and A's, its bottom 6's and 8's), in CHAMPION's palette (0x89xx)
+	struct Pair { char c; uint16_t top, bottom; };
+	static constexpr Pair HEAD[] = {
+		{ '0', 0x091b, 0x091c }, { '1', 0x091d, 0x091e }, { '2', 0x091f, 0x0920 }, { '3', 0x0921, 0x0922 }, { '4', 0x0923, 0x0924 },
+		{ '5', 0x0925, 0x0926 }, { '6', 0x0927, 0x091c }, { '7', 0x0928, 0x0929 }, { '8', 0x092a, 0x091c }, { '9', 0x091b, 0x092b },
+		{ 'I', 0x0901, 0x091e }, { 'N', 0x094d, 0x0946 }, { 'S', 0x0951, 0x0952 }, { 'W', 0x0956, 0x0957 },
+	};
+	auto pair = [&](char c) -> const Pair * { for (const Pair &q : HEAD) if (q.c == c) return &q; return nullptr; };
+	// hard to the bar's outer end, rows 1 and 2: player 1's from column 2, player 2's to column 59 (the name boxes'
+	// and the bars' outer edges), a letter a column
+	const int y0 = 8, cols = int(text.size());
+	const int x0 = ox + (side ? 60 - cols : 2) * 8;
+	// only if the tiles are there (the HUD's font in the tile graphics, as in every fight): else the names' letters
+	bool ok = true;
+	for (char c : text) {
+		if (c == ' ') continue;
+		const Pair *q = pair(c);
+		if (!q || t.tile_empty(q->top) || t.tile_empty(q->bottom)) { ok = false; break; }
+	}
+	if (!ok) {
+		int x = side ? ox + 60 * 8 - text_width(text) : ox + 2 * 8;
+		letters(top, text, x, y0 + 3);
+		return true;
+	}
+	int x = x0;
+	for (char c : text) {
+		if (const Pair *q = c == ' ' ? nullptr : pair(c)) {
+			t.draw_tile(top, x, y0, uint16_t(0x8000 | q->top));
+			t.draw_tile(top, x, y0 + 8, uint16_t(0x8000 | q->bottom));
+		}
+		x += 8;   // (a space a column, as the game's)
+	}
+	return true;
+}
+
+bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2], int flag_at[2][2])
 {
 	if (flag_at) for (int p = 0; p < 2; p++) flag_at[p][0] = flag_at[p][1] = -1;
 	int p1_first = 0, p2_last = 0;
@@ -223,43 +297,7 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 			put_flag(x);
 			x += fl->w + gap;
 		}
-		// each letter outlined in black first, as the game's own are (a pixel round every stroke's, corners too), so it
-		// reads over the checker; then the letters over the outlines
-		auto letters = [&](const std::string &t, int &x, int ty) {
-			int ox2 = x;
-			for (char ch : t) {
-				if (ch == ' ') { ox2 += SPACE; continue; }
-				if (const Glyph *g = glyph(ch))
-					for (int r = 0; r < GH; r++)
-						for (int k = 0; k < GW; k++) {
-							if (g->rows[r][k] != '#') continue;
-							for (int dy = -1; dy <= 1; dy++)
-								for (int dx = -1; dx <= 1; dx++) {
-									const int yy = ty + r + dy, xx = ox2 + k + dx;
-									if (yy >= 0 && yy < top.height() && xx >= 0 && xx < top.width()) top.pix(yy, xx) = OUTLINE;
-								}
-						}
-				ox2 += PITCH;
-			}
-			for (char ch : t) {
-				if (ch == ' ') { x += SPACE; continue; }
-				if (const Glyph *g = glyph(ch))
-					for (int r = 0; r < GH; r++)
-						for (int k = 0; k < GW; k++) {
-							if (g->rows[r][k] != '#') continue;
-							const bool right_edge = k + 1 >= GW || g->rows[r][k + 1] != '#';
-							const bool shine = (r == 0 || g->rows[r - 1][k] != '#') && (k == 0 || g->rows[r][k - 1] != '#');
-							const int yy = ty + r, xx = x + k;
-							if (yy >= 0 && yy < top.height() && xx >= 0 && xx < top.width()) top.pix(yy, xx) = shine ? SHINE : right_edge ? SHADOW : LIT;
-						}
-				x += PITCH;
-			}
-		};
-		letters(names[p], x, ty);
-		if (tags && !tags[p].empty()) {   // (a line under the box: a Rooms 2 room's run of wins, out from the middle as the name)
-			int tx = p ? nx1 - right - pad - text_width(tags[p]) + 1 : nx0 + left + pad;
-			letters(tags[p], tx, Y1 + 4);
-		}
+		letters(top, names[p], x, ty);
 		if (fl && p) {   // (player 2's to the right of it)
 			x += gap - (PITCH - GW);
 			put_flag(x);

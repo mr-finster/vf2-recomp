@@ -260,7 +260,8 @@ public:
 	const std::vector<u8> &workram() const { return m_workram; }
 	const segas24_tile &tiles() const { return m_tiles; }
 	// Online play's names under the energy bars (hud_names.h), in the 2D picture only, and their flags: "" none
-	// tags: a line under each name ("" none; a Rooms 2 room's run of wins, "3 WINS")
+	// tags: each player's Rooms 2 room run of wins ("" none; "3 WINS"), over their bar where the game's CHAMPION is
+	// (m2hud::draw_streak, with set_hide_champion)
 	void set_hud_names(const std::string names[2], const m2hud::Flag *flags[2] = nullptr, const std::string *tags = nullptr)
 	{
 		std::lock_guard<std::mutex> lk(m_hud_mx);
@@ -323,7 +324,7 @@ public:
 	// maps (2, 3) are, their tiles over the 3D too. The picture only: what's drawn never reaches the board's state
 	void set_hud_hidden(bool hidden) { m_hud_hidden = hidden; }
 	// A Rooms 2 room's match: the game's own CHAMPION n WIN(S) over the energy bars (m2hud::champion_at) and the
-	// CHALLENGER over the other (challenger_at) not drawn, as if map 0 had nothing there (the room's run of wins is under the name: set_hud_names' tags). The picture only,
+	// CHALLENGER over the other (challenger_at) not drawn, as if map 0 had nothing there (the room's run of wins drawn there instead, in the game's letters: set_hud_names' tags). The picture only,
 	// never the board's state (no RAM written): both sides, and a rollback, run the same whatever it is
 	void set_hide_champion(bool hide) { m_hide_champion = hide; }
 	// The free camera (model2_video's freecam_*: the picture only, never the board's state): on, the 3D of a stage's
