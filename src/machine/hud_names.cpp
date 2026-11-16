@@ -108,7 +108,7 @@ bool plain_column(const bitmap_rgb32 &top, int x, int y0, int y1)
 
 } // namespace
 
-bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2], int flag_at[2][2])
+bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2], int flag_at[2][2], const std::string *tags)
 {
 	if (flag_at) for (int p = 0; p < 2; p++) flag_at[p][0] = flag_at[p][1] = -1;
 	int p1_first = 0, p2_last = 0;
@@ -190,9 +190,9 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 		}
 		// each letter outlined in black first, as the game's own are (a pixel round every stroke's, corners too), so it
 		// reads over the checker; then the letters over the outlines
-		{
+		auto letters = [&](const std::string &t, int &x, int ty) {
 			int ox2 = x;
-			for (char ch : names[p]) {
+			for (char ch : t) {
 				if (ch == ' ') { ox2 += SPACE; continue; }
 				if (const Glyph *g = glyph(ch))
 					for (int r = 0; r < GH; r++)
@@ -206,18 +206,24 @@ bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::strin
 						}
 				ox2 += PITCH;
 			}
-		}
-		for (char ch : names[p]) {
-			if (ch == ' ') { x += SPACE; continue; }
-			if (const Glyph *g = glyph(ch))
-				for (int r = 0; r < GH; r++)
-					for (int k = 0; k < GW; k++) {
-						if (g->rows[r][k] != '#') continue;
-						const bool right_edge = k + 1 >= GW || g->rows[r][k + 1] != '#';
-						const bool shine = (r == 0 || g->rows[r - 1][k] != '#') && (k == 0 || g->rows[r][k - 1] != '#');
-						top.pix(ty + r, x + k) = shine ? SHINE : right_edge ? SHADOW : LIT;
-					}
-			x += PITCH;
+			for (char ch : t) {
+				if (ch == ' ') { x += SPACE; continue; }
+				if (const Glyph *g = glyph(ch))
+					for (int r = 0; r < GH; r++)
+						for (int k = 0; k < GW; k++) {
+							if (g->rows[r][k] != '#') continue;
+							const bool right_edge = k + 1 >= GW || g->rows[r][k + 1] != '#';
+							const bool shine = (r == 0 || g->rows[r - 1][k] != '#') && (k == 0 || g->rows[r][k - 1] != '#');
+							const int yy = ty + r, xx = x + k;
+							if (yy >= 0 && yy < top.height() && xx >= 0 && xx < top.width()) top.pix(yy, xx) = shine ? SHINE : right_edge ? SHADOW : LIT;
+						}
+				x += PITCH;
+			}
+		};
+		letters(names[p], x, ty);
+		if (tags && !tags[p].empty()) {   // (a line under the box: a Rooms 2 room's run of wins, out from the middle as the name)
+			int tx = p ? nx1 - right - pad - text_width(tags[p]) + 1 : nx0 + left + pad;
+			letters(tags[p], tx, Y1 + 4);
 		}
 		if (fl && p) {   // (player 2's to the right of it)
 			x += gap - (PITCH - GW);

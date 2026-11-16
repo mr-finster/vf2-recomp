@@ -245,7 +245,10 @@ public:
 	void advance(const uint16_t input[2], bool resim) override;
 	// (the state's hash without its header: that's this board's own bookkeeping, not the game's)
 	uint64_t hash(const std::vector<uint8_t> &state);
-	size_t hash_skip() const override { return model2a::STATE_HEADER; }
+	// (tests, VF2_TEST_DESYNC_AT=F: in this process's first match, from its frame F the hash skips a byte more, so the
+	// two sides' desync check disagrees, as a real desync's would; the game itself the same)
+	size_t hash_skip() const override { return model2a::STATE_HEADER + (test_desync_from && frame >= test_desync_from ? 1 : 0); }
+	uint32_t test_desync_from = 0;
 	// A watched match's snapshot (src/net/watch.h): this build's states (its online version, the state's version and
 	// size); with it, the host's sound bytes of the frames before it (sound_log: each frame's whole messages as its last
 	// run had them, the last SOUND_TAIL), and where its bytes' messages stood, so a watcher loading it runs them through

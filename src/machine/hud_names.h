@@ -25,6 +25,8 @@ struct Flag { int w = 0, h = 0; std::vector<uint32_t> px; };
 // top: the layers over the 3D (model2a's), the arcade's column 0 at ox. False if the HUD wasn't there. flag_at: each
 // player's flag's place, its left and the box's top (the flag 3.5 lower, in the middle of the letters' rows), in top's
 // pixels; -1 for none drawn
-bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2] = nullptr, int flag_at[2][2] = nullptr);
+// tags: a line under each box ("" none; a Rooms 2 room's run of wins, "3 WINS"), in the same letters, out from the middle
+bool draw(const segas24_tile &tiles, bitmap_rgb32 &top, int ox, const std::string names[2], const Flag *flags[2] = nullptr, int flag_at[2][2] = nullptr,
+          const std::string *tags = nullptr);
 
 } // namespace m2hud

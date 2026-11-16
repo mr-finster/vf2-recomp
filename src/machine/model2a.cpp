@@ -2428,7 +2428,7 @@ void model2a::draw_2d(bool polygons, bool parts)
 		const std::string *names = online ? m_hud_names : m_random_hud;
 		if (!hud_off && (!names[0].empty() || !names[1].empty())) {
 			const m2hud::Flag *fl[2] = { &m_hud_flags[0], &m_hud_flags[1] };
-			if (!m2hud::draw(m_tiles, m_sys24_top, e, names, online ? fl : nullptr, m_hud_flag_at))
+			if (!m2hud::draw(m_tiles, m_sys24_top, e, names, online ? fl : nullptr, m_hud_flag_at, online ? m_hud_tags : nullptr))
 				for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
 		} else
 			for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;

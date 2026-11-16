@@ -260,10 +260,11 @@ public:
 	const std::vector<u8> &workram() const { return m_workram; }
 	const segas24_tile &tiles() const { return m_tiles; }
 	// Online play's names under the energy bars (hud_names.h), in the 2D picture only, and their flags: "" none
-	void set_hud_names(const std::string names[2], const m2hud::Flag *flags[2] = nullptr)
+	// tags: a line under each name ("" none; a Rooms 2 room's run of wins, "3 WINS")
+	void set_hud_names(const std::string names[2], const m2hud::Flag *flags[2] = nullptr, const std::string *tags = nullptr)
 	{
 		std::lock_guard<std::mutex> lk(m_hud_mx);
-		for (int p = 0; p < 2; p++) { m_hud_names[p] = names[p]; m_hud_flags[p] = flags && flags[p] ? *flags[p] : m2hud::Flag{}; }
+		for (int p = 0; p < 2; p++) { m_hud_names[p] = names[p]; m_hud_flags[p] = flags && flags[p] ? *flags[p] : m2hud::Flag{}; m_hud_tags[p] = tags ? tags[p] : std::string(); }
 	}
 	// where each player's flag goes (hud_names: its place left for the host's sharper one), in the picture's pixels
 	// (width() by HEIGHT): its left, and the box's top; false for none in the picture last made
@@ -527,7 +528,7 @@ private:
 	std::vector<u8> m_lumaram, m_m2comm_share;
 	segas24_tile m_tiles;
 	std::mutex m_hud_mx;   // (the names are set by the host while a picture's drawn alongside)
-	std::string m_hud_names[2];
+	std::string m_hud_names[2], m_hud_tags[2];
 	m2hud::Flag m_hud_flags[2];
 	int m_hud_flag_at[2][2] = { { -1, -1 }, { -1, -1 } };
 
