@@ -4731,6 +4731,7 @@ int main(int argc, char **argv)
 					return w;
 				};
 				const std::string ft[2] = { fighter_said(0), fighter_said(1) };
+				if (watching && online.in_room2()) online.room2_next_on();   // (the loser's banner not over the next match)
 				if (watching)
 					menu.show_versus({ tr::VS_PLAYER_1, host, tr::VS_PLAYER_2, guest, tr::WATCHING_BEHIND, tr::WATCHING_HOW_TO_STOP, false, online.player_country(0), online.player_country(1), ft[0], ft[1] });
 				else
