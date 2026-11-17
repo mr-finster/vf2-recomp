@@ -1096,7 +1096,7 @@ struct settings
 		{
 			update_check::version v;
 			auto tag = kv.find("update_tag"), url = kv.find("update_url"), seen = kv.find("update_seen");
-			if (tag != kv.end() && url != kv.end() && update_check::parse(tag->second, v) && update_check::page_ok(url->second))
+			if (tag != kv.end() && url != kv.end() && update_check::parse(tag->second, v) && update_check::page_ok(url->second, "vf2-recomp"))
 				update_tag = tag->second, update_url = url->second;
 			if (seen != kv.end() && update_check::parse(seen->second, v)) update_seen = seen->second;
 		}
@@ -1131,6 +1131,19 @@ struct settings
 	}
 
 	// False if it couldn't be written (the caller keeps it to save again; said once in the log)
+	// The command line's --scale, --aspect, --fullscreen / --window: for this run only. Saved as settings.ini had them
+	// (a save for anything else, the update check's daily one too, never writes them), unless the player changes that
+	// setting in the menu meanwhile (then it's theirs, saved)
+	struct run_only { bool on = false; int file = 0, given = 0; };
+	run_only arg_scale_, arg_aspect_, arg_full_;
+	void override_for_run(int scale_arg, int aspect_arg, int full_arg)
+	{
+		if (scale_arg) { arg_scale_ = { true, scale, scale_arg }; scale = scale_arg; }
+		if (aspect_arg >= 0) { arg_aspect_ = { true, aspect, aspect_arg }; aspect = aspect_arg; }
+		if (full_arg >= 0) { arg_full_ = { true, int(fullscreen), full_arg }; fullscreen = full_arg != 0; }
+	}
+	static int saved_as(const run_only &r, int now) { return r.on && now == r.given ? r.file : now; }
+
 	bool save(const std::string &path) const
 	{
 		const std::string tmp = path + ".tmp";
@@ -1146,8 +1159,8 @@ struct settings
 		fprintf(f, "# Virtua Fighter 2 settings (the in-game menu writes these)\n");
 		fprintf(f, "settings_version = %d\n", version);
 		fprintf(f, "scale = %d\npicture_shape = %d\nfullscreen = %d\nframe_timings = %d\nvolume = %d\narcade_mode = %d\n"
-				"background_filter = %d\nmusic_volume = %d\neffects_volume = %d\nantialiasing = %d\nshow_fps = %d\nscreen_filter = %d\nring_size = %d\nsmooth_motion = %d\npipelined_at = %d\narcade_coins = %d\nvsync = %d\nframes_in_flight = %d\n", scale, aspect,
-				int(fullscreen), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin, vsync, frames_in_flight);
+				"background_filter = %d\nmusic_volume = %d\neffects_volume = %d\nantialiasing = %d\nshow_fps = %d\nscreen_filter = %d\nring_size = %d\nsmooth_motion = %d\npipelined_at = %d\narcade_coins = %d\nvsync = %d\nframes_in_flight = %d\n", saved_as(arg_scale_, scale), saved_as(arg_aspect_, aspect),
+				saved_as(arg_full_, int(fullscreen)), int(timings), volume, int(arcade), int(smooth_bg), music, effects, aa, int(show_fps), filter, ring, int(smooth), pipelined_at, arcade_coin, vsync, frames_in_flight);
 		if (!log) fprintf(f, "log = 0\n");
 		fprintf(f, "update_check = %d\nupdate_checked = %lld\n", int(update_check), (long long)update_checked);
 		if (!update_tag.empty()) fprintf(f, "update_tag = %s\nupdate_url = %s\n", update_tag.c_str(), update_url.c_str());
@@ -1485,7 +1498,7 @@ int main(int argc, char **argv)
 			const std::string url = test_url ? test_url : update_check::api_url("vf2-recomp", VF2_VERSION);   // (a beta's build: the list, betas too)
 			cfg.update_checked = now;
 			cfg_dirty = true;
-			updates.start(url, std::string("VF2Recomp/") + VF2_VERSION + " (update check)", VF2_VERSION);
+			updates.start(url, std::string("VF2Recomp/") + VF2_VERSION + " (update check)", VF2_VERSION, "vf2-recomp");
 			fprintf(stderr, "updates: asking %s\n", test_url ? "the test's address" : "GitHub");
 		}
 	}
@@ -1498,9 +1511,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "the menus' language: %s (Game > Language: %s)\n", tr::code(tr::current()), cfg.language.c_str());
 	}
 	if (cfg.upgraded) cfg.save(settings_path);   // (once: a 20 chosen later is the player's)
-	if (arg_scale) cfg.scale = arg_scale;
-	if (arg_aspect >= 0) cfg.aspect = arg_aspect;
-	if (arg_full >= 0) cfg.fullscreen = arg_full;
+	cfg.override_for_run(arg_scale, arg_aspect, arg_full);   // (--scale, --aspect, --fullscreen / --window: this run's, never saved)
 	if (arg_arcade) cfg.arcade = true;
 	if (arg_music >= 0) cfg.music = arg_music;
 	if (arg_effects >= 0) cfg.effects = arg_effects;
@@ -2112,7 +2123,7 @@ int main(int argc, char **argv)
 	auto aa_fit = [&](int s, int a) { return std::max(1, std::min({ a, 8 / s, scale_most() / std::max(1, s) })); };   // (0, Low: at the scale, the 3D's edges smoothed)
 	m.set_render_scale(scale * aa_fit(scale, aa));
 	m.set_edge_aa(aa == 0);
-	auto aa_now = [&] { return m.render_scale() / std::max(1, scale); };   // the antialiasing in use
+	auto aa_now = [&] { return std::max(1, m.render_scale() / std::max(1, scale)); };   // the antialiasing in use (1 at least: never a division by 0)
 	// The picture's texture, the render scale's size (antialiasing averaged into it): a card that
 	// can't make one that large gets a lower scale.
 	SDL_Texture *tex = nullptr;
@@ -4328,6 +4339,7 @@ int main(int argc, char **argv)
 	static Online online(m);
 	online.set_room2_file(data + "/room2.txt");   // (a Rooms 2 room's membership: taken back after a crash, within 30 s)
 	if (const char *r = getenv("VF2_ROOM2_READY")) online.room2_test_ready = r;
+	if (const char *r = getenv("VF2_ROOM2_REGATHER_S")) online.room2_regather_ms = std::max(5.0, atof(r)) * 1000;
 	std::vector<uint8_t> own_backup;
 	uint16_t own_eeprom[64] = {};
 	bool match_on = false, resimmed = false;
@@ -4512,7 +4524,7 @@ int main(int argc, char **argv)
 	auto online_row = [&] { return online_at; };
 	// a newer release out, to be said: the check on, nothing online going on (never in or around a match)
 	auto update_out = [&] {
-		return update_check::AVAILABLE && cfg.update_check && update_check::newer(cfg.update_tag, VF2_VERSION) && update_check::page_ok(cfg.update_url) &&
+		return update_check::AVAILABLE && cfg.update_check && update_check::newer(cfg.update_tag, VF2_VERSION) && update_check::page_ok(cfg.update_url, "vf2-recomp") &&
 		       online.phase() == Online::Phase::off && !online.in_room2() && !g_match_board;
 	};
 	auto main_page = [&] {
@@ -5189,7 +5201,8 @@ int main(int argc, char **argv)
 		// line, watching its match); VF2_ROOM2_READY=now|esc|away READY or AWAY: Start 1 s into GET READY
 		// (now: seated at once), Esc then (esc: AWAY, the first time), or AWAY as soon as in the room (away); unset: seated
 		// by itself when GET READY's 3 s are up; VF2_ROOM2_FIGHT=win|lose this player's input at the room's table: Start when the match wants it, then
-		// random play (win) or nothing (lose); VF2_ROOM2_LEAVE_AT=N Leave room at pass N; VF2_ROOM2_SHOT=1 the window to
+		// random play (win) or nothing (lose); VF2_ROOM2_LEAVE_AT=N Leave room at pass N; VF2_ROOM2_REGATHER_S=s the room's link
+		// gathered again s seconds after it last was (between seats), not 5 hours; VF2_ROOM2_SHOT=1 the window to
 		// build/host_room2_ready.png 1 s into GET READY; VF2_TEST_STORY_AT=s:open,s:key:K,s:text:T,s:shot:NAME,
 		// s:close,s:leave,s:leaveline,s:joinline,s:closeroom,s:readyon,s:readyoff at s seconds from the start (the Online
 		// page opened, a key, a code typed, the window to build/story_NAME.png, the menu closed, Leave room, Leave line,

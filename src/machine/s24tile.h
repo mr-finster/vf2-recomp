@@ -225,6 +225,19 @@ public:
 		}
 	}
 
+	// draw(), but nothing drawn outside cliprect (arcade pixels, the destination's column 0 at m_ox) nor past the
+	// bitmap, whichever way the layer is drawn: draw()'s whole-screen ways take the screen's rectangle and draw all of
+	// it, the split ones clip; a part of the layer drawn again here touches nothing else (m2hud's CHAMPION redraw)
+	void draw_clipped(bitmap_rgb32 &bitmap, const rectangle &cliprect, int layer, int lpri, int flags_in)
+	{
+		const rectangle c(std::max({ cliprect.min_x, 0, -m_ox }), std::min({ cliprect.max_x, 495, bitmap.width() - 1 - m_ox }),
+		                  std::max(cliprect.min_y, 0), std::min({ cliprect.max_y, 383, bitmap.height() - 1 }));
+		if (c.min_x > c.max_x || c.min_y > c.max_y) return;
+		m_only = &c;
+		draw(bitmap, c, layer, lpri, flags_in);
+		m_only = nullptr;
+	}
+
 	std::vector<uint16_t> char_ram, tile_ram;
 	int m_ox = 0;   // destination x of the arcade's column 0 (widescreen draws centre the picture)
 
@@ -478,9 +491,19 @@ private:
 			}
 	}
 
+	const rectangle *m_only = nullptr;   // (draw_clipped's rectangle while it draws: draw_rect keeps to it)
+
 	void draw_rect(int l, bitmap_rgb32 &dm, const uint16_t *mask, uint16_t tpri, int fl, int win,
 				   int sx, int sy, int xx1, int yy1, int xx2, int yy2)
 	{
+		if (m_only) {   // (only the part in draw_clipped's rectangle: the source moved on with its start)
+			const int nx1 = std::max(xx1, m_only->min_x), ny1 = std::max(yy1, m_only->min_y);
+			const int nx2 = std::min(xx2, m_only->max_x + 1), ny2 = std::min(yy2, m_only->max_y + 1);
+			if (nx1 >= nx2 || ny1 >= ny2) return;
+			sx += nx1 - xx1;
+			sy = (sy + ny1 - yy1) & 511;
+			xx1 = nx1; yy1 = ny1; xx2 = nx2; yy2 = ny2;
+		}
 		tpri |= 0x10;
 		int dst_x = xx1;            // MAME takes the destination before the group shift
 		mask += yy1 * 4;

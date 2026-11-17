@@ -2425,12 +2425,15 @@ void model2a::draw_2d(bool polygons, bool parts)
 		for (int side = 0; side < 2; side++) {
 			int c0, c1;
 			if (!m2hud::champion_at(m_tiles, side, c0, c1) && !m2hud::challenger_at(m_tiles, side, c0, c1)) continue;
-			const rectangle r(c0 * 8, c1 * 8 + 7, 8, 23);   // (rows 1 and 2, arcade pixels; the bitmaps' column 0 at e)
-			const rectangle f(r.min_x + e, r.max_x + e, r.min_y, r.max_y);
-			m_sys24_mid.fill(0, f);
-			m_tiles.draw(m_sys24_mid, r, 1 << 1, 0, 0);   // (map 1 under the 3D; map 0 left out)
-			m_sys24_top.fill(0, f);
-			for (int layer = 3; layer >= 1; layer--) m_tiles.draw(m_sys24_top, r, (layer << 1) | 1, 0, 0);
+			const rectangle r(c0 * 8, std::min(c1 * 8 + 7, 495), 8, 23);   // (rows 1 and 2, arcade pixels; the bitmaps' column 0 at e)
+			// (filled and drawn again only there: draw_clipped, as draw() draws a whole-screen layer whole; the fill kept in
+			// the bitmaps, whose width at 4:3 ends before the map's columns 62-63)
+			const rectangle fm(std::max(r.min_x + e, 0), std::min(r.max_x + e, m_sys24_mid.width() - 1), r.min_y, r.max_y);
+			const rectangle ft(std::max(r.min_x + e, 0), std::min(r.max_x + e, m_sys24_top.width() - 1), r.min_y, r.max_y);
+			if (fm.min_x <= fm.max_x) m_sys24_mid.fill(0, fm);
+			m_tiles.draw_clipped(m_sys24_mid, r, 1 << 1, 0, 0);   // (map 1 under the 3D; map 0 left out)
+			if (ft.min_x <= ft.max_x) m_sys24_top.fill(0, ft);
+			for (int layer = 3; layer >= 1; layer--) m_tiles.draw_clipped(m_sys24_top, r, (layer << 1) | 1, 0, 0);
 		}
 	m_tiles.m_ox = 0;
 	{   // (online play: the players' names in place of their fighters', in the picture only; offline, a random fighter's)

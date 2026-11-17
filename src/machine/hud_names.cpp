@@ -146,6 +146,8 @@ bool champion_at(const segas24_tile &t, int side, int &c0, int &c1)
 {
 	// CHAMPION's top row as the game's map has it (its letters' tiles, the palette and priority bits as they come)
 	static constexpr uint16_t WORD[8] = { 0x893c, 0x8945, 0x891b, 0x894c, 0x893e, 0x8901, 0x891b, 0x894d };
+	int p1_first, p2_last;
+	if (!fight_hud(t, p1_first, p2_last)) return false;   // (only over a fight's HUD: never PUSH START BUTTON, FREEPLAY or anything else on rows 1-2)
 	const int from = side ? 35 : 0, to = side ? 63 : 26;   // (either side of the timer's box, columns 27-34)
 	for (int c = from; c + 7 <= to; c++) {
 		bool is = true;
