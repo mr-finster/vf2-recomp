@@ -1482,7 +1482,7 @@ int main(int argc, char **argv)
 		else if (!test_url && !update_check::parse(VF2_VERSION, mine))
 			fprintf(stderr, "updates: not checked: this build (%s) isn't a release\n", VF2_VERSION);
 		else {
-			const std::string url = test_url ? test_url : "https://api.github.com/repos/mr-finster/vf2-recomp/releases/latest";
+			const std::string url = test_url ? test_url : update_check::api_url("vf2-recomp", VF2_VERSION);   // (a beta's build: the list, betas too)
 			cfg.update_checked = now;
 			cfg_dirty = true;
 			updates.start(url, std::string("VF2Recomp/") + VF2_VERSION + " (update check)", VF2_VERSION);
