@@ -84,6 +84,8 @@ public:
 	~Online();
 	vf2net::Adapter adapter;      // (its run, settle and program_changed set by main)
 	vfnet::Identity identity;     // the game, build and ROM hash (main's); the name from the settings
+	std::string release;          // this build's own version (the release's tag, a beta's v1.9.0-beta1): told the lobby with a Rooms 2 room it
+	                              // creates, so an older build given that room's code is told which version it needs (main's)
 	// What this side tells the lobby besides its own version (vf2_netplay.h's MIX_TAG): the pool, and the flags of an
 	// older version's it can play that version's way; a match plays the lobby's terms (use_terms), by address its own
 	std::string pool;
