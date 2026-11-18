@@ -41,5 +41,9 @@ bool champion_at(const segas24_tile &tiles, int side, int &c0, int &c1);
 // The CHALLENGER over the other bar, on side 0 or 1: only while CHAMPION is over the other side's, this side's rows 1
 // and 2 from their first lit column to the last (hidden with it in a Rooms 2 room's match)
 bool challenger_at(const segas24_tile &tiles, int side, int &c0, int &c1);
+// What map 0 has in the place of a run of wins n letters long on side 0 or 1 (where draw_streak puts it: rows 1 and 2,
+// player 1's from column 2, player 2's to 59), over the fight's HUD only: its first and last lit columns there; false if
+// none (hidden with CHAMPION in a Rooms 2 room's match, the streak drawn there: never two lines of letters over each other)
+bool streak_place(const segas24_tile &tiles, int side, int n, int &c0, int &c1);
 
 } // namespace m2hud

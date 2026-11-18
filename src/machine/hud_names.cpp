@@ -167,6 +167,17 @@ bool champion_at(const segas24_tile &t, int side, int &c0, int &c1)
 	return false;
 }
 
+bool streak_place(const segas24_tile &t, int side, int n, int &c0, int &c1)
+{
+	int p1_first, p2_last;
+	if (n <= 0 || !fight_hud(t, p1_first, p2_last)) return false;
+	const int from = side ? 60 - n : 2, to = from + n - 1;
+	c0 = -1;
+	for (int x = std::max(from, side ? 35 : 0); x <= std::min(to, side ? 63 : 26); x++)
+		if (!blank(code_at(t, 1, x)) || !blank(code_at(t, 2, x))) { if (c0 < 0) c0 = x; c1 = x; }
+	return c0 >= 0;
+}
+
 bool challenger_at(const segas24_tile &t, int side, int &c0, int &c1)
 {
 	// only with CHAMPION over the other bar: then this side's rows 1 and 2 hold CHALLENGER and nothing else

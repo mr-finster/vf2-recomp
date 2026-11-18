@@ -5201,7 +5201,8 @@ int main(int argc, char **argv)
 		// line, watching its match); VF2_ROOM2_READY=now|esc|away READY or AWAY: Start 1 s into GET READY
 		// (now: seated at once), Esc then (esc: AWAY, the first time), or AWAY as soon as in the room (away); unset: seated
 		// by itself when GET READY's 3 s are up; VF2_ROOM2_FIGHT=win|lose this player's input at the room's table: Start when the match wants it, then
-		// random play (win) or nothing (lose); VF2_ROOM2_LEAVE_AT=N Leave room at pass N; VF2_ROOM2_REGATHER_S=s the room's link
+		// random play (win) or nothing (lose), the loser's Start for a rematch only s seconds after they're out with
+		// VF2_ROOM2_REMATCH_AFTER=s; VF2_ROOM2_LEAVE_AT=N Leave room at pass N; VF2_ROOM2_REGATHER_S=s the room's link
 		// gathered again s seconds after it last was (between seats), not 5 hours; VF2_ROOM2_SHOT=1 the window to
 		// build/host_room2_ready.png 1 s into GET READY; VF2_TEST_STORY_AT=s:open,s:key:K,s:text:T,s:shot:NAME,
 		// s:close,s:leave,s:leaveline,s:joinline,s:closeroom,s:readyon,s:readyoff at s seconds from the start (the Online
@@ -5671,7 +5672,11 @@ int main(int argc, char **argv)
 					static uint16_t held = 0;
 					const int w = online.start_wait();
 					bits = 0;
-					if ((w == 1 || w == 3) && ++tap % 40 < 6) bits |= vf2net::START_BUTTON;
+					static const double rematch_after = getenv("VF2_ROOM2_REMATCH_AFTER") ? atof(getenv("VF2_ROOM2_REMATCH_AFTER")) * 1000 : 0;
+					static uint64_t out_since = 0;
+					if (w != 3) out_since = 0;
+					else if (!out_since) out_since = SDL_GetTicks();
+					if ((w == 1 || (w == 3 && double(SDL_GetTicks() - out_since) >= rematch_after)) && ++tap % 40 < 6) bits |= vf2net::START_BUTTON;
 					if (strcmp(rf, "win") == 0 && w != 1) {
 						if (hold-- <= 0) {
 							rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17;

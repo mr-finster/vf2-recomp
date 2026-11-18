@@ -2421,10 +2421,28 @@ void model2a::draw_2d(bool polygons, bool parts)
 			}
 		}
 	});
-	if (m_hide_champion && !hud_off)   // (a Rooms 2 room's match: the game's CHAMPION n WINS and CHALLENGER drawn again without map 0; the room's streak in their place below)
+	const bool hide_champion = m_hide_champion.load(std::memory_order_relaxed);
+	if (hide_champion && !hud_off) {   // (a Rooms 2 room's match: the game's CHAMPION n WINS and CHALLENGER drawn again without map 0, and the streak's own place; the room's streak in it below)
+		int tag_n[2] = {};
+		{
+			std::lock_guard<std::mutex> lk(m_hud_mx);
+			for (int p = 0; p < 2; p++) tag_n[p] = int(m_hud_tags[p].size());
+		}
 		for (int side = 0; side < 2; side++) {
 			int c0, c1;
-			if (!m2hud::champion_at(m_tiles, side, c0, c1) && !m2hud::challenger_at(m_tiles, side, c0, c1)) continue;
+			if (!m2hud::champion_at(m_tiles, side, c0, c1) && !m2hud::challenger_at(m_tiles, side, c0, c1)) c0 = -1;
+			if (int s0, s1; m2hud::streak_place(m_tiles, side, tag_n[side], s0, s1)) {   // (and whatever map 0 has where the streak goes)
+				if (c0 < 0 || s1 < c0 - 1 || s0 > c1 + 1) {   // (apart from CHAMPION's or CHALLENGER's: on its own)
+					const rectangle r(s0 * 8, std::min(s1 * 8 + 7, 495), 8, 23);
+					const rectangle fm(std::max(r.min_x + e, 0), std::min(r.max_x + e, m_sys24_mid.width() - 1), r.min_y, r.max_y);
+					const rectangle ft(std::max(r.min_x + e, 0), std::min(r.max_x + e, m_sys24_top.width() - 1), r.min_y, r.max_y);
+					if (fm.min_x <= fm.max_x) m_sys24_mid.fill(0, fm);
+					m_tiles.draw_clipped(m_sys24_mid, r, 1 << 1, 0, 0);
+					if (ft.min_x <= ft.max_x) m_sys24_top.fill(0, ft);
+					for (int layer = 3; layer >= 1; layer--) m_tiles.draw_clipped(m_sys24_top, r, (layer << 1) | 1, 0, 0);
+				} else { c0 = std::min(c0, s0); c1 = std::max(c1, s1); }   // (one with it)
+			}
+			if (c0 < 0) continue;
 			const rectangle r(c0 * 8, std::min(c1 * 8 + 7, 495), 8, 23);   // (rows 1 and 2, arcade pixels; the bitmaps' column 0 at e)
 			// (filled and drawn again only there: draw_clipped, as draw() draws a whole-screen layer whole; the fill kept in
 			// the bitmaps, whose width at 4:3 ends before the map's columns 62-63)
@@ -2435,6 +2453,7 @@ void model2a::draw_2d(bool polygons, bool parts)
 			if (ft.min_x <= ft.max_x) m_sys24_top.fill(0, ft);
 			for (int layer = 3; layer >= 1; layer--) m_tiles.draw_clipped(m_sys24_top, r, (layer << 1) | 1, 0, 0);
 		}
+	}
 	m_tiles.m_ox = 0;
 	{   // (online play: the players' names in place of their fighters', in the picture only; offline, a random fighter's)
 		std::lock_guard<std::mutex> lk(m_hud_mx);
@@ -2446,7 +2465,7 @@ void model2a::draw_2d(bool polygons, bool parts)
 				for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
 		} else
 			for (auto &a : m_hud_flag_at) a[0] = a[1] = -1;
-		if (m_hide_champion && !hud_off)   // (a Rooms 2 room's run of wins where the game's CHAMPION was, over its holder's bar)
+		if (hide_champion && !hud_off)   // (a Rooms 2 room's run of wins where the game's CHAMPION was, over its holder's bar)
 			for (int p = 0; p < 2; p++) m2hud::draw_streak(m_tiles, m_sys24_top, e, p, m_hud_tags[p]);
 	}
 	const bool smooth = m_backdrop_smooth && s > 1 && wide && !(polygons && m_video->shows_framebuffer());
