@@ -2431,7 +2431,8 @@ bool Online::step(uint16_t input)
 	                        r2->phase == "PLAYING" && !vf2net::in_select(board);
 	if (room2_in_seat() && ph == Phase::playing && session && both_in && (input & vf2net::START_BUTTON) &&
 	    ((score.players() != 3 && !(score.players() >> local_player() & 1) && room2_moving_on()) || r2_ko_hold)) {
-		if (start_edge) log_line("Rooms 2: Start for a rematch held back: " + online_menu::clean_name(r2->next_name()) + " is next in the room's line");
+		static int held_said = -1;   // (said once a match: a player mashing Start pressed it hundreds of times)
+		if (start_edge && held_said != r2->n) { held_said = r2->n; log_line("Rooms 2: Start for a rematch held back: " + online_menu::clean_name(r2->next_name()) + " is next in the room's line"); }
 		input = uint16_t(input & ~vf2net::START_BUTTON);
 	}
 	if (session) snapper.before_step(*session);   // (a snapshot's copy the step could save over: stopped first, tried again)
