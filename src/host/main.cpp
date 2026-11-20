@@ -1012,6 +1012,12 @@ struct settings
 		num("online_room_listed", online.room_who, 0, 2);
 		num("online_rooms_show", online.rooms_show, 0, 2);
 		flag("online_quick_listed", online.quick_listed);
+		if (auto it = kv.find("online_room_rules"); it != kv.end()) {   // (a Rooms 2 room's rules: side dural custom max stage)
+			int a = 0, b = 0, c = 0, d = 0, e = 1;
+			if (sscanf(it->second.c_str(), "%d %d %d %d %d", &a, &b, &c, &d, &e) == 5) {
+				online.rule_side = a != 0; online.rule_dural = b != 0; online.rule_custom = c != 0; online.rule_max = std::clamp(d, 0, 32); online.rule_stage = e != 0;
+			}
+		}
 		num("picture_shape", aspect, 0, N_ASPECTS - 1);
 		num("volume", volume, 0, 100);
 		num("antialiasing", aa, 0, 3);   // 1 off, 0 Low (the 3D's edges smoothed: older builds read 0 as off), 2 and 3 drawn larger
@@ -1201,6 +1207,7 @@ struct settings
 		if (!online.fighter.empty()) fprintf(f, "online_fighter = %s\n", online.fighter.c_str());
 		if (!online.room_name.empty()) fprintf(f, "online_room_name = %s\n", online.room_name.c_str());
 		fprintf(f, "online_room_listed = %d\nonline_rooms_show = %d\nonline_quick_listed = %d\n", online.room_who, online.rooms_show, int(online.quick_listed));
+		fprintf(f, "online_room_rules = %d %d %d %d %d\n", int(online.rule_side), int(online.rule_dural), int(online.rule_custom), online.rule_max, int(online.rule_stage));
 		for (int p = 0; p < 2; p++) ctl[p].save(f, p);
 		for (const std::string &m : pad_mappings) fprintf(f, "pad_mapping = %s\n", m.c_str());
 		const bool flushed = flush_to_disk(f);
@@ -4620,6 +4627,7 @@ int main(int argc, char **argv)
 	// A step that couldn't run (the other side behind, or keeping in time) takes no input: what was pressed for it
 	// goes with the next one tried, so a tap of Start or Coin then isn't lost
 	uint16_t step_carry = 0;
+	const bool room2_spam = getenv("VF2_ROOM2_SPAM_START") != nullptr;   // (tests: Start pressed over and over in a Rooms 2 room, whatever's on)
 	bool room2_shot = false;   // (VF2_ROOM2_SHOT: the window, the ready check's banner on it)
 	std::string story_shot;    // (VF2_TEST_STORY_AT's shot: the window to build/<this>.png after this pass's drawing)
 	constexpr uint16_t ONE_SHOT = vf2net::START_BUTTON | vf2net::COIN_BUTTON;
@@ -4807,22 +4815,34 @@ int main(int argc, char **argv)
 		else if (r2_ready >= 0) {   // (a Rooms 2 room's ready check: this player called, its seconds counting down)
 			const std::string stays = !r2m ? "" : r2m->holder == "a" ? r2m->a.name : r2m->holder == "b" ? r2m->b.name : r2m->has_a ? r2m->a.name : r2m->b.name;
 			const std::string not_now = tr::fill(tr::ROOM2_NOT_NOW, { { "key", pads[0] ? "B" : "Esc" } });   // (Esc or B: AWAY; Start: now)
-			menu.set_banner(tr::fill(tr::ROOM2_GET_READY_N, { { "n", std::to_string(r2_ready) } }), (stays.empty() ? std::string(tr::ROOM2_YOURE_NEXT) : tr::fill(tr::ROOM2_YOU_PLAY, { { "name", stays } })) + "   " + not_now);
+			menu.set_banner(tr::fill(tr::ROOM2_GET_READY_N, { { "n", std::to_string(r2_ready) } }), (stays.empty() ? std::string(tr::ROOM2_CHIP_YOUR_TURN) : tr::fill(tr::ROOM2_YOU_PLAY, { { "name", stays } })) + "   " + not_now);
 			static uint64_t ready_since = 0;
 			static bool shot_taken = false;
 			if (!ready_since) ready_since = SDL_GetTicks();
 			if (getenv("VF2_ROOM2_SHOT") && !shot_taken && SDL_GetTicks() - ready_since > 1000) { shot_taken = true; room2_shot = true; }
 		} else if (r2_banner == 1) menu.set_banner(tr::fill(tr::ROOM2_LOST_NEXT, { { "name", r2_name } }), tr::ROOM2_TO_LINE);
-		else if (r2_banner == 2) menu.set_banner(tr::ROOM2_NEW_CHALLENGER, r2_name);
+		// (no HERE COMES A NEW CHALLENGER nor the winner's "you stay on" over the game (2, 4): the versus screen says who's on
+		// next, nothing tacked on between the room's matches)
 		else if (r2_banner == 3) menu.set_banner(tr::ROOM2_YOURE_NEXT);
-		else if (r2_banner == 4 && r2m) menu.set_banner(room2_streak_text(std::max(1, r2m->streak)), tr::ROOM2_WON_STAYS);
 		else if (r2_banner == 5 && r2m) menu.set_banner(room2_streak_text(r2m->streak), tr::fill(tr::ROOM2_FORFEIT, { { "name", r2_name } }));
 		else menu.set_banner(press ? std::string(tr::BANNER_PRESS) : wait ? tr::fill(tr::BANNER_WAITING_FOR, { { "name", online.opponent() } }) : "",
 		                     wait == 2 ? std::string(tr::BANNER_TO_PRESS_START) : wait == 3 ? std::string(tr::BANNER_FOR_REMATCH) : wait == 4 ? std::string(tr::BANNER_TO_PRESS_REMATCH) : "", press ? start_button() : "");
 		if (menu.is_open() && online.in_room2()) menu.set_banner("");   // (a Rooms 2 room's banners never over the menu's buttons: its page says the same)
+		// (a Rooms 2 room's next match, seated or watched, on its way: its versus screen, the two at the table as the lobby has
+		// them, held over the last picture till the match is up, how it's going in its line (connecting, catching up), never a
+		// notice's card come and gone between the room's matches: one versus screen from the seat to the fight)
+		const bool r2_next_vs = r2m && online.in_room2() && r2m->has_a && r2m->has_b && (r2m->phase == "CONNECTING" || r2m->phase == "PLAYING") &&
+		                        !interrupted && (online.starting() || (online.waiting() && r2m->in_seat) || online.watch_between() ||
+		                                         (online.watching() && !online.watch_showing()));
+		if (r2_next_vs) {
+			const std::string how = online.watching() ? online.watch_status() : online.status();
+			menu.show_versus({ tr::VS_PLAYER_1, r2m->a.name, tr::VS_PLAYER_2, r2m->b.name, how, online.watching() ? std::string(tr::WATCHING_HOW_TO_STOP) : std::string(),
+			                   false, r2m->a.country, r2m->b.country }, 1.0);
+		}
 		if (interrupted)
 			menu.set_notice(tr::fill(tr::BANNER_WAITING_FOR, { { "name", online.opponent() } }), tr::fill(tr::NOTICE_DROPPED, { { "n", std::to_string(online.hold_left()) } }),
 			                tr::NOTICE_CARRIES_ON);
+		else if (r2_next_vs || (online.in_room2() && online.watch_between())) menu.set_notice("");   // (said in the versus screen's line; between the room's matches nothing)
 		else if (online.starting()) menu.set_notice(tr::NOTICE_STARTING, online.status());
 		else if (online.watch_between()) menu.set_notice(tr::MATCH_OVER, online.watch_status());   // (a watched match over: not its last picture, still)
 		else if (online.watch_between()) menu.set_notice(tr::MATCH_OVER, online.watch_status());   // (a watched match over: not its last picture, still)
@@ -5112,7 +5132,7 @@ int main(int argc, char **argv)
 		}
 		fc_mouse[0] = fc_mouse[1] = 0;
 		// (tests)
-		const bool stopped_now = suspended || (!online.playing() && (paused || menu.is_open() || online.starting()));
+		const bool stopped_now = suspended || (!online.playing() && (paused || menu.is_open() || online.starting() || online.in_room2()));
 		if (stopped_now) fc_clock_stopped++;
 		const uint64_t clock = game_frame + fc_clock_stopped;
 		if (fc_path.loaded) {
@@ -5482,7 +5502,11 @@ int main(int argc, char **argv)
 		}
 		// (a match goes on under the menu; one being set up holds the board, which is the match's now;
 		// a phone's app in the background stops it all, the clock forgotten on return)
-		const bool stopped = suspended || (!online.playing() && (paused || menu.is_open() || online.starting()));
+		// (a Rooms 2 room, none of its matches played or watched here now (between seats, connecting, waiting for the next to
+		// watch): the board stays still on its last picture, nothing of the player's reaching it. Run alone it played on from the
+		// match before, and a Start began a match of its own there (the arcade's continue against the winner, the player's keys
+		// on the winner's side), or its select before the seat's session reset it: a match the lobby never seated)
+		const bool stopped = suspended || (!online.playing() && (paused || menu.is_open() || online.starting() || online.in_room2()));
 		int due = 0;
 		bool draw_into_texture = false;   // the newest frame, drawn straight into the texture after the frames
 		bool held = false;                // the newest frame held back by scene sync
@@ -5694,6 +5718,7 @@ int main(int argc, char **argv)
 						bits |= held;
 					}
 				}
+				if (static uint32_t spam_n = 0; room2_spam && online.in_room2() && ++spam_n % 10 < 3) bits |= vf2net::START_BUTTON;   // (tests: Start pressed over and over)
 				online.poll(double(SDL_GetTicksNS()) / 1e6);
 				if (hk == hotkey::menu) open_menu();
 				const uint64_t te = SDL_GetTicksNS();
