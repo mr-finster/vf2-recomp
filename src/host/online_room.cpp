@@ -164,7 +164,7 @@ bool Online::room2_begin(const OnlineSettings &s, const std::string &code_in, bo
 	code = code_in;
 	r2_join.reset();
 	r2_asks.clear();
-	r2_again.clear();
+	r2_owner.clear();
 	auto j = std::make_shared<Job>();
 	r2_gather = j;
 	std::thread([j, work = gather(lobby, turn_json())] { work(*j); j->done = true; }).detach();
@@ -416,7 +416,7 @@ void Online::room2_end(const std::string &why)
 	if (r2 && r2->ws) std::thread([w = std::move(r2->ws)] {}).detach();
 	r2.reset();
 	r2_asks.clear();
-	r2_again.clear();
+	r2_owner.clear();
 	r2_join.reset();
 	r2_gather.reset();
 	r2_fresh.reset();
@@ -655,12 +655,7 @@ void Online::room2_poll()
 			m.poll_at = std::min(m.poll_at, now);
 		}
 	}
-	for (size_t i = 0; i < r2_again.size(); i++)   // (the creator's settings or rules not taken: again when it's time)
-		if (now >= r2_again[i].sent) {
-			const R2Ask a = r2_again[i];
-			room2_owner_send(a.op, a.body, a.tries + 1);   // (takes it off r2_again)
-			break;   // (one a pass)
-		}
+	if (OwnerAsks::Ask a; r2_owner.due(now, a)) room2_owner_send(a.op, a.body, a.tries + 1);   // (the creator's settings or rules not taken: again, one a pass)
 	const bool socket_open = m.ws && m.ws->state() == vfnet::http::Socket::State::open;
 	// (no socket: asked every 10 s, the lobby's word that this member's still here; every 3 s at the table, next to play,
 	// called, or an op not seen taken: GET READY, a new seat and the line's moves seen in time. One poll on its way at most)
@@ -682,11 +677,10 @@ void Online::room2_poll()
 		Value v;
 		const bool parsed = vfnet::json::parse(r.body, v);
 		if ((op == "settings" || op == "rules") && !(r.status == 200 && parsed && !(v["ok"].kind == Value::boolean && !v["ok"].b)) && r.status != 410 &&
-		    !(r.status == 404 && parsed)) {   // (the creator's change not taken: again later, OP_TRIES in all; not_owner never)
-			const bool again = was.tries < OP_TRIES && r.status != 403;
+		    !(r.status == 404 && parsed)) {   // (the creator's change not taken: again later if it's still the newest of its kind)
+			const bool again = r.status != 403 && r2_owner.failed(op, was.body, was.seq, was.tries, now);
 			log("Rooms 2: the room's " + op + " not taken (" + (r.status ? "the lobby said " + std::to_string(r.status) : r.error) + "): " +
-			    (again ? "sent again in " + std::to_string(int(OP_AGAIN_MS / 1000) << (was.tries - 1)) + " s" : "given up"));
-			if (again) r2_again.push_back({ op, nullptr, now + OP_AGAIN_MS * double(1 << (was.tries - 1)), was.body, was.tries });
+			    (again ? "sent again in " + std::to_string(int(OwnerAsks::AGAIN_MS / 1000) << (was.tries - 1)) + " s" : was.seq != r2_owner.newest_of(op) ? "a newer one went after it" : "given up"));
 			continue;
 		}
 		if (r.status == 410 && parsed) { room2_end(v["why"].str()); return; }
@@ -1211,7 +1205,7 @@ void Online::room2_leave(bool keep_watching)
 	if (r2->ws) std::thread([s = std::move(r2->ws)] {}).detach();
 	r2.reset();
 	r2_asks.clear();
-	r2_again.clear();
+	r2_owner.clear();
 	r2_join.reset();
 	r2_gather.reset();
 	r2_fresh.reset();
@@ -1234,12 +1228,12 @@ bool Online::room2_settings(const std::string &name, bool listed, int ready_ms, 
 }
 
 // The creator's settings and rules, to the lobby's /v2/room/settings; one it didn't take (busy, not reached, its error) sent
-// again 3 s later, 6, 12, 24, then given up (in the log): a change made once isn't lost to a busy lobby. A newer one of
-// the same kind takes the place of one waiting
+// again 3 s later, 6, 12, 24, then given up (in the log): a change made once isn't lost to a busy lobby. Only the newest of
+// each kind (OwnerAsks): an older one failing after a newer went out is dropped, never sent over it
 void Online::room2_owner_send(const std::string &op, const std::string &body, int tries)
 {
-	r2_again.erase(std::remove_if(r2_again.begin(), r2_again.end(), [&](const R2Ask &a) { return a.op == op; }), r2_again.end());
-	r2_asks.push_back({ op, fetch("POST", lobby_url("/v2/room/settings"), body, 8000, 64 << 10), now, body, tries });
+	const int seq = r2_owner.sent(op);   // (the newest of its kind: an older one failing now isn't sent again over it)
+	r2_asks.push_back({ op, fetch("POST", lobby_url("/v2/room/settings"), body, 8000, 64 << 10), now, body, tries, seq });
 }
 
 void Online::room2_rules(const OnlineSettings &s)

@@ -246,6 +246,9 @@ void Adapter::take_sound(std::vector<uint8_t> &out)
 	f.msgs = std::move(msgs);
 	f.held = std::any_of(f.msgs.begin(), f.msgs.end(), [](const std::vector<uint8_t> &m) { return !is_effect(m); });
 	if (first) f.guess = frame >= k;
+	// the frames run for good now, in order: what no guess sent (first: one this call makes final isn't behind this frame's
+	// guess, and its late effects go before this frame's)
+	for (const uint32_t upto = std::min(frame + 1, k); sound_final < upto; sound_final++) settle_sound(sound_final, out);
 	if (first && frame >= k && !f.msgs.empty()) {
 		bool behind = false;
 		for (auto it = sound_frames.lower_bound(sound_final); it != sound_frames.end() && it->first < frame && !behind; ++it) behind = it->second.ran && it->second.held;
@@ -258,8 +261,6 @@ void Adapter::take_sound(std::vector<uint8_t> &out)
 		} else
 			sound_stats.waited++;
 	}
-	// the frames run for good now, in order: what no guess sent
-	for (const uint32_t upto = std::min(frame + 1, k); sound_final < upto; sound_final++) settle_sound(sound_final, out);
 	while (!sound_frames.empty() && sound_frames.begin()->first + 64 < frame && sound_frames.begin()->first + 2 * SOUND_NEAR < sound_final)
 		sound_frames.erase(sound_frames.begin());
 }
