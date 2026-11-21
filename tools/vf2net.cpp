@@ -350,8 +350,25 @@ int main(int argc, char **argv)
 	const vfnet::Identity ia{ "vf2", build, content, "HOST", p1 }, ib{ "vf2", build, content, "GUEST", p2 };
 	A.adapter->checkpoint_every = B.adapter->checkpoint_every = 300;
 	std::vector<uint8_t> sound[2];   // (the bytes each side sent its sound board)
-	A.adapter->sound_out = [&](const std::vector<uint8_t> &b) { sound[0].insert(sound[0].end(), b.begin(), b.end()); };
-	B.adapter->sound_out = [&](const std::vector<uint8_t> &b) { sound[1].insert(sound[1].end(), b.begin(), b.end()); };
+	// VF2NET_MIDI=dir: the bytes each board's sound board was sent, as they went (host.mid, guest.mid, straight.mid: records
+	// of the live frame then (the frame the side's next step runs; the straight run's own), the frame running, their
+	// length and the bytes, u32 u32 u32 then the bytes): tools/midicmp.py compares them
+	const char *midi_dir = getenv("VF2NET_MIDI");
+	FILE *midi_f[3] = {};
+	uint32_t midi_live[3] = {};
+	if (midi_dir) {
+		std::filesystem::create_directories(midi_dir);
+		const char *names[3] = { "host.mid", "guest.mid", "straight.mid" };
+		for (int i = 0; i < 3; i++) midi_f[i] = fopen((std::string(midi_dir) + "/" + names[i]).c_str(), "wb");
+	}
+	auto midi_log = [&](int i, uint32_t made, const std::vector<uint8_t> &b) {
+		if (!midi_f[i] || b.empty()) return;
+		const uint32_t h[3] = { midi_live[i], made, uint32_t(b.size()) };
+		fwrite(h, 4, 3, midi_f[i]);
+		fwrite(b.data(), 1, b.size(), midi_f[i]);
+	};
+	A.adapter->sound_out = [&](const std::vector<uint8_t> &b) { sound[0].insert(sound[0].end(), b.begin(), b.end()); midi_log(0, A.adapter->frame_now(), b); };
+	B.adapter->sound_out = [&](const std::vector<uint8_t> &b) { sound[1].insert(sound[1].end(), b.begin(), b.end()); midi_log(1, B.adapter->frame_now(), b); };
 	vfnet::Session sa(wire.a(), *A.adapter, ia, cfg, true, blob);
 	vfnet::Session sb(wire.b(), *B.adapter, ib, cfg, false);
 
@@ -456,6 +473,7 @@ int main(int argc, char **argv)
 		if (t >= next_a) {
 			const auto s0 = Clock::now();
 			snapper.before_step(sa);
+			midi_live[0] = sa.frame();
 			if (sa.step(word(real[std::min(na, real.size() - 1)], 0))) { na++; score_a.frame(*A.m); score_a_at[sa.frame()] = score_a; }
 			if (!feed_on && sa.state() == vfnet::Session::State::running) {   // (the host's match to the lobby, as the game sends it)
 				vw::Start st;
@@ -480,6 +498,7 @@ int main(int argc, char **argv)
 		}
 		if (t >= next_b) {
 			const auto s0 = Clock::now();
+			midi_live[1] = sb.frame();
 			if (sb.step(word(real[std::min(nb, real.size() - 1)], 1))) { nb++; score_b.frame(*B.m); score_b_at[sb.frame()] = score_b; }
 			if (connected) tb.add(std::chrono::duration<double, std::milli>(Clock::now() - s0).count());
 			next_b += fb / (1 - (soft ? std::clamp(sb.stats().lead * 0.02, 0.0, 0.04) : 0.0));
@@ -536,7 +555,7 @@ int main(int argc, char **argv)
 		Board &C = *pc;
 		if (!C.open(load(), interp, error) || (C.adapter->random_fighters = random, C.adapter->own_extra = p2, !C.adapter->begin(blob))) { fprintf(stderr, "vf2net: the straight board didn't start\n"); return 1; }
 		C.adapter->checkpoint_every = hashes_path ? 30 : 300;
-		C.adapter->sound_out = [&](const std::vector<uint8_t> &b) { straight_sound.insert(straight_sound.end(), b.begin(), b.end()); };
+		C.adapter->sound_out = [&](const std::vector<uint8_t> &b) { straight_sound.insert(straight_sound.end(), b.begin(), b.end()); midi_live[2] = C.adapter->frame_now(); midi_log(2, midi_live[2], b); };
 		int won[2] = {}, by[2] = {};   // (each versus match as it ends: its rounds)
 		std::vector<size_t> sound_at;   // (where each frame's bytes start in straight_sound)
 		for (uint32_t f = 0; f < n; f++) {
@@ -633,6 +652,7 @@ int main(int argc, char **argv)
 		// the sound board's bytes: each side sent each frame's once, guessed or not; a wrong guess's can differ
 		printf("bytes to the sound board: host %zu, guest %zu, straight %zu (to frame %u; a wrong guess's stay)\n", sound[0].size(), sound[1].size(), straight_sound.size(), n);
 	}
+	for (FILE *f : midi_f) if (f) fclose(f);
 	const auto &xa = sa.stats(), &xb = sb.stats();
 	printf("%s: %u frames confirmed, %u checkpoints against a straight run; %.0f ms each way, jitter %.0f, %.0f%% lost; delay %d\n",
 	       failed ? "FAILED" : "in step", n, checked, p.latency_ms, p.jitter_ms, p.loss * 100, delay);
