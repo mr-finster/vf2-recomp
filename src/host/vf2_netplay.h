@@ -269,6 +269,23 @@ public:
 	// short and 1-2 lost a side; now none of either, only a wrong guess's own sounds extra (they can't be taken back)
 	void take_sound(std::vector<uint8_t> &out);
 	uint32_t frame_now() const { return frame; }   // (the frame running now, or the next: tests' logs)
+	// Under rollback (VF3's issue: a player's sound out of step at 228 ms, nearly every frame run again) a frame's messages
+	// go as: the game's effects and voices (note-ons on channel 14) at once the first time a frame runs, a guess's as much
+	// as a certain one's; every other message (the music's cues, controls, notes off, timing: the sound program's state)
+	// only once the frame is run for good (both players' inputs here, `known`), in the frames' order, a frame's effects
+	// after them waiting with them; once a frame is run for good, its effects that went with no guess go then, late (one a
+	// guess sent within SOUND_NEAR frames of it counts as its own, never twice); one a guess sent that the game never made
+	// stays heard. Before, a frame run again sent every message it had that its runs hadn't sent yet: none lost, but a
+	// guess's music cue stayed (the music wrong till its next cue) and a guess's effect a frame off was heard twice.
+	// Without `known` (a watcher, a straight run: every frame for good at once) the messages go as the frames make them.
+	// The frames whose inputs are all here, both players' (the session's other player's inputs come); unset, all of them
+	std::function<uint32_t()> known;
+	static constexpr uint32_t SOUND_NEAR = 4;
+	// what take_sound did, since the match's start (the log's): effects sent once their frame was run for good (none
+	// went with a guess), effects a guess sent that the game never made, frames whose music waited for their inputs (and
+	// how far ahead of them at most), frames whose effects waited behind those
+	struct SoundStats { uint64_t late = 0, stray = 0, held = 0, waited = 0; uint32_t held_most = 0; };
+	SoundStats sound_stats;
 	// The match's boot's bytes for the sound board, a frame's each, whole messages (begin): a sound board made for the match runs a
 	// frame for each with them as it starts, as it would have booted alongside this board, before the match's own
 	std::vector<std::vector<uint8_t>> boot_sound;
@@ -297,8 +314,13 @@ private:
 	bool collecting = false;
 	// per frame (the last 64): where its bytes' messages stood as it started (the running status, an unfinished
 	// message's bytes), from the frame before's last run, and the messages the sound board was sent for it
-	struct sound_frame { uint8_t status = 0; std::vector<uint8_t> part; std::vector<std::vector<uint8_t>> sent; };
+	// (and, once it's run: its messages as its last run made them, whether any is the music's (its first run sent none
+	// then), whether its first run was a guess, the effects a guess sent for it not yet matched with a frame's own)
+	struct sound_frame { uint8_t status = 0; std::vector<uint8_t> part; std::vector<std::vector<uint8_t>> msgs, guessed; bool ran = false, held = false, guess = false; };
 	std::map<uint32_t, sound_frame> sound_frames;
+	uint32_t sound_final = 0;   // (the frames before it settled: their sound sent)
+	void settle_sound(uint32_t f, std::vector<uint8_t> &out);
+	bool take_guessed(uint32_t f, const std::vector<uint8_t> &message);
 	std::vector<uint8_t> check_buf;
 	bool sound_taken = false;
 	bool dropped = false;   // (bytes for the sound board muted with no sound_unheard: none heard since)

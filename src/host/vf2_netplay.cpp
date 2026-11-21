@@ -193,8 +193,6 @@ std::vector<uint8_t> Adapter::host_blob(int secret)
 	return start_blob_random(board, secret, own_extra, seed);
 }
 
-// (a frame's bytes go at once, a guessed frame's as much as a certain one's, so no sound waits for the other
-// side's input; whole messages, see the header)
 namespace {
 // MIDI bytes into whole messages: status, running status, an unfinished message carried in `part`
 void midi_messages(const std::vector<uint8_t> &bytes, uint8_t &status, std::vector<uint8_t> &part, std::vector<std::vector<uint8_t>> &out)
@@ -215,12 +213,17 @@ void midi_messages(const std::vector<uint8_t> &bytes, uint8_t &status, std::vect
 		if (int(part.size()) == 1 + midi_data_bytes(part[0])) { out.push_back(part); part.clear(); }
 	}
 }
+// A message the game's sounds start with (a note on channel 14, the sound program's effects and voices: one-shots), not
+// the music's nor the sound program's state (cues, controls, stops, notes off, timing)
+bool is_effect(const std::vector<uint8_t> &m) { return m.size() == 3 && m[0] == 0x9e && m[2] != 0; }
 } // namespace
 
+// (whole messages, see the header)
 void Adapter::take_sound(std::vector<uint8_t> &out)
 {
 	sound_taken = true;
 	out.clear();
+	const uint32_t k = known ? known() : UINT32_MAX;
 	sound_frame &f = sound_frames[frame];
 	uint8_t status = f.status;
 	std::vector<uint8_t> part = f.part;
@@ -237,18 +240,63 @@ void Adapter::take_sound(std::vector<uint8_t> &out)
 	sound_frame &next = sound_frames[frame + 1];   // (where the next frame's bytes start: this run's, the latest)
 	next.status = status;
 	next.part = std::move(part);
-	// the messages not sent for this frame yet (those sent that it doesn't have now can't be taken back: a wrong guess's
-	// sound stays)
-	std::vector<bool> matched(f.sent.size(), false);
-	for (auto &m : msgs) {
-		size_t k = 0;
-		while (k < f.sent.size() && (matched[k] || f.sent[k] != m)) k++;
-		if (k < f.sent.size()) { matched[k] = true; continue; }
-		out.insert(out.end(), m.begin(), m.end());
-		f.sent.push_back(std::move(m));
-		matched.push_back(true);
+	// (the frame's messages, its last run's; a guess run the first time: its effects now, unless the music's wait)
+	const bool first = !f.ran;
+	f.ran = true;
+	f.msgs = std::move(msgs);
+	f.held = std::any_of(f.msgs.begin(), f.msgs.end(), [](const std::vector<uint8_t> &m) { return !is_effect(m); });
+	if (first) f.guess = frame >= k;
+	if (first && frame >= k && !f.msgs.empty()) {
+		bool behind = false;
+		for (auto it = sound_frames.lower_bound(sound_final); it != sound_frames.end() && it->first < frame && !behind; ++it) behind = it->second.ran && it->second.held;
+		if (!f.held && !behind) {
+			for (const auto &m : f.msgs) out.insert(out.end(), m.begin(), m.end());
+			f.guessed = f.msgs;
+		} else if (f.held) {
+			sound_stats.held++;
+			sound_stats.held_most = std::max(sound_stats.held_most, frame + 1 - std::max(k, sound_final));
+		} else
+			sound_stats.waited++;
 	}
-	while (!sound_frames.empty() && sound_frames.begin()->first + 64 < frame) sound_frames.erase(sound_frames.begin());
+	// the frames run for good now, in order: what no guess sent
+	for (const uint32_t upto = std::min(frame + 1, k); sound_final < upto; sound_final++) settle_sound(sound_final, out);
+	while (!sound_frames.empty() && sound_frames.begin()->first + 64 < frame && sound_frames.begin()->first + 2 * SOUND_NEAR < sound_final)
+		sound_frames.erase(sound_frames.begin());
+}
+
+bool Adapter::take_guessed(uint32_t f, const std::vector<uint8_t> &m)
+{
+	for (uint32_t d = 0; d <= SOUND_NEAR; d++)   // (its own frame's first, then the nearest)
+		for (const uint32_t g : { f - d, f + d }) {
+			if ((d && g == f) || (d > f && g == f - d)) continue;
+			const auto it = sound_frames.find(g);
+			if (it == sound_frames.end()) continue;
+			auto &v = it->second.guessed;
+			const auto at = std::find(v.begin(), v.end(), m);
+			if (at == v.end()) continue;
+			v.erase(at);
+			return true;
+		}
+	return false;
+}
+
+void Adapter::settle_sound(uint32_t f, std::vector<uint8_t> &out)
+{
+	const auto it = sound_frames.find(f);
+	if (it == sound_frames.end()) return;
+	sound_frame &s = it->second;
+	for (const auto &m : s.msgs) {
+		if (is_effect(m)) {
+			if (take_guessed(f, m)) continue;   // (a guess sent it, on this frame or one near it)
+			if (s.guess) sound_stats.late++;   // (none went with its guess)
+		}
+		out.insert(out.end(), m.begin(), m.end());
+	}
+	// (SOUND_NEAR frames on, what a guess sent for this one and no frame made: a stray, heard)
+	if (const auto old = sound_frames.find(f - std::min(f, SOUND_NEAR)); old != sound_frames.end() && f >= SOUND_NEAR) {
+		sound_stats.stray += old->second.guessed.size();
+		old->second.guessed.clear();
+	}
 }
 
 bool Adapter::begin(const std::vector<uint8_t> &blob)
@@ -349,6 +397,8 @@ bool Adapter::begin(const std::vector<uint8_t> &blob)
 	}
 	started_secret = secret;
 	sound_frames.clear();
+	sound_final = 0;
+	sound_stats = {};
 	{   // (the boot's frames' bytes as whole messages, one cut at a frame's end with the frame that ends it, as VF1's;
 		// the match's first frame's bytes start where they ended, so an unfinished one goes once, with them)
 		sound_frame &f0 = sound_frames[0];
@@ -430,6 +480,7 @@ bool Adapter::load_snap(const std::vector<uint8_t> &state, const std::vector<uin
 		}
 	}
 	sound_frames.clear();
+	sound_final = frame;   // (a watcher's: its sound from here)
 	tail.clear();
 	dropped = false;
 	// (the host's sound bytes before it, if they read whole; else none: the music from its next cue)
