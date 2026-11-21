@@ -392,6 +392,8 @@ T(ROOM2_LISTED_HELP, "Shown in everyone's Rooms list, or only to those with its 
 T(ROOM2_CLOSE_ROOM, "Close the room")   // (a row: the room's creator's)
 T(ROOM2_RULE_SIDE, "Winner may change side")
 T(ROOM2_RULE_SIDE_HELP, "On: a new challenger always plays as player 2. Off: the winner keeps their side, as in the arcade.")
+T(ROOM2_RULE_RANDOM, "Random fighters")
+T(ROOM2_RULE_RANDOM_HELP, "On: a player's random fighter (Online > Settings > Your fighter) plays in the room. Off: everyone plays the game's own fighters, as picked at the select.")
 T(ROOM2_RULE_MAX, "Players in the room")
 T(ROOM2_RULE_MAX_HELP, "The most who may be in the room at once.")
 T(ROOM2_NO_LIMIT, "No limit")

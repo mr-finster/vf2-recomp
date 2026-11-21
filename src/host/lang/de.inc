@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "In der Raumliste aller zu sehen, oder nur für die mit dem
 T(ROOM2_CLOSE_ROOM, "Raum schließen")
 T(ROOM2_RULE_SIDE, "Sieger darf die Seite wechseln")
 T(ROOM2_RULE_SIDE_HELP, "An: ein neuer Herausforderer spielt immer als Spieler 2. Aus: der Sieger behält seine Seite, wie am Automaten.")
+T(ROOM2_RULE_RANDOM, "Zufällige Kämpfer")
+T(ROOM2_RULE_RANDOM_HELP, "An: der zufällige Kämpfer eines Spielers (Online > Einstellungen > Dein Kämpfer) spielt im Raum. Aus: alle spielen die Kämpfer des Spiels, wie bei der Auswahl gewählt.")
 T(ROOM2_RULE_MAX, "Spieler im Raum")
 T(ROOM2_RULE_MAX_HELP, "Höchstens so viele dürfen gleichzeitig im Raum sein.")
 T(ROOM2_NO_LIMIT, "Keine Grenze")

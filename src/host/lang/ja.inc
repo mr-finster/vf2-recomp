@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "全員のルーム一覧に表示するか、コードを�
 T(ROOM2_CLOSE_ROOM, "ルームを閉じる")
 T(ROOM2_RULE_SIDE, "勝者のサイド変更")
 T(ROOM2_RULE_SIDE_HELP, "オン：新しい挑戦者はいつも2Pで対戦。オフ：勝者は自分のサイドのまま (アーケードと同じ)。")
+T(ROOM2_RULE_RANDOM, "ランダムキャラクター")
+T(ROOM2_RULE_RANDOM_HELP, "オン：プレイヤーのランダムキャラクター（オンライン > 設定 > 自分のキャラクター）でルームで対戦します。オフ：みんなゲームのキャラクターで対戦します。")
 T(ROOM2_RULE_MAX, "ルームの人数")
 T(ROOM2_RULE_MAX_HELP, "同時にルームに入れる人数です。")
 T(ROOM2_NO_LIMIT, "制限なし")

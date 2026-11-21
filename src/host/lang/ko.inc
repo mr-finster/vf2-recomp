@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "모두의 방 목록에 표시하거나, 코드를 아는 
 T(ROOM2_CLOSE_ROOM, "방 닫기")
 T(ROOM2_RULE_SIDE, "승자가 사이드를 바꿀 수 있어요")
 T(ROOM2_RULE_SIDE_HELP, "켜기: 새 도전자는 항상 2P로 대전해요. 끄기: 승자는 아케이드처럼 자기 사이드를 지켜요.")
+T(ROOM2_RULE_RANDOM, "랜덤 캐릭터")
+T(ROOM2_RULE_RANDOM_HELP, "켜기: 플레이어의 랜덤 캐릭터(온라인 > 설정 > 내 캐릭터)로 방에서 대전해요. 끄기: 모두 게임의 캐릭터로 대전해요.")
 T(ROOM2_RULE_MAX, "방 인원")
 T(ROOM2_RULE_MAX_HELP, "방에 한 번에 들어올 수 있는 인원이에요.")
 T(ROOM2_NO_LIMIT, "제한 없음")

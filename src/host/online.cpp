@@ -3186,21 +3186,24 @@ menu_page room2_settings_page(Online &o, OnlineSettings &s, game_menu &menu, std
 		[&o, put](int) { if (RoomMember *m = const_cast<RoomMember *>(o.room2())) { m->listed = !m->listed; put(); } } });
 	// (the room's rules as the lobby has them (this player's own till its first word, or a lobby without them); each change
 	// the room's with that one changed, to the lobby at once (sent again if it fails), and kept as this player's for the next
-	// room made; this game has no Dural, Customize nor stage select: only the winner's side and the room's size)
-	struct ruled { bool side; int max; };
+	// room made; this game has no Dural, Customize nor stage select: the winner's side, random fighters and the room's size)
+	struct ruled { bool side; int max; bool random; };
 	auto now = [&o, &s] {
 		const RoomMember *m = o.room2();
-		return m && m->has_rules ? ruled{ m->rule_side, m->rule_max } : ruled{ s.rule_side, s.rule_max };
+		return m && m->has_rules ? ruled{ m->rule_side, m->rule_max, m->rule_random } : ruled{ s.rule_side, s.rule_max, s.rule_random };
 	};
 	auto rules = [&o, &s, now, changed](const std::function<void(ruled &)> &f) {
 		ruled r = now();
 		f(r);
-		s.rule_side = r.side; s.rule_max = r.max;
+		s.rule_side = r.side; s.rule_max = r.max; s.rule_random = r.random;
 		o.room2_rules(s);
 		if (changed) changed();
 	};
 	auto onoff = [](bool v) { return std::string(v ? tr::ON : tr::OFF); };
 	p.items.push_back({ tr::ROOM2_RULE_SIDE, tr::ROOM2_RULE_SIDE_HELP, [now, onoff] { return onoff(now().side); }, [rules](int) { rules([](ruled &r) { r.side = !r.side; }); } });
+	// (random fighters (Online > Settings > Your fighter): Off, the lobby seats the plain match's terms, the select's fighters
+	// for both whatever each chose, a game's own build or another's alike)
+	p.items.push_back({ tr::ROOM2_RULE_RANDOM, tr::ROOM2_RULE_RANDOM_HELP, [now, onoff] { return onoff(now().random); }, [rules](int) { rules([](ruled &r) { r.random = !r.random; }); } });
 	p.items.push_back({ tr::ROOM2_RULE_MAX, tr::ROOM2_RULE_MAX_HELP, [now] { const int n = now().max; return n ? std::to_string(n) : std::string(tr::ROOM2_NO_LIMIT); },
 		[rules](int d) {   // (no limit, 2 to 16, then no limit again)
 			rules([d](ruled &r) {

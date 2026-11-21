@@ -385,6 +385,8 @@ T(ROOM2_LISTED_HELP, "Herkesin oda listesinde görünür ya da yalnızca kodu bi
 T(ROOM2_CLOSE_ROOM, "Odayı kapat")
 T(ROOM2_RULE_SIDE, "Kazanan taraf değiştirebilir")
 T(ROOM2_RULE_SIDE_HELP, "Açık: yeni rakip her zaman 2. oyuncu olarak oynar. Kapalı: kazanan, salondaki gibi kendi tarafında kalır.")
+T(ROOM2_RULE_RANDOM, "Rastgele dövüşçüler")
+T(ROOM2_RULE_RANDOM_HELP, "Açık: bir oyuncunun rastgele dövüşçüsü (Çevrimiçi > Ayarlar > Dövüşçün) odada oynar. Kapalı: herkes oyunun dövüşçüleriyle, seçimde seçildiği gibi oynar.")
 T(ROOM2_RULE_MAX, "Odadaki oyuncu")
 T(ROOM2_RULE_MAX_HELP, "Odada aynı anda en fazla kaç kişi olabileceği.")
 T(ROOM2_NO_LIMIT, "Sınırsız")

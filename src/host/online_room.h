@@ -48,7 +48,7 @@ struct RoomMember
 	std::string room_name;
 	bool listed = false, locked = false, owner = false;
 	// (the room's rules, the creator's, as the lobby has them: none for a room an older build made, each game its own settings then)
-	bool has_rules = false, rule_side = false, rule_dural = false, rule_custom = false, rule_stage = true;
+	bool has_rules = false, rule_side = false, rule_dural = false, rule_custom = false, rule_stage = true, rule_random = false;
 	int rule_max = 0;
 	int ready_ms = 15000;
 	Who a, b;                       // (the table: side a is the session's host)

@@ -1013,9 +1013,9 @@ struct settings
 		num("online_rooms_show", online.rooms_show, 0, 2);
 		flag("online_quick_listed", online.quick_listed);
 		if (auto it = kv.find("online_room_rules"); it != kv.end()) {   // (a Rooms 2 room's rules: side dural custom max stage)
-			int a = 0, b = 0, c = 0, d = 0, e = 1;
-			if (sscanf(it->second.c_str(), "%d %d %d %d %d", &a, &b, &c, &d, &e) == 5) {
-				online.rule_side = a != 0; online.rule_dural = b != 0; online.rule_custom = c != 0; online.rule_max = std::clamp(d, 0, 32); online.rule_stage = e != 0;
+			int a = 0, b = 0, c = 0, d = 0, e = 1, f = 0;   // (a 6th: random fighters; beta 2's first lines had 5)
+			if (sscanf(it->second.c_str(), "%d %d %d %d %d %d", &a, &b, &c, &d, &e, &f) >= 5) {
+				online.rule_side = a != 0; online.rule_dural = b != 0; online.rule_custom = c != 0; online.rule_max = std::clamp(d, 0, 32); online.rule_stage = e != 0; online.rule_random = f != 0;
 			}
 		}
 		num("picture_shape", aspect, 0, N_ASPECTS - 1);
@@ -1207,7 +1207,7 @@ struct settings
 		if (!online.fighter.empty()) fprintf(f, "online_fighter = %s\n", online.fighter.c_str());
 		if (!online.room_name.empty()) fprintf(f, "online_room_name = %s\n", online.room_name.c_str());
 		fprintf(f, "online_room_listed = %d\nonline_rooms_show = %d\nonline_quick_listed = %d\n", online.room_who, online.rooms_show, int(online.quick_listed));
-		fprintf(f, "online_room_rules = %d %d %d %d %d\n", int(online.rule_side), int(online.rule_dural), int(online.rule_custom), online.rule_max, int(online.rule_stage));
+		fprintf(f, "online_room_rules = %d %d %d %d %d %d\n", int(online.rule_side), int(online.rule_dural), int(online.rule_custom), online.rule_max, int(online.rule_stage), int(online.rule_random));
 		for (int p = 0; p < 2; p++) ctl[p].save(f, p);
 		for (const std::string &m : pad_mappings) fprintf(f, "pad_mapping = %s\n", m.c_str());
 		const bool flushed = flush_to_disk(f);

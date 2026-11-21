@@ -51,7 +51,7 @@ struct OnlineSettings
 	// A Rooms 2 room's rules, the creator's (Room settings; the lobby keeps them with the room): the winner may change side
 	// when a newcomer's seated, Dural on the select, random or custom fighters, players in the room at most (0 no limit), the
 	// challenger's stage select. The last ones set, for the next room made
-	bool rule_side = false, rule_dural = false, rule_custom = false, rule_stage = true;
+	bool rule_side = false, rule_dural = false, rule_custom = false, rule_stage = true, rule_random = false;   // (rule_random: random fighters in the room, the lobby's terms)
 	int rule_max = 0;
 };
 

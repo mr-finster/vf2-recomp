@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "顯示在所有人的房間列表中，或只給有代碼�
 T(ROOM2_CLOSE_ROOM, "關閉房間")
 T(ROOM2_RULE_SIDE, "勝者可換邊")
 T(ROOM2_RULE_SIDE_HELP, "開：新挑戰者總是作為2P對戰。關：勝者留在自己這一邊，和街機一樣。")
+T(ROOM2_RULE_RANDOM, "隨機角色")
+T(ROOM2_RULE_RANDOM_HELP, "開：玩家的隨機角色（連線 > 設定 > 你的角色）在房間裡對戰。關：大家用遊戲的角色對戰。")
 T(ROOM2_RULE_MAX, "房間人數")
 T(ROOM2_RULE_MAX_HELP, "房間裡同時最多的人數。")
 T(ROOM2_NO_LIMIT, "不限")

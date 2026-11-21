@@ -1782,20 +1782,23 @@ int main(int argc, char **argv)
 		check(top() == tr::ROOM2_SETTINGS.c_str(), "Rooms 2: the creator's Room settings");
 		shot("room2_settings.png", w, h);
 		{   // the rows: the room's rules as the lobby has them, not this player's saved ones (a change the lobby didn't take, or
-			// a room made with others): the winner's side and the players (this game has no Dural, Customize nor stage select).
-			// A change: the room's with that one changed, kept as this player's
-			check(gm.row_count() == 5 && gm.row_value(1) == std::string(tr::OFF) && gm.row_value(2) == std::string(tr::ROOM2_NO_LIMIT),
-			      "Rooms 2's settings: 5 rows, the side and the players as the room's");
+			// a room made with others): the winner's side, random fighters and the players (this game has no Dural, Customize
+			// nor stage select). A change: the room's with that one changed, kept as this player's
+			check(gm.row_count() == 6 && gm.row_value(1) == std::string(tr::OFF) && gm.row_value(2) == std::string(tr::OFF) && gm.row_value(3) == std::string(tr::ROOM2_NO_LIMIT),
+			      "Rooms 2's settings: 6 rows, the side, random fighters (Off) and the players as the room's");
 			const bool side0 = s.rule_side;
-			o.set_room2_test(R"({"code":"KXQ4M7","room":{"name":"","listed":false,"locked":false,"ready_ms":15000,"owner":true,"rules":{"side":true,"dural":false,"custom":false,"max":4,"stage":true}},"table":{"a":{"name":"MRFINSTER","country":"GB"},"b":null,"phase":"SOLO","streak":0,"holder":"a","n":0,"last":null},"line":[],"you":{"mid":"x","pos":0,"side":"a","misses":0},"ready":null,"watch":"KXQ4M7"})");
+			o.set_room2_test(R"({"code":"KXQ4M7","room":{"name":"","listed":false,"locked":false,"ready_ms":15000,"owner":true,"rules":{"side":true,"dural":false,"custom":false,"max":4,"stage":true,"random":true}},"table":{"a":{"name":"MRFINSTER","country":"GB"},"b":null,"phase":"SOLO","streak":0,"holder":"a","n":0,"last":null},"line":[],"you":{"mid":"x","pos":0,"side":"a","misses":0},"ready":null,"watch":"KXQ4M7"})");
 			gm.refresh();
-			check(gm.row_value(1) == std::string(tr::ON) && gm.row_value(2) == "4" && s.rule_side == side0,
-			      "Rooms 2's settings: the room's rules shown (side On, 4 players), the saved ones left alone");
+			check(gm.row_value(1) == std::string(tr::ON) && gm.row_value(2) == std::string(tr::ON) && gm.row_value(3) == "4" && s.rule_side == side0,
+			      "Rooms 2's settings: the room's rules shown (side On, random On, 4 players), the saved ones left alone");
+			gm.select_row(3);
+			key(SDL_SCANCODE_RIGHT);
+			check(gm.row_value(3) == "5" && s.rule_max == 5 && s.rule_side && s.rule_random && o.room2()->rule_max == 5,
+			      "Rooms 2's settings: Players 4 to 5: the room's side and random kept, all kept as this player's");
 			gm.select_row(2);
 			key(SDL_SCANCODE_RIGHT);
-			check(gm.row_value(2) == "5" && s.rule_max == 5 && s.rule_side && o.room2()->rule_max == 5,
-			      "Rooms 2's settings: Players 4 to 5: the room's side kept, both kept as this player's");
-			s.rule_side = false; s.rule_max = 0;
+			check(gm.row_value(2) == std::string(tr::OFF) && !s.rule_random && o.room2()->rule_random == false, "Rooms 2's settings: random fighters On to Off");
+			s.rule_side = false; s.rule_max = 0; s.rule_random = false;
 		}
 		settle_check("room2_settings.png", w, h);
 		for (int row : { 0, 1 }) {   // (each row's help, Close the room's the longest)

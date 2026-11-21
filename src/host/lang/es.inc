@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "Se muestra en la lista de salas de todos, o solo a quien t
 T(ROOM2_CLOSE_ROOM, "Cerrar la sala")
 T(ROOM2_RULE_SIDE, "El ganador puede cambiar de lado")
 T(ROOM2_RULE_SIDE_HELP, "Sí: un nuevo retador siempre juega como jugador 2. No: el ganador mantiene su lado, como en el arcade.")
+T(ROOM2_RULE_RANDOM, "Luchadores aleatorios")
+T(ROOM2_RULE_RANDOM_HELP, "Sí: el luchador aleatorio de un jugador (Online > Ajustes > Tu luchador) juega en la sala. No: todos juegan con los luchadores del juego, tal como se eligen.")
 T(ROOM2_RULE_MAX, "Jugadores en la sala")
 T(ROOM2_RULE_MAX_HELP, "Los que pueden estar en la sala a la vez, como máximo.")
 T(ROOM2_NO_LIMIT, "Sin límite")
