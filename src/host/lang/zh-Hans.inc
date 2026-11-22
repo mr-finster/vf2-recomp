@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "显示在所有人的房间列表中，或只给有代码�
 T(ROOM2_CLOSE_ROOM, "关闭房间")
 T(ROOM2_RULE_SIDE, "胜者可换边")
 T(ROOM2_RULE_SIDE_HELP, "开：新挑战者总是作为2P对战。关：胜者留在自己这一边，和街机一样。")
+T(ROOM2_RULE_CHANGE, "胜者可换角色")
+T(ROOM2_RULE_CHANGE_HELP, "开：每个新挑战者到来时胜者重新选择。关：胜者保留获胜时的角色，和街机一样。")
 T(ROOM2_RULE_RANDOM, "随机角色")
 T(ROOM2_RULE_RANDOM_HELP, "开：玩家的随机角色（联机 > 设置 > 你的角色）在房间里对战。关：大家用游戏的角色对战。")
 T(ROOM2_RULE_MAX, "房间人数")

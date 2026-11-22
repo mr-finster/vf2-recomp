@@ -6142,6 +6142,12 @@ int main(int argc, char **argv)
 		for (int64_t at : shots_at)
 			if (at == pass) write_window(("build/host_window_at_" + std::to_string(at) + ".png").c_str());
 		if (!story_shot.empty()) { write_window(("build/" + story_shot + ".png").c_str()); story_shot.clear(); }
+		if (static const bool sel_shot = getenv("VF2_ROOM2_SELECT_SHOT") != nullptr; sel_shot) {   // (tests: the window 4 s after each room seat's select ends)
+			static int seen = 0;
+			static uint64_t due = 0;   // (4 s after it: the fighters on screen, the select's end is a black frame)
+			if (online.select_ends() != seen) { seen = online.select_ends(); due = SDL_GetTicks() + 4000; }
+			if (due && SDL_GetTicks() >= due) { due = 0; write_window(("build/select_end_" + std::to_string(seen) + ".png").c_str()); }
+		}
 		if (room2_shot) { room2_shot = false; write_window("build/host_room2_ready.png"); fprintf(stderr, "(test) the ready check's banner: build/host_room2_ready.png\n"); }
 		// the next frame, if it will be due by the next refresh, run on the game's thread while this
 		// present waits (see emu_job): not for a frame whose picture the test run writes, nor its last

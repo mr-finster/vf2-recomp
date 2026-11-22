@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "Mostrata nell'elenco stanze di tutti, o solo a chi ha il c
 T(ROOM2_CLOSE_ROOM, "Chiudi la stanza")
 T(ROOM2_RULE_SIDE, "Il vincitore può cambiare lato")
 T(ROOM2_RULE_SIDE_HELP, "Sì: un nuovo sfidante gioca sempre come giocatore 2. No: il vincitore tiene il suo lato, come in sala giochi.")
+T(ROOM2_RULE_CHANGE, "Il vincitore può cambiare personaggio")
+T(ROOM2_RULE_CHANGE_HELP, "Sì: il vincitore sceglie di nuovo a ogni nuovo sfidante. No: il vincitore tiene il personaggio con cui ha vinto, come in sala giochi.")
 T(ROOM2_RULE_RANDOM, "Lottatori casuali")
 T(ROOM2_RULE_RANDOM_HELP, "Sì: il lottatore casuale di un giocatore (Online > Impostazioni > Il tuo lottatore) gioca nella stanza. No: tutti giocano i lottatori del gioco, come scelti alla selezione.")
 T(ROOM2_RULE_MAX, "Giocatori nella stanza")

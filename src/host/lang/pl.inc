@@ -384,6 +384,8 @@ T(ROOM2_LISTED_HELP, "Widoczny na liście pokoi u wszystkich albo tylko dla tych
 T(ROOM2_CLOSE_ROOM, "Zamknij pokój")
 T(ROOM2_RULE_SIDE, "Zwycięzca może zmienić stronę")
 T(ROOM2_RULE_SIDE_HELP, "Wł.: nowy rywal zawsze gra jako gracz 2. Wył.: zwycięzca zostaje po swojej stronie, jak na automacie.")
+T(ROOM2_RULE_CHANGE, "Zwycięzca może zmienić postać")
+T(ROOM2_RULE_CHANGE_HELP, "Wł.: zwycięzca wybiera ponownie przy każdym nowym rywalu. Wył.: zwycięzca zachowuje postać, którą wygrał, jak na automacie.")
 T(ROOM2_RULE_RANDOM, "Losowi wojownicy")
 T(ROOM2_RULE_RANDOM_HELP, "Wł.: losowa postać gracza (Online > Ustawienia > Twoja postać) gra w pokoju. Wył.: wszyscy grają wojownikami gry, wybranymi przy wyborze.")
 T(ROOM2_RULE_MAX, "Graczy w pokoju")
