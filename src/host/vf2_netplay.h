@@ -135,6 +135,7 @@ struct Score
 	void frame(const model2a &board);
 	int players() const { return playing; }          // (who's in the game, as held: bit 0 player 1, bit 1 player 2)
 	uint8_t players_now() const { return now[2]; }   // (as the RAM has it this frame, not yet held: when one went out)
+	uint8_t rounds_now(int p) const { return now[p]; }   // (a player's rounds won in this match, as the RAM has it this frame)
 	int round_ends = 0;   // (each round's end, any players': a moment no one's in control, while the game shows who won)
 	static constexpr uint32_t ROUNDS_P1 = 0x4f, ROUNDS_P2 = 0x51, PLAYING = 0x4c;   // (work RAM offsets)
 	static constexpr bool known() { return ROUNDS_P1 && ROUNDS_P2 && PLAYING; }

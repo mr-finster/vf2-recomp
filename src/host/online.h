@@ -517,6 +517,7 @@ private:
 	bool persist = false;               // (the room's own: kept through its match, opened again after it)
 	bool r2_start_held = false;         // (a Rooms 2 challenger's Start held this frame: the one who stays is in first)
 	double hold_at = 0;
+	uint32_t r2_game_seen = UINT32_MAX;   // (the log's: who's in the game and the rounds, as last said)
 };
 
 // (a request to the lobby, on a thread of its own: online.cpp's and online_room.cpp's)

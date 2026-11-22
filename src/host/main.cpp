@@ -5692,7 +5692,9 @@ int main(int argc, char **argv)
 				const hotkey hk = read_inputs(m, pads, pstate, cfg.ctl, live, touch_shown() ? &touch : nullptr);
 				const uint8_t in0 = uint8_t(ports[input_script::IN0] & ~live[0]), in1 = uint8_t(ports[input_script::IN1] & ~live[1]), in2 = uint8_t(ports[input_script::IN2] & ~live[2]);
 				uint16_t bits = menu.is_open() || freecam ? 0 : uint16_t(vf2net::pack(in0, in1, 0) | vf2net::pack(in0, in2, 1) | step_carry);
-				if (static const char *rf = getenv("VF2_ROOM2_FIGHT"); rf && online.in_room2() && online.room2()->in_seat && !online.watching()) {
+				static const double r2_away_after = getenv("VF2_ROOM2_AWAY_AFTER") ? atof(getenv("VF2_ROOM2_AWAY_AFTER")) * 1000 : -1;   // (tests: no input at all from s s on: away)
+				const bool r2_away = r2_away_after >= 0 && double(SDL_GetTicks()) >= r2_away_after;
+				if (static const char *rf = getenv("VF2_ROOM2_FIGHT"); rf && !r2_away && online.in_room2() && online.room2()->in_seat && !online.watching()) {
 					// (tests: Start whenever the match wants it from this player (its start, a rematch), tapped; then
 					// random play, or none: the other wins)
 					static uint64_t rng = 0x9E3779B97F4A7C15ull ^ uint64_t(SDL_GetTicksNS());
@@ -5722,6 +5724,7 @@ int main(int argc, char **argv)
 					}
 				}
 				if (static uint32_t spam_n = 0; room2_spam && online.in_room2() && ++spam_n % 10 < 3) bits |= vf2net::START_BUTTON;   // (tests: Start pressed over and over)
+				if (r2_away) bits = 0;
 				online.poll(double(SDL_GetTicksNS()) / 1e6);
 				if (hk == hotkey::menu) open_menu();
 				const uint64_t te = SDL_GetTicksNS();
