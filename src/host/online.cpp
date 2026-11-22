@@ -469,6 +469,38 @@ bool Online::play_again(const OnlineSettings &s, tr::line &error)
 	return m.was_host ? host(s, error) : join(s, error);
 }
 
+// Player p's cursor on the character select (D-18, the winner's fighter kept): the select on (work RAM 0x2b at 7) and the
+// player's select object (its address at 0x83c, player 2's 0x840; +4 the player, +0 its flags: in and picking, bits 31, 3
+// and 1), the slot at +6 (0-9, one row: Left, Right), as random_fighter.cpp's select_inputs reads them; picked, not on it
+bool Online::sel_cursor(int p, int &row, int &col) const
+{
+	const std::vector<uint8_t> &ram = board.workram();
+	if (ram.size() < 0x900 || ram[0x2b] != 7) return false;
+	uint32_t o = 0, flags = 0;
+	memcpy(&o, &ram[p ? 0x840 : 0x83c], 4);
+	if (o < 0x500000 || o - 0x500000 + 8 >= ram.size() || ram[o - 0x500000 + 4] != p) return false;
+	memcpy(&flags, &ram[o - 0x500000], 4);
+	if (!(flags >> 31) || (flags & 0xa) != 0xa) return false;
+	row = 0;
+	col = ram[o - 0x500000 + 6];
+	return col < 10;
+}
+
+// Player p at the select or in the game: the select's object for them, in (bit 31 of its flags), or in by the score
+bool Online::sel_joined(int p) const
+{
+	const std::vector<uint8_t> &ram = board.workram();
+	if (ram.size() >= 0x900 && ram[0x2b] == 7) {
+		uint32_t o = 0, flags = 0;
+		memcpy(&o, &ram[p ? 0x840 : 0x83c], 4);
+		if (o >= 0x500000 && o - 0x500000 + 8 < ram.size() && ram[o - 0x500000 + 4] == p) {
+			memcpy(&flags, &ram[o - 0x500000], 4);
+			if (flags >> 31) return true;
+		}
+	}
+	return score.players_now() >> p & 1;
+}
+
 int Online::start_wait() const
 {
 	if (!session || ph != Phase::playing) return 0;
@@ -2180,6 +2212,12 @@ void Online::begin_match(const std::string &who)
 	round_ends_seen = 0;
 	round_end_frame = 0;
 	both_in = false;
+	score_conf = {};
+	conf_fed = 0;
+	both_in_conf = false;
+	conf_winner = -1;
+	conf_armed = false;
+	for (ConfBytes &e : conf_ring) e.f = UINT32_MAX;
 	random_misses = 0;
 	out_scan[0] = out_scan[1] = SIZE_MAX;
 	out_pressed[0] = out_pressed[1] = false;
@@ -2490,50 +2528,86 @@ bool Online::step(uint16_t input)
 	}
 	// A Rooms 2 seat's first match (a new pair, a fresh session): both are put in the game by their own games, so the board
 	// never runs one player against the computer, whether they're at the keys or not (away, they just lose). VF2 takes a
-	// second player's Start only while the first is still before or at their select, and after a Start shows a screen of
-	// its own for 20 s that a button skips (the select comes only once it's taken; checked on the ROM, vf2net: Start alone 1384 frames to the select, with Punch 128). So both
-	// games press for their players on the same session frames: Start for 6 frames, then 30 frames later Punch for 2,
-	// every 160 frames while that player isn't in; both are at the select together, a moment after the seat. A player's
-	// own presses go in as ever
+	// second player's Start only while the first is still at the select, so both games press Start for their players on
+	// the same session frames (6 frames, every 160) till that player has joined the select (sel_joined: never a Start at
+	// the select itself); then each picks as ever (the select's own timer picks for one who doesn't). A player's own
+	// presses go in as ever
 	if (room2_in_seat() && ph == Phase::playing && session && !both_in) {
 		const uint32_t f = uint32_t(session->inputs(me).size());
-		if (!(score.players_now() >> me & 1)) {
-			if (f % 160 < 6) input = uint16_t(input | vf2net::START_BUTTON);
-			else if (f % 160 >= 30 && f % 160 < 32) input = uint16_t(input | 0x01);   // (Punch: the post-Start screen skipped)
-		}
+		if (!sel_joined(me) && f % 160 < 6) input = uint16_t(input | vf2net::START_BUTTON);
 	}
-	// The winner's fighter kept (the room's Winner may change character off, the default): at a seat's first select, the one
-	// who stays plays back the input they chose their fighter with at the select they last won from (Online::sel_keep),
-	// their own left out till the select's over; at a rematch's select (a play-on) the arcade keeps its winner in already.
-	// Each select this player chose at is recorded (not a rematch's that they won the match before: the arcade's choice)
+	// The winner's fighter kept (the room's Winner may change character off, the default; D-18): at a seat's first select,
+	// the one who stays has their cursor steered by their own game to where it was at the select they last won from (read
+	// from the game's RAM, sel_cursor), a press a step and a look at where it is, then confirmed, Start held round it for
+	// the outfit they had; their own input left out till the select's over. The challenger picks freely; at a rematch's
+	// select (a play-on) the arcade keeps its winner in already. Where each player's cursor was is kept as the select goes
+	// (not at a rematch's select they won the match before: the arcade's choice, not theirs)
 	if (room2_in_seat() && ph == Phase::playing && session) {
+		// (tests: VF2_ROOM2_PICK=row,col,word;...: this player's own pick at each select in turn, steered the same way)
+		static const std::vector<SelPick> test_picks = [] {
+			std::vector<SelPick> v;
+			if (const char *e = getenv("VF2_ROOM2_PICK"))
+				for (std::string all = std::string(e) + ";"; !all.empty(); all.erase(0, all.find(';') + 1)) {
+					int r = -1, c = -1, w = 0;
+					if (sscanf(all.c_str(), "%d,%d,%d", &r, &c, &w) >= 2) { SelPick s; s.row = r; s.col = c; s.press = uint16_t(w); v.push_back(s); }
+				}
+			return v;
+		}();
 		const bool sel = vf2net::in_select(board);
-		const size_t at = session->inputs(me).size();   // (the frame this input is for: a step that doesn't run one (the select's
-		                                                 // lockstep waiting on the other side) is asked again with the same)
+		const size_t at = session->inputs(me).size();   // (the frame this input is for: a step that doesn't run one is asked again)
+		// (the one who stays, their fighter to be kept: their own presses left out from the seat's start, not only from the
+		// select's (one just before it would land at its first frames, the input delay later, and pick the fighter the
+		// cursor starts on); the seat's Start pressed for them goes in)
+		const bool keep_rule = !r2->has_rules || !r2->rule_change;
+		const bool keep_soon = sel_phase == 0 && !both_in && ((keep_rule && r2->stayer == (me == 0 ? "a" : "b") && sel_keep.col >= 0 && sel_keep_side == me) || !test_picks.empty());
+		if (keep_soon) input = uint16_t(input & vf2net::START_BUTTON);
 		if (sel && sel_phase != 1) {   // (a select begins)
 			sel_phase = 1;
 			sel_base = at;
-			sel_rec.clear();
+			sel_now = {};
 			sel_recording = !(both_in && sel_won_last);
-			const bool keep = !r2->has_rules || !r2->rule_change;
-			// (not yet: the same input on a seat's select doesn't give the same fighter (its cursor and timing aren't the same
-			// seat to seat, checked: identical words sent, another fighter), so the lock needs the select's cursor and the
-			// fighter in RAM, game by game; till then the winner picks again whatever the rule)
-			sel_playing = false && !both_in && keep && r2->stayer == (me == 0 ? "a" : "b") && !sel_keep.empty() && sel_keep_side == me;
-			if (sel_playing) log_line("Rooms 2: the winner keeps their fighter: the select's input played back (" + std::to_string(sel_keep.size()) + " frames)");
+			sel_playing = !both_in && keep_rule && r2->stayer == (me == 0 ? "a" : "b") && sel_keep.col >= 0 && sel_keep_side == me;
+			if (sel_playing)
+				log_line("Rooms 2: the winner keeps their fighter: the cursor to row " + std::to_string(sel_keep.row) + ", column " + std::to_string(sel_keep.col) +
+				         ", picked with " + std::to_string(sel_keep.press));
 		} else if (!sel && sel_phase == 1) {   // (and it's over)
 			sel_phase = 2;
 			sel_ends++;
-			if (sel_recording && !sel_rec.empty()) sel_last = sel_rec;
+			if (sel_recording && sel_now.col >= 0) {
+				sel_last = sel_now;
+				log_line("Rooms 2: this player's pick at the select: row " + std::to_string(sel_now.row) + ", column " + std::to_string(sel_now.col) + ", with " + std::to_string(sel_now.press));
+			}
 			sel_recording = sel_playing = false;
 		}
-		if (sel_phase == 1 && at >= sel_base) {
-			const size_t k = at - sel_base;
-			if (sel_playing) input = k < sel_keep.size() ? sel_keep[k] : uint16_t(0);
-			if (sel_recording && k < 20000) {
-				if (sel_rec.size() <= k) sel_rec.resize(k + 1, 0);
-				sel_rec[k] = input;
+		if (sel_phase == 1) {
+			int row = -1, col = -1;
+			const bool on = sel_cursor(me, row, col);
+			const SelPick *test_pick = test_picks.empty() ? nullptr : &test_picks[size_t(sel_ends) % test_picks.size()];
+			const SelPick *to = sel_playing ? &sel_keep : test_pick;
+			if (to) {
+				uint16_t steer = 0;
+				const int cyc = std::max(16, 2 * delay_now() + 8), c = int((at - std::min(at, sel_base)) % size_t(cyc));
+				if (on) {
+					if (row != to->row) { if (c < 2) steer = row < to->row ? 0x10 : 0x20; }
+					else if (col != to->col) { if (c < 2) steer = col < to->col ? 0x40 : 0x80; }
+					else {   // (on it: picked with the word it was, its outfit's part (Start, Up) held round the button)
+						if (c < 8) steer = uint16_t(to->press & ~0x07);
+						if (c >= 3 && c < 5) steer = to->press ? to->press : uint16_t(0x01);
+					}
+				}
+				input = steer;
 			}
+			if (sel_recording && on) {
+				sel_now.row = row;
+				sel_now.col = col;
+				if ((input & 0x07) && !(sel_was & 0x07)) sel_now.press = uint16_t(input & ~(0xC0 | 0));
+			}
+			if (static const bool dbg = getenv("VF2_TEST_SEL_LOG") != nullptr; dbg) {   // (tests: the select as it goes, a line each change)
+				static std::string last;
+				const std::string now_s = std::to_string(int(on)) + " " + std::to_string(row) + " " + std::to_string(col) + " " + std::to_string(input);
+				if (now_s != last) { last = now_s; log_line("(test) select: on row col input " + now_s + " k" + std::to_string(at - std::min(at, sel_base)) + " (frame " + std::to_string(at) + ")" + (sel_playing ? " (keeping)" : "")); }
+			}
+			sel_was = input;
 		}
 	}
 	if (session) snapper.before_step(*session);   // (a snapshot's copy the step could save over: stopped first, tried again)
@@ -2549,6 +2623,25 @@ bool Online::step(uint16_t input)
 		}
 		feed.set_info(i);
 	}
+	if (!adapter.after_frame)
+		adapter.after_frame = [this](uint32_t f) {
+			ConfBytes &e = conf_ring[f % conf_ring.size()];
+			if (vf2net::Score::bytes(board, e.r)) e.f = f;
+		};
+	for (const uint32_t upto = session->confirmed(); conf_fed < upto; conf_fed++) {   // (the frames run for good since)
+		const ConfBytes &e = conf_ring[conf_fed % conf_ring.size()];
+		if (e.f != conf_fed) continue;
+		score_conf.feed(e.r);
+		// (the match decided at its deciding KO, the winner's rounds at the rounds to win, as the frames run for good have
+		// it: the same frame in both games, whatever a Start after it (the loser's straight back in, no frames out))
+		const int tw = r2_to_win;
+		if (tw >= 1 && tw <= 5) {
+			const bool won0 = e.r[0] >= tw, won1 = e.r[1] >= tw;
+			if ((won0 || won1) && conf_armed) { conf_winner = won0 && won1 ? 0 : won0 ? 1 : 2; conf_armed = false; }
+			else if (!won0 && !won1 && e.r[0] == 0 && e.r[1] == 0 && (e.r[2] & 3) == 3 && !conf_armed) { conf_armed = true; conf_winner = -1; }
+		}
+	}
+	if (score_conf.players() == 3) both_in_conf = true;
 	if (score.players() == 3) both_in = true;
 	if (room2_in_seat()) {   // (the log: who's in the game and each one's rounds, as the RAM has them, each time it changes)
 		const uint32_t g = uint32_t(score.players_now()) | uint32_t(score.rounds_now(0)) << 8 | uint32_t(score.rounds_now(1)) << 16;
@@ -2561,7 +2654,7 @@ bool Online::step(uint16_t input)
 		// (a check, for the log: one player alone in the game for 5 s before both have been in, the board running them against
 		// the computer at a seat's start, which a seat's Starts never let happen)
 		const uint8_t in = score.players_now();
-		r2_alone = !both_in && (in == 1 || in == 2) ? r2_alone + 1 : 0;
+		r2_alone = !both_in && (in == 1 || in == 2) && !vf2net::in_select(board) ? r2_alone + 1 : 0;   // (at the select, a pick made isn't a fight: VF1 and VF2 count one in from their pick)
 		if (r2_alone == 300) log_line("Rooms 2: (check) one player alone in the game for 5 s at the seat's start: the board running them against the computer");
 	}
 	if (held_before == 3 && score.players() != 3) decided_in = uint8_t(score.players());   // (the match decided: who's in, the winner)

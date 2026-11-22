@@ -1527,7 +1527,7 @@ int main(int argc, char **argv)
 		// a notice's card up (Match over, a watched match between two) with a room's banner (GET READY) and a note: the
 		// banner under the card, the note held
 		gm.set_notice(tr::MATCH_OVER, tr::fill(tr::BANNER_WAITING_FOR, { { "name", "WWWWWWWWWW" } }));
-		gm.set_banner(tr::fill(tr::ROOM2_GET_READY_N, { { "n", "3" } }), tr::fill(tr::ROOM2_YOU_PLAY, { { "name", "WWWWWWWWWW" } }) + "   " + tr::fill(tr::ROOM2_NOT_NOW, { { "key", "Esc" } }));
+		gm.set_banner(tr::fill(tr::ROOM2_GET_READY_N, { { "n", "3" } }), tr::fill(tr::ROOM2_YOU_PLAY, { { "name", "WWWWWWWWWW" } }) + "   " + std::string(tr::ROOM2_NOT_NOW));
 		for (int i = 0; i < 3; i++) { shot("", w, h); SDL_Delay(20); }
 		shot("notice_banner_note.png", w, h);
 		room2_clear("notice_banner_note.png");
@@ -1545,7 +1545,9 @@ int main(int argc, char **argv)
 	{   // (the connection bar in a match: each cell's words in the middle of its box)
 		game_menu::net_cells c;
 	// Rooms 2's banners over the game: the ready check's countdown, you're next, a new challenger, the loser's
-	gm.set_banner(tr::fill(tr::ROOM2_GET_READY_N, { { "n", "3" } }), tr::fill(tr::ROOM2_YOU_PLAY, { { "name", "AKIRAFAN" } }) + "   " + tr::fill(tr::ROOM2_NOT_NOW, { { "key", "Esc" } }));
+	gm.set_banner(tr::fill(tr::ROOM2_GET_READY_N, { { "n", "3" } }), tr::fill(tr::ROOM2_YOU_PLAY, { { "name", "AKIRAFAN" } }) + "   " + std::string(tr::ROOM2_NOT_NOW));
+	check(std::string(tr::ROOM2_NOT_NOW).find("{key}") == std::string::npos && std::string(tr::ROOM2_NOT_NOW).find("AWAY") != std::string::npos,
+	      "D-19: the ready check's hint names no key or button for AWAY (only the menu's SKIP THIS TURN sets it)");
 	shot("room2_ready_banner.png", w, h);
 	gm.set_banner(tr::ROOM2_NEW_CHALLENGER, "WWWWWWWWWW");
 	shot("room2_challenger.png", w, h);

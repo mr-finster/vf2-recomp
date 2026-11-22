@@ -566,6 +566,7 @@ void Adapter::advance(const uint16_t input[2], bool resim)
 			if (!out.empty()) sound_out(out);
 		}
 	}
+	if (after_frame) after_frame(frame);
 	frame++;
 	if (checkpoint_every && frame % checkpoint_every == 0) {
 		board.save_state(check_buf);
@@ -722,11 +723,23 @@ uint8_t Score::players_in(const model2a &board)
 	return board.game_mode() == 9 ? 1 : 0;   // (player 1 alone, in a fight; else no one yet)
 }
 
-void Score::frame(const model2a &board)
+bool Score::bytes(const model2a &board, uint8_t r_out[3])
 {
-	if (!known()) return;
+	if (!known()) return false;
 	const std::vector<uint8_t> &ram = board.workram();
 	const uint8_t r[3] = { ram[ROUNDS_P1], ram[ROUNDS_P2], players_in(board) };
+	memcpy(r_out, r, 3);
+	return true;
+}
+
+void Score::frame(const model2a &board)
+{
+	uint8_t r[3];
+	if (bytes(board, r)) feed(r);
+}
+
+void Score::feed(const uint8_t r[3])
+{
 	if (memcmp(r, now, 3) != 0) { memcpy(now, r, 3); held = 0; return; }
 	if (++held != 30) return;   // (once, when it's held long enough)
 	playing = r[2];
