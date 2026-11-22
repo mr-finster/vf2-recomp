@@ -875,18 +875,18 @@ int main(int argc, char **argv)
 			gm.select_row(c_rule);
 			key(SDL_SCANCODE_RETURN);   // (Winner may change side)
 			pad(SDL_GAMEPAD_BUTTON_SOUTH);   // (and back, by the pad)
-			gm.select_row(c_rule + 1);
-			key(SDL_SCANCODE_RETURN);   // (Players in the room: the next value)
+			gm.select_row(c_rule + 2);
+			key(SDL_SCANCODE_RETURN);   // (Players in the room: the next value; random fighters before it, as Room settings)
 			check(s.rule_side == side0 && s.rule_max == (max0 ? s.rule_max : 2) && s.rule_random == random0,
 			      "Create room: the room's rules on the form, each row its next value (Enter, the pad's A)");
-			gm.select_row(c_rule + 2);
+			gm.select_row(c_rule + 1);
 			for (int i = 0; i < 8; i++) { shot("", w, h); SDL_Delay(40); }
 			shot("create_room_rule.png", w, h);   // (a rule selected: its help under the rows)
 			room2_clear("create_room_rule.png");
 			{   // a click on a rule's row: its next value
 				std::vector<game_menu::box> rows = gm.boxes("row");
-				if (int(rows.size()) > c_rule + 2) {
-					const auto &b = rows[size_t(c_rule + 2)];
+				if (int(rows.size()) > c_rule + 1) {
+					const auto &b = rows[size_t(c_rule + 1)];
 					button(true, (b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
 					button(false, (b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
 				}
@@ -1600,6 +1600,30 @@ int main(int argc, char **argv)
 					button(false, x2, y2);
 					check(o.room2() && o.room2()->pending("join_line"), "Rooms 2's mouse: a click with the page as it was: JOIN THE LINE");
 				}
+			}
+			o.set_room2_test("");
+		}
+		{   // COPY CODE at the table during a match: the room's page made again (a match's, every half second) between the
+			// press and the release: the code copied all the same, and "Copied" kept for its seconds as the page is made again
+			o.set_room2_test(R"({"code":"KXQ4M7","room":{"name":"FRIDAY FIGHTS","listed":true,"locked":false,"ready_ms":15000,"owner":true},"table":{"a":{"name":"MRFINSTER","country":"GB"},"b":{"name":"LAUCHAN","country":"KR"},"phase":"PLAYING","streak":0,"holder":"a","n":1,"last":null},"line":[],"you":{"mid":"x","pos":0,"side":"a","ready":true},"watchers":0,"ready":null,"watch":"KXQ4M7"})");
+			again();
+			std::vector<game_menu::box> rows = gm.boxes("row");
+			check(rows.size() == 4, ("Rooms 2: the creator at the table, 4 buttons, COPY CODE the 2nd (" + std::to_string(rows.size()) + ")").c_str());
+			if (rows.size() == 4) {
+				const float x = (rows[1].x0 + rows[1].x1) / 2, y = (rows[1].y0 + rows[1].y1) / 2;
+				auto clip = [] { char *c = SDL_GetClipboardText(); std::string t = c ? c : ""; SDL_free(c); return t; };
+				SDL_SetClipboardText("none");
+				gm.set_test_held(1);
+				button(true, x, y);
+				gm.refresh();
+				gm.render(false);
+				gm.set_test_held(0);
+				button(false, x, y);
+				gm.set_test_held(-1);
+				check(clip() == o.room_code() && !o.room_code().empty(), ("Rooms 2: COPY CODE pressed, the page made again before the release: the code copied (" + clip() + ")").c_str());
+				again();
+				shot("", w, h);
+				check(!gm.boxes("good").empty(), "Rooms 2: \"Copied\" still shown after the page is made again");
 			}
 			o.set_room2_test("");
 		}
