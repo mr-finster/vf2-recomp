@@ -2600,10 +2600,10 @@ bool Online::step(uint16_t input)
 		// for the other costume), or 10 s on (a fighter no column gives, as it is))
 		if (sel_end_wait && (sel_end_playing || sel_end_recording)) {
 			const int got = sel_fighter(me), want = board.select_slot_fighter(sel_now.col);
-			const bool sure = got >= 0 && got < 26 && (want < 0 || got % 13 == want);
+			const bool sure = got >= 0 && got < 26 && (want < 0 || got % 13 == want || got % 13 == 9);   // (9: Dural, picked with Start held on any cell)
 			if (sure || at - std::min(at, sel_end_at) > 600 || sel) {
 				sel_end_wait = false;
-				if (sel_end_playing) log_line(got == sel_keep.fighter ? "Rooms 2: the winner's fighter kept: " + std::to_string(got)
+				if (sel_end_playing) log_line(got >= 0 && sel_keep.fighter >= 0 && got % 13 == sel_keep.fighter % 13 ? "Rooms 2: the winner's fighter kept: " + std::to_string(got) + (got != sel_keep.fighter ? " (the costume the game's: two on one fighter)" : "")
 				                                                       : "Rooms 2: the winner's fighter NOT kept: " + std::to_string(got) + ", not " + std::to_string(sel_keep.fighter));
 				if (sel_end_recording) {
 					sel_now.fighter = got;
@@ -2628,11 +2628,12 @@ bool Online::step(uint16_t input)
 					if (row != to->row) { if (c < 2) steer = row < to->row ? 0x10 : 0x20; }
 					else if (col != to->col) { if (c < 2) steer = col < to->col ? 0x40 : 0x80; }
 					else if (to->fighter >= 0 && to->fighter < 26) {
-						// (on it, the fighter known (its costume 13 on): Start held the whole time on the cell for the second
-						// costume, not only round the button: the game reads it after the button's press (the harness: a pick
-						// "with 1" (no Start at the press) gave 13, and the lock's Start, let go 4 frames after the button, gave 0:
-						// "NOT kept: 0, not 13"))
-						const uint16_t rest = uint16_t((to->press & ~0x07 & ~vf2net::START_BUTTON) | (to->fighter >= 13 ? vf2net::START_BUTTON : 0));
+						// (on it, the fighter known: Start held the whole time on the cell only for Dural (fighter 9): VF2 2.1's
+						// code, a pick made with Start held is Dural, whatever the cell (checked: a column 0 pick with Start held
+						// gave 9 both ways). The second costume (13 on) is the game's own: the second of two players on one
+						// fighter wears it (two Akiras: 0 and 13), no input chooses it, so never Start for it (Start held then
+						// gave Dural, not the costume))
+						const uint16_t rest = uint16_t((to->press & ~0x07 & ~vf2net::START_BUTTON) | (to->fighter % 13 == 9 ? vf2net::START_BUTTON : 0));
 						const uint16_t button = (to->press & 0x07) ? uint16_t(to->press & 0x07) : uint16_t(0x01);
 						steer = rest;
 						if (c >= 3 && c < 5) steer = uint16_t(rest | button);
