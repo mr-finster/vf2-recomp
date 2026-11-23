@@ -538,7 +538,7 @@ private:
 	// character select and whether Start was held at their last button press there (the outfit): sel_now as the select goes,
 	// sel_last once it's over, sel_keep (with their side) once they win a match. At their next seat's select as the one who
 	// stays, their game steers the cursor there and confirms it, their own input left out till the select's over
-	struct SelPick { int row = -1, col = -1; uint16_t press = 0; };   // (press: the word they picked with, the stick's moves left out: its button and the outfit's own (Start held, Up, the button))
+	struct SelPick { int row = -1, col = -1; uint16_t press = 0; int fighter = -1; };   // (press: the word they picked with, the stick's moves left out: its button and the outfit's own (Start held, Up, the button))
 	SelPick sel_now, sel_last, sel_keep;
 	int sel_phase = 0;          // (this seat's session: 0 no select yet, 1 at one, 2 after it)
 	bool sel_recording = false, sel_playing = false, sel_won_last = false;
@@ -547,7 +547,8 @@ private:
 	int sel_ends = 0;
 	uint16_t sel_was = 0;       // (this player's input the frame before: a button's press)
 	bool sel_joined(int p) const;   // (player p at the select or in the game: a seat's Start pressed for them no more)
-	bool sel_cursor(int p, int &row, int &col) const;   // (player p's cursor on the character select, the game's RAM; false: not on it)
+	bool sel_cursor(int p, int &row, int &col) const;
+	int sel_fighter(int p) const;   // (player p's fighter as the game has it picked, its outfit in it where the game keeps it so; -1 not known)   // (player p's cursor on the character select, the game's RAM; false: not on it)
 };
 
 // (a request to the lobby, on a thread of its own: online.cpp's and online_room.cpp's)

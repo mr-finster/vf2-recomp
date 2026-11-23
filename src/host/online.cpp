@@ -501,6 +501,18 @@ bool Online::sel_joined(int p) const
 	return score.players_now() >> p & 1;
 }
 
+// Player p's fighter as picked, its costume in it (13 on: the second), the player's block +1b0 (its address at 0x804,
+// player 2's 0x808), as random_fighter.cpp reads it
+int Online::sel_fighter(int p) const
+{
+	const std::vector<uint8_t> &ram = board.workram();
+	uint32_t b = 0;
+	if (ram.size() < 0x900) return -1;
+	memcpy(&b, &ram[0x804 + 4 * size_t(p)], 4);
+	if (b < 0x500000 || b - 0x500000 + 0x1b1 >= ram.size()) return -1;
+	return ram[b - 0x500000 + 0x1b0];
+}
+
 int Online::start_wait() const
 {
 	if (!session || ph != Phase::playing) return 0;
@@ -2492,6 +2504,7 @@ bool Online::step(uint16_t input)
 	else if (score.players_now() == 3 && score.rounds_now(0) == 0 && score.rounds_now(1) == 0) r2_lost = false;
 	const bool r2_beaten = r2_lost;
 	if (room2_in_seat() && (input & 0x7fff)) r2->touched = true;   // (this player's own input in this match: not away)
+	if (room2_in_seat() && r2_lost && (input & vf2net::START_BUTTON)) r2->playon_pressed = true;   // (their rematch's Start: the play-on's 20 s stopped)
 	// The loser's Start for a rematch, with the lobby moving on to the next in the room's line: taken out. Once the match is
 	// decided (room2_moving_on: the lobby calling the next, or about to), the player out of the game's; and before the held
 	// reading has them out, from the deciding KO, with someone READY in the line (the lobby will move on): a Start then takes
@@ -2569,13 +2582,17 @@ bool Online::step(uint16_t input)
 			sel_playing = !both_in && keep_rule && r2->stayer == (me == 0 ? "a" : "b") && sel_keep.col >= 0 && sel_keep_side == me;
 			if (sel_playing)
 				log_line("Rooms 2: the winner keeps their fighter: the cursor to row " + std::to_string(sel_keep.row) + ", column " + std::to_string(sel_keep.col) +
-				         ", picked with " + std::to_string(sel_keep.press));
+				         ", picked with " + std::to_string(sel_keep.press) + ", fighter " + std::to_string(sel_keep.fighter));
 		} else if (!sel && sel_phase == 1) {   // (and it's over)
 			sel_phase = 2;
 			sel_ends++;
+			const int got = sel_fighter(me);
+			if (sel_playing) log_line(got == sel_keep.fighter ? "Rooms 2: the winner's fighter kept: " + std::to_string(got)
+			                                                    : "Rooms 2: the winner's fighter NOT kept: " + std::to_string(got) + ", not " + std::to_string(sel_keep.fighter));
 			if (sel_recording && sel_now.col >= 0) {
+				sel_now.fighter = got;
 				sel_last = sel_now;
-				log_line("Rooms 2: this player's pick at the select: row " + std::to_string(sel_now.row) + ", column " + std::to_string(sel_now.col) + ", with " + std::to_string(sel_now.press));
+				log_line("Rooms 2: this player's pick at the select: row " + std::to_string(sel_now.row) + ", column " + std::to_string(sel_now.col) + ", with " + std::to_string(sel_now.press) + ", fighter " + std::to_string(sel_now.fighter));
 			}
 			sel_recording = sel_playing = false;
 		}
