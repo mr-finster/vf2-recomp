@@ -2657,6 +2657,10 @@ bool Online::step(uint16_t input)
 			sel_was = input;
 		}
 	}
+	// (reno, 23 Nov) The room's Dural off: no Start at the select from a room's seat, so no Dural (a pick made with Start held
+	// is Dural in VF2 2.1, on any cell; the seat start never presses Start there)
+	if (room2_in_seat() && ph == Phase::playing && session && r2->has_rules && !r2->rule_dural && vf2net::in_select(board))
+		input = uint16_t(input & ~vf2net::START_BUTTON);
 	if (session) snapper.before_step(*session);   // (a snapshot's copy the step could save over: stopped first, tried again)
 	if (!(ph == Phase::playing && session && session->step(input))) return false;
 	score.frame(board);   // (the score between the two, from the game's RAM: vf2net::Score)
