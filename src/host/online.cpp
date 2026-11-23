@@ -2609,7 +2609,16 @@ bool Online::step(uint16_t input)
 				if (on) {
 					if (row != to->row) { if (c < 2) steer = row < to->row ? 0x10 : 0x20; }
 					else if (col != to->col) { if (c < 2) steer = col < to->col ? 0x40 : 0x80; }
-					else {   // (on it: picked with the word it was, its outfit's part (Start, Up) held round the button)
+					else if (to->fighter >= 0 && to->fighter < 26) {
+						// (on it, the fighter known (its costume 13 on): Start held the whole time on the cell for the second
+						// costume, not only round the button: the game reads it after the button's press (the harness: a pick
+						// "with 1" (no Start at the press) gave 13, and the lock's Start, let go 4 frames after the button, gave 0:
+						// "NOT kept: 0, not 13"))
+						const uint16_t rest = uint16_t((to->press & ~0x07 & ~vf2net::START_BUTTON) | (to->fighter >= 13 ? vf2net::START_BUTTON : 0));
+						const uint16_t button = (to->press & 0x07) ? uint16_t(to->press & 0x07) : uint16_t(0x01);
+						steer = rest;
+						if (c >= 3 && c < 5) steer = uint16_t(rest | button);
+					} else {   // (on it: picked with the word it was, its outfit's part (Start, Up) held round the button)
 						if (c < 8) steer = uint16_t(to->press & ~0x07);
 						if (c >= 3 && c < 5) steer = to->press ? to->press : uint16_t(0x01);
 					}
