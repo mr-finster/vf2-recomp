@@ -366,6 +366,7 @@ public:
 	// profile. Takes effect as a cursor next moves onto him: set before the game starts (the
 	// menu restarts it). False for another number, or if the program isn't the one known.
 	bool set_secret_character(int fighter);
+	int select_slot_fighter(int slot) const;   // (the fighter the select's slot 0-9 sets, as its code reads the table (the Secret character's copy or not); -1 not known)
 	// Arcade settings > Debug mode: the arcade's own debug mode, as its secret code gives it (hold Service, then P1 Left, P, K,
 	// Right, Right, Down, P, Up, K, K: bit 14 of 0x508000, which lets the game read all of the board's switches) with
 	// switch 1 on (bit 0 of port G, which turns it on: the CPU load, the polygon count and the hits on the screen; P2

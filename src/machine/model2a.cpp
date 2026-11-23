@@ -565,6 +565,16 @@ void model2a::restore_warning()
 // the select loads it by, and its portrait) and for the name and profile it shows (3, ldob). The
 // first ones are pointed at a copy past the program's end (in the 2 MB ROM space, zeros there),
 // Akira's slot the secret character; the name and profile stay Akira's. 0 puts it all back.
+int model2a::select_slot_fighter(int slot) const
+{
+	static constexpr u32 FIRST_SET = 0x3213c, TABLE = 0x33e4c, COPY = 0x1fff00;
+	const auto &rom = m_roms.regions[romset::MAINCPU];
+	if (slot < 0 || slot >= 10 || rom.size() < COPY + 11) return -1;
+	u32 t = 0;
+	memcpy(&t, &rom[FIRST_SET + 4], 4);
+	return t == TABLE || t == COPY ? rom[t + u32(slot)] : -1;
+}
+
 bool model2a::set_secret_character(int fighter)
 {
 	static constexpr u32 TABLE = 0x33e4c, COPY = 0x1fff00, N = 11;

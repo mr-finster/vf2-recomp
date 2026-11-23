@@ -541,6 +541,8 @@ private:
 	// stays, their game steers the cursor there and confirms it, their own input left out till the select's over
 	struct SelPick { int row = -1, col = -1; uint16_t press = 0; int fighter = -1; };   // (press: the word they picked with, the stick's moves left out: its button and the outfit's own (Start held, Up, the button))
 	SelPick sel_now, sel_last, sel_keep;
+	size_t sel_end_at = 0;   // (the frame the last select ended: its fighter read from then, sel_end_wait)
+	bool sel_end_wait = false, sel_end_playing = false, sel_end_recording = false;
 	int sel_phase = 0;          // (this seat's session: 0 no select yet, 1 at one, 2 after it)
 	bool sel_recording = false, sel_playing = false, sel_won_last = false;
 	size_t sel_base = 0;        // (the select's first frame: the session's frame count then)

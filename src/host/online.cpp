@@ -2558,13 +2558,13 @@ bool Online::step(uint16_t input)
 	// select (a play-on) the arcade keeps its winner in already. Where each player's cursor was is kept as the select goes
 	// (not at a rematch's select they won the match before: the arcade's choice, not theirs)
 	if (room2_in_seat() && ph == Phase::playing && session) {
-		// (tests: VF2_ROOM2_PICK=row,col,word;...: this player's own pick at each select in turn, steered the same way)
+		// (tests: VF2_ROOM2_PICK=row,col,word[,fighter];...: this player's own pick at each select in turn, steered the same way)
 		static const std::vector<SelPick> test_picks = [] {
 			std::vector<SelPick> v;
 			if (const char *e = getenv("VF2_ROOM2_PICK"))
 				for (std::string all = std::string(e) + ";"; !all.empty(); all.erase(0, all.find(';') + 1)) {
-					int r = -1, c = -1, w = 0;
-					if (sscanf(all.c_str(), "%d,%d,%d", &r, &c, &w) >= 2) { SelPick s; s.row = r; s.col = c; s.press = uint16_t(w); v.push_back(s); }
+					int r = -1, c = -1, w = 0, f = -1;   // (row,col,word[,fighter]: with the fighter, picked as the lock picks it, Start for its costume)
+					if (sscanf(all.c_str(), "%d,%d,%d,%d", &r, &c, &w, &f) >= 2) { SelPick s; s.row = r; s.col = c; s.press = uint16_t(w); s.fighter = f; v.push_back(s); }
 				}
 			return v;
 		}();
@@ -2576,7 +2576,7 @@ bool Online::step(uint16_t input)
 		const bool keep_rule = !r2->has_rules || !r2->rule_change;
 		const bool keep_soon = sel_phase == 0 && !both_in && ((keep_rule && r2->stayer == (me == 0 ? "a" : "b") && sel_keep.col >= 0 && sel_keep_side == me) || !test_picks.empty());
 		if (keep_soon) input = uint16_t(input & vf2net::START_BUTTON);
-		if (sel && sel_phase != 1) {   // (a select begins)
+		if (sel && sel_phase != 1 && !sel_end_wait) {   // (a select begins; a last one's fighter read first)
 			sel_phase = 1;
 			sel_base = at;
 			sel_now = {};
@@ -2585,24 +2585,42 @@ bool Online::step(uint16_t input)
 			if (sel_playing)
 				log_line("Rooms 2: the winner keeps their fighter: the cursor to row " + std::to_string(sel_keep.row) + ", column " + std::to_string(sel_keep.col) +
 				         ", picked with " + std::to_string(sel_keep.press) + ", fighter " + std::to_string(sel_keep.fighter));
-		} else if (!sel && sel_phase == 1) {   // (and it's over)
+		} else if (!sel && sel_phase == 1) {   // (and it's over: the fighter read once the game has it, below)
 			sel_phase = 2;
 			sel_ends++;
-			const int got = sel_fighter(me);
-			if (sel_playing) log_line(got == sel_keep.fighter ? "Rooms 2: the winner's fighter kept: " + std::to_string(got)
-			                                                    : "Rooms 2: the winner's fighter NOT kept: " + std::to_string(got) + ", not " + std::to_string(sel_keep.fighter));
-			if (sel_recording && sel_now.col >= 0) {
-				sel_now.fighter = got;
-				sel_last = sel_now;
-				log_line("Rooms 2: this player's pick at the select: row " + std::to_string(sel_now.row) + ", column " + std::to_string(sel_now.col) + ", with " + std::to_string(sel_now.press) + ", fighter " + std::to_string(sel_now.fighter));
-			}
+			sel_end_at = at;
+			sel_end_wait = true;
+			sel_end_playing = sel_playing;
+			sel_end_recording = sel_recording && sel_now.col >= 0;
 			sel_recording = sel_playing = false;
 		}
+		// (the fighter picked, read when it's the column's: the player's block, read as the select ends, was at times not
+		// yet the one the fight loads (a cold seat's first select: column 0 read as fighter 9, the attract's), so the
+		// lock was told a fighter the column never gives. Read again each frame till it's the column's fighter (13 on
+		// for the other costume), or 10 s on (a fighter no column gives, as it is))
+		if (sel_end_wait && (sel_end_playing || sel_end_recording)) {
+			const int got = sel_fighter(me), want = board.select_slot_fighter(sel_now.col);
+			const bool sure = got >= 0 && got < 26 && (want < 0 || got % 13 == want);
+			if (sure || at - std::min(at, sel_end_at) > 600 || sel) {
+				sel_end_wait = false;
+				if (sel_end_playing) log_line(got == sel_keep.fighter ? "Rooms 2: the winner's fighter kept: " + std::to_string(got)
+				                                                       : "Rooms 2: the winner's fighter NOT kept: " + std::to_string(got) + ", not " + std::to_string(sel_keep.fighter));
+				if (sel_end_recording) {
+					sel_now.fighter = got;
+					sel_last = sel_now;
+					log_line("Rooms 2: this player's pick at the select: row " + std::to_string(sel_now.row) + ", column " + std::to_string(sel_now.col) + ", with " + std::to_string(sel_now.press) + ", fighter " + std::to_string(sel_now.fighter) +
+					         (sure ? "" : " (not the column's: " + std::to_string(want) + ")") + ", " + std::to_string(at - std::min(at, sel_end_at)) + " frames after the select");
+				}
+			}
+		} else sel_end_wait = false;
 		if (sel_phase == 1) {
 			int row = -1, col = -1;
 			const bool on = sel_cursor(me, row, col);
 			const SelPick *test_pick = test_picks.empty() ? nullptr : &test_picks[size_t(sel_ends) % test_picks.size()];
-			const SelPick *to = sel_playing ? &sel_keep : test_pick;
+			SelPick keep_at = sel_keep;   // (the winner's: the column that gives the fighter kept, the record's if none does)
+			if (sel_keep.fighter >= 0)
+				for (int k = 0; k < 10; k++) if (board.select_slot_fighter(k) == sel_keep.fighter % 13) { keep_at.col = k; break; }
+			const SelPick *to = sel_playing ? &keep_at : test_pick;
 			if (to) {
 				uint16_t steer = 0;
 				const int cyc = std::max(16, 2 * delay_now() + 8), c = int((at - std::min(at, sel_base)) % size_t(cyc));
