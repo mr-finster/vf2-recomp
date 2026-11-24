@@ -211,6 +211,7 @@
 #include "menu.h"
 #include "crt_colours.h"
 #include "online.h"
+#include "present_rate.h"
 #include "links.h"
 #include "text.h"
 #include "chime.h"
@@ -3074,7 +3075,9 @@ int main(int argc, char **argv)
 	// antialiasing it lowered goes back up a step towards the player's, unless a step back up was
 	// lowered again in this run.
 	float test_screen_hz = 0;   // VF2_SCREEN_HZ=n: tests, the governor's screen as n Hz
-	float screen_hz_now = 0;    // (the screen's refresh as the last 2 s window found it: Auto's spare passes)
+	float screen_hz_now = 0;    // (the screen's refresh as the last 2 s window found it: Auto's spare passes; the rate the presents show where slower, present_rate.h)
+	double reported_hz = 0;     // (the Hz the screen says)
+	PresentRate present_rate("VF2_TEST_SCREEN_HZ");
 	int vsync_now = -1;         // (the renderer's vsync as it reports it, looked at with the refresh: -1 not yet)
 	uint64_t gov_from = UINT64_MAX;
 	double test_load_ms = 0, test_load_s = 0;   // VF2_TEST_LOAD=ms:s (tests: a slow start)
@@ -6189,7 +6192,10 @@ int main(int argc, char **argv)
 		}
 		const uint64_t tp = SDL_GetTicksNS();
 		SDL_RenderPresent(ren);
+		present_rate.sleep_after_present();
 		pace.present += SDL_GetTicksNS() - tp;
+		present_rate.after_present(tp, reported_hz, vsync_now == 1 && !hidden);
+		if (reported_hz > 0 && !hidden) screen_hz_now = float(present_rate.rate(reported_hz));
 		pace.passes++;
 		if (!shown) {
 			shown = true;
@@ -6305,10 +6311,13 @@ int main(int argc, char **argv)
 			float screen_hz = hidden ? 120 : 60;
 			if (const SDL_DisplayMode *dm = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(win))) if (!hidden && dm->refresh_rate > 0) screen_hz = dm->refresh_rate;
 			if (test_screen_hz > 0) screen_hz = test_screen_hz;
+			if (!hidden) screen_hz = float(present_rate.said_hz(screen_hz));
+			if (screen_hz != reported_hz) { present_rate.reset(); reported_hz = screen_hz; }
+			screen_hz = float(present_rate.rate(screen_hz));
 			screen_hz_now = screen_hz;
 			{   // (the log says when it's on or off)
 				int vs = 0;
-				const int on = SDL_GetRenderVSync(ren, &vs) && vs != 0;
+				const int on = present_rate.faked() || (SDL_GetRenderVSync(ren, &vs) && vs != 0);
 				if (on != vsync_now) fprintf(stderr, "vsync: %s\n", on ? "on" : "off (pictures by Display > Frame limit, not one each refresh)");
 				vsync_now = on;
 			}
