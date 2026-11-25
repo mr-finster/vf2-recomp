@@ -1058,7 +1058,12 @@ void Online::room2_session_ended(const vfnet::Session::Event &e)
 	RoomMember &m = *r2;
 	const auto why = session->end_reason();
 	const bool was_playing = ph == Phase::playing;
-	const bool moved = why == vfnet::Session::End::opponent_quit && session->opponent_quit_reason() == QUIT_NEXT_IN_LINE;
+	// (or the match decided and reported, the line moving on: the winner's game made way at the loser-out on the frames run for
+	// good, its quit lost or late (a lag's: the gate's VF1, "connection lost" and a disconnect told for a match over): the line
+	// moved, never a disconnect, round 11b)
+	const bool moved = (why == vfnet::Session::End::opponent_quit && session->opponent_quit_reason() == QUIT_NEXT_IN_LINE) ||
+	                   ((why == vfnet::Session::End::opponent_quit || why == vfnet::Session::End::disconnected) && m.reported_n == m.n && m.reported_n >= 0 &&
+	                    m.decided_seen && (room2_moving_on() || m.phase == "READY"));
 	const std::string who = opponent();
 	if (was_playing) {
 		const char *res = why == vfnet::Session::End::desync ? "desync" : moved ? nullptr : why == vfnet::Session::End::quit ? nullptr : "disconnect";
@@ -1165,7 +1170,19 @@ void Online::room2_decided()
 	// (reno, 22 Nov: no CPU fighting in a room seat) Decided with someone READY and the lobby's word in (READY: the result
 	// applied, the next called): the winner's board stops here, its last picture held, "you stay on", till the next pair's
 	// seated (the session ends as the line moving on: the loser's board still too, YOU LOST: NEXT IS ...)
-	if (decided && in != 0 && ((in >> me) & 1) && m.phase == "READY" && ph == Phase::playing && !room2_win_sequence()) {
+	// (round 11b) The room DECIDED or READY on the other's report, this game's own decision not come (the gate's VF1 under
+	// load): once the other's out of the game and this player alone in it, someone next, the board held all the same, never
+	// a fight against the computer
+	const bool alone_won = !decided && both_in && score.players_now() == (1 << me) && (m.phase == "DECIDED" || m.phase == "READY") &&
+	                       m.next_ready() != nullptr;
+	if (alone_won && ph == Phase::playing) {
+		log("Rooms 2: the room decided, this game's own decision not come, this player alone in the game: its win told, the board still");
+		if (m.reported_n != m.n) {
+			m.reported_n = m.n;
+			room2_send("result", ",\"winner\":\"" + std::string(me == 0 ? "a" : "b") + "\",\"n\":" + std::to_string(m.n), true, m.n);
+		}
+	}
+	if (((decided && in != 0 && ((in >> me) & 1) && m.phase == "READY") || alone_won) && ph == Phase::playing && !room2_win_sequence()) {
 		log("Rooms 2: won, " + m.next_name() + " called: the board still till the next pair's seated");
 		ended(tr::line(tr::ROOM2_WON_STAYS));
 		stop_activity(true, QUIT_NEXT_IN_LINE);
@@ -1197,7 +1214,13 @@ bool Online::room2_win_sequence() const
 	if (!r2 || !r2->in_seat || !r2->decided_seen || ph != Phase::playing || !session || r2->decided_at <= 0) return false;
 	// (VF2: and the game not at a select yet, its scene byte (the board's game mode) not 7: the ending's in the fight's scenes)
 	const bool fight = vf2net::scene_byte(board) != 7;
-	return score.players_now() == 3 && fight && now - r2->decided_at < WIN_SEQUENCE_MS;
+	// (the loser out on the frames run for good as well (the held reading): both games past it, the other's too, never the
+	// winner's own frame alone, a lagging loser's ending cut and its session lost, round 11b)
+	// (the frames run for good stop coming once the other's game has gone (its own ending over first): 2 s at most after this
+	// game's own loser-out, never a fight against the computer meanwhile)
+	if (score.players_now() != 3 && r2_local_out_at <= 0) r2_local_out_at = now;
+	if (score.players_now() == 3) r2_local_out_at = 0;
+	return (score.players_now() == 3 || (score_conf.players() == 3 && now - r2_local_out_at < 2000)) && fight && now - r2->decided_at < WIN_SEQUENCE_MS;
 }
 
 bool Online::room2_moving_on() const
