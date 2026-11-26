@@ -4487,7 +4487,17 @@ int main(int argc, char **argv)
 		else sysinfo::note_frame();
 	};
 	online.adapter.settle = [&] { m.render_wait(); };
-	online.adapter.booting = [] { SDL_PumpEvents(); };   // (the boot's seconds: the system doesn't take the game for hung)
+	// (hotfix 5: the boot's seconds, a watcher's (WATCH just pressed) or a seat's: the versus screen and its line drawn on,
+	// never the last picture frozen under it)
+	online.adapter.booting = [&] {
+		SDL_PumpEvents();
+		if (!menu.versus_showing()) return;
+		menu.keep_versus(1.0);
+		SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+		SDL_RenderClear(ren);
+		menu.render(false);
+		SDL_RenderPresent(ren);
+	};
 	online.adapter.on_begin = [&] {
 		finish_async(false);
 		ahead = {};
@@ -4845,7 +4855,8 @@ int main(int argc, char **argv)
 		// under it. One owner: the room page while it's open, the versus screen down meanwhile)
 		if (r2_next_vs && menu.is_open()) menu.hide_versus();
 		else if (r2_next_vs) {
-			const std::string how = SDL_GetTicks() - r2_vs_since < 3000 ? std::string() : online.watching() ? online.watch_status() : online.status();
+			const std::string how = online.watching() && !online.watch_showing() && !online.watch_between() ? tr::fill(tr::WATCH_CATCHING_UP, { { "pct", std::to_string(online.watch_progress()) } })   // (hotfix 5: from WATCH on, 0% up)
+			                       : SDL_GetTicks() - r2_vs_since < 3000 && !online.watching() ? std::string() : online.watching() ? online.watch_status() : online.status();
 			menu.show_versus({ tr::VS_PLAYER_1, r2m->a.name, tr::VS_PLAYER_2, r2m->b.name, how, online.watching() ? std::string(tr::WATCHING_HOW_TO_STOP) : std::string(),
 			                   false, r2m->a.country, r2m->b.country }, 1.0);
 		}
