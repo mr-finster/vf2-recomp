@@ -2586,11 +2586,12 @@ bool Online::step(uint16_t input)
 			sel_recording = !(both_in && sel_won_last);
 			// (hotfix 2, foops: a holder whose win wasn't kept as one (a challenger who won, a forfeit, a void, a side changed):
 			// their last pick is the one they hold the table with; none known (won before any select of theirs): free once)
-			if (keep_rule && r2->stayer == (me == 0 ? "a" : "b") && sel_keep.col < 0 && sel_last.col >= 0) {
+			if (sel_won_last && keep_rule && r2->holder == (me == 0 ? "a" : "b") && sel_keep.col < 0 && sel_last.col >= 0) {
 				sel_keep = sel_last;
 				log_line("Rooms 2: the holder's pick not kept as a win's: their last pick kept instead");
 			}
-			sel_playing = keep_rule && r2->stayer == (me == 0 ? "a" : "b") && sel_keep.col >= 0;
+			// (hotfix 3: only the one who won the match just decided, never its loser: hotfix 2 locked a play-on's loser)
+			sel_playing = sel_won_last && keep_rule && r2->holder == (me == 0 ? "a" : "b") && sel_keep.col >= 0;
 			if (sel_playing)
 				log_line("Rooms 2: the winner keeps their fighter: the cursor to row " + std::to_string(sel_keep.row) + ", column " + std::to_string(sel_keep.col) +
 				         ", picked with " + std::to_string(sel_keep.press) + ", fighter " + std::to_string(sel_keep.fighter));
